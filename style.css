@@ -139,6 +139,8 @@ button:focus,
     font-size: 24px;
     font-weight: bold;
     color: #333;
+    /* cursor: pointer; */
+    cursor: default;
 }
 
 .sudoku-cell input {
@@ -147,7 +149,18 @@ button:focus,
     font-size: 30px;
     text-align: center;
     border: none;
+    /* pointer-events: none; */
+    pointer-events: auto;
 }
+
+
+.sudoku-cell[style*="background-color: rgb(0, 0, 0)"] input,
+.sudoku-cell.missing-cell input {
+    background-color: transparent !important;
+    color: transparent !important;
+    pointer-events: none;
+}
+
 .main-input {
     position: absolute;
     width: 100%;
@@ -174,7 +187,7 @@ button:focus,
 
 .solution-cell {
     color: #187bcd;
-    background-color: #fff;
+    /* background-color: #fff; */
 }
 
 .import-container {
@@ -225,7 +238,8 @@ button:focus,
     gap: 1px;
     z-index: 1;
     pointer-events: none;
-    background-color: #f0f0f0;
+    /* background-color: #f0f0f0; */
+    background-color: transparent;
     padding: 2px;
     box-sizing: border-box;
 }
@@ -236,7 +250,8 @@ button:focus,
     align-items: center;
     font-size: 12px;
     color: #666;
-    background-color: white;
+    /* background-color: white; */
+    background-color: rgba(255, 255, 255, 0.7);
     border-radius: 2px;
 }
 
@@ -317,6 +332,28 @@ button:focus,
 .info {
     color: #17a2b8;
     background-color: #d1ecf1;
+}
+
+/* 过程日志容器 */
+#processLogContainer {
+    margin-top: 10px;
+    width: 80%;
+    max-width: 800px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+#processLogContainer div {
+    padding: 5px 0;
+    border-bottom: 1px solid #eee;
+    color: #333; /* 统一文字颜色 */
+}
+
+#processLogContainer div:last-child {
+    border-bottom: none;
 }
 
 .clear-buttons {

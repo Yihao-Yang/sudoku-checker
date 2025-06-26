@@ -88,7 +88,7 @@ export function create_skyscraper_sudoku(size) {
     const extraButtons = document.getElementById('extraButtons');
     extraButtons.innerHTML = '';
     add_Extra_Button('一键标记', auto_mark_skyscraper_clues, '#2196F3');
-    add_Extra_Button('验证唯一性', check_skyscraper_uniqueness, '#2196F3');
+    add_Extra_Button('验证摩天楼唯一性', check_skyscraper_uniqueness, '#2196F3');
     add_Extra_Button('清除标记', clear_outer_clues, '#2196F3');
 }
 
@@ -195,6 +195,62 @@ export function check_skyscraper_uniqueness() {
     let solutionCount = 0;
 
     function solve(r = 0, c = 0, saveSolution = false) {
+        // 预处理：根据已有数字减少候选数
+        if (r === 0 && c === 0) {
+            for (let i = 0; i < size; i++) {
+                for (let j = 0; j < size; j++) {
+                    // 将空单元格初始化为全候选数
+                    if (board[i][j] === 0) {
+                        board[i][j] = Array.from({length: size}, (_, n) => n + 1);
+                    }
+                    
+                }
+            }
+        }
+        if (r === 0 && c === 0) {
+            for (let i = 0; i < size; i++) {
+                for (let j = 0; j < size; j++) {
+                    const cell = board[i][j];
+                    if (typeof cell === 'number' && cell !== 0) {
+                        // 移除同行同列同宫的候选数
+                        const num = cell;
+                        for (let k = 0; k < size; k++) {
+                            // 处理行
+                            if (Array.isArray(board[i][k])) {
+                                board[i][k] = board[i][k].filter(n => n !== num);
+                            }
+                            // 处理列
+                            if (Array.isArray(board[k][j])) {
+                                board[k][j] = board[k][j].filter(n => n !== num);
+                            }
+                        }
+                        // 处理宫
+                        const boxSize = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
+                        const startRow = Math.floor(i / boxSize[0]) * boxSize[0];
+                        const startCol = Math.floor(j / boxSize[1]) * boxSize[1];
+                        for (let r = startRow; r < startRow + boxSize[0]; r++) {
+                            for (let c = startCol; c < startCol + boxSize[1]; c++) {
+                                if (Array.isArray(board[r][c])) {
+                                    board[r][c] = board[r][c].filter(n => n !== num);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (r === 0 && c === 0) {
+            // 删减候选数后检查空候选情况
+            for (let i = 0; i < size; i++) {
+                for (let j = 0; j < size; j++) {
+                    if (Array.isArray(board[i][j]) && board[i][j].length === 0) {
+                        // solutionCount = 0; // 标记无解
+                        return; // 提前终止
+                    }
+                }
+            }
+        }
+
         if (solutionCount >= 2) return;
         if (r === size) {
             // 最终检查所有摩天楼规则
@@ -220,15 +276,37 @@ export function check_skyscraper_uniqueness() {
         const nextRow = c === size - 1 ? r + 1 : r;
         const nextCol = (c + 1) % size;
 
-        if (board[r][c] !== 0) {
+        // 如果单元格已经有确定值，判断该值是否合理，再跳到下一个
+        if (typeof board[r][c] === 'number' && board[r][c] !== 0) {
+            const num = board[r][c];
+            board[r][c] = 0;
+            if (!isValid(r, c, num)) {
+                board[r][c] = num;
+                return;
+            }
+            board[r][c] = num;
             solve(nextRow, nextCol, saveSolution);
-        } else {
-            for (let num = 1; num <= size; num++) {
+            return;
+        }
+        
+        // 如果是候选数数组，只尝试数组中的数字
+        if (Array.isArray(board[r][c])) {
+            for (const num of board[r][c]) {
                 if (isValid(r, c, num)) {
+                    const original = board[r][c];
                     board[r][c] = num;
                     solve(nextRow, nextCol, saveSolution);
-                    board[r][c] = 0;
+                    board[r][c] = original;
                 }
+            }
+            return;
+        }
+        // 普通空单元格处理
+        for (let num = 1; num <= size; num++) {
+            if (isValid(r, c, num)) {
+                board[r][c] = num;
+                solve(nextRow, nextCol, saveSolution);
+                board[r][c] = 0;
             }
         }
     }

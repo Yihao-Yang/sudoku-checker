@@ -1,6 +1,8 @@
 import { create_skyscraper_sudoku } from './skyscraper.js';
 import { create_vx_sudoku } from './vx.js';
 import { create_candidates_sudoku } from './candidates.js';
+import { create_consecutive_sudoku } from './consecutive.js';
+import { create_missing_sudoku } from './missing.js';
 import { state } from './state.js';
 import { 
     show_result, 
@@ -13,7 +15,9 @@ import {
     add_base_input_handlers,
     handle_key_navigation,
     base_solve,
-    fill_solution
+    fill_solution,
+    log_process,
+    backup_original_board
 } from './core.js';
 
 // 最关键的创建数独函数
@@ -25,17 +29,28 @@ export function create_sudoku_grid(size) {
     controls.classList.remove('hidden');
     state.current_grid_size = size;
 
+    // 移除旧的事件监听器
+    const toggleBtn = document.getElementById('toggleCandidatesMode');
+    const newToggleBtn = toggleBtn.cloneNode(true);
+    toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
+
     const { container, grid } = create_base_grid(size);
     const inputs = Array.from({ length: size }, () => new Array(size));
+
+    // 创建技巧开关面板
+    create_technique_panel();
 
     // 添加切换候选数模式按钮事件 (保持原状)
     document.getElementById('toggleCandidatesMode').addEventListener('click', function() {
         state.is_candidates_mode = !state.is_candidates_mode;
         this.textContent = state.is_candidates_mode ? '退出候选数模式' : '切换候选数模式';
+
+        // 使用当前网格尺寸而不是固定size
+        const currentSize = state.current_grid_size;
         
         // 更新所有单元格的显示
-        for (let row = 0; row < size; row++) {
-            for (let col = 0; col < size; col++) {
+        for (let row = 0; row < currentSize; row++) {
+            for (let col = 0; col < currentSize; col++) {
                 const cell = inputs[row][col].parentElement;
                 const mainInput = inputs[row][col];
                 const candidatesGrid = cell.querySelector('.candidates-grid');
@@ -47,7 +62,7 @@ export function create_sudoku_grid(size) {
                     candidatesGrid.style.display = 'grid';
                     
                     // 更新候选数显示
-                    updateCandidatesDisplay(mainInput, candidatesGrid, size);
+                    updateCandidatesDisplay(mainInput, candidatesGrid, currentSize);
                 } else {
                     // 切换回普通模式
                     mainInput.style.display = 'block';
@@ -94,9 +109,12 @@ export function create_sudoku_grid(size) {
         candidatesGrid.style.display = 'none';
 
         // 根据数独尺寸创建候选数格子 (保持原状)
-        const subSize = Math.sqrt(size);
-        candidatesGrid.style.gridTemplateColumns = `repeat(${subSize}, 1fr)`;
-        candidatesGrid.style.gridTemplateRows = `repeat(${subSize}, 1fr)`;
+        // const subSize = Math.sqrt(size);
+        // candidatesGrid.style.gridTemplateColumns = `repeat(${subSize}, 1fr)`;
+        // candidatesGrid.style.gridTemplateRows = `repeat(${subSize}, 1fr)`;
+        const subSize = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)]; // 六宫格特殊处理
+        candidatesGrid.style.gridTemplateColumns = `repeat(${subSize[1]}, 1fr)`;
+        candidatesGrid.style.gridTemplateRows = `repeat(${subSize[0]}, 1fr)`;
         
         for (let n = 1; n <= size; n++) {
             const candidateCell = document.createElement('div');
@@ -109,10 +127,23 @@ export function create_sudoku_grid(size) {
         }
 
         // 辅助函数：计算固定位置 (保持原状)
+        // function getGridArea(number, subSize) {
+        //     const row = Math.ceil(number / subSize);
+        //     const col = ((number - 1) % subSize) + 1;
+        //     return `${row} / ${col} / ${row} / ${col}`;
+        // }
         function getGridArea(number, subSize) {
-            const row = Math.ceil(number / subSize);
-            const col = ((number - 1) % subSize) + 1;
-            return `${row} / ${col} / ${row} / ${col}`;
+            if (size === 6) {
+                // 六宫格特殊布局 (2行3列)
+                const row = Math.ceil(number / subSize[1]);
+                const col = ((number - 1) % subSize[1]) + 1;
+                return `${row} / ${col} / ${row} / ${col}`;
+            } else {
+                // 标准正方形宫格布局
+                const row = Math.ceil(number / subSize[0]);
+                const col = ((number - 1) % subSize[0]) + 1;
+                return `${row} / ${col} / ${row} / ${col}`;
+            }
         }
 
         // 添加元素到DOM
@@ -216,55 +247,197 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('四宫乘积', () => show_result('这是四宫乘积的功能！(待实现)'));
         add_Extra_Button('四宫摩天楼', () => create_skyscraper_sudoku(4));
         add_Extra_Button('四宫候选数', () => create_candidates_sudoku(4));
+        add_Extra_Button('四宫连续', () => create_consecutive_sudoku(4));
+        add_Extra_Button('四宫缺一门', () => create_missing_sudoku(4));
     } else if (size === 6) {
         add_Extra_Button('六宫乘积', () => show_result('这是六宫乘积的功能！(待实现)'));
         add_Extra_Button('六宫摩天楼', () => create_skyscraper_sudoku(6));
         add_Extra_Button('六宫候选数', () => create_candidates_sudoku(6));
+        add_Extra_Button('六宫连续', () => create_consecutive_sudoku(6));
+        add_Extra_Button('六宫缺一门', () => create_missing_sudoku(6));
     } else if (size === 9) {
         add_Extra_Button('九宫乘积', () => show_result('这是九宫乘积的功能！(待实现)'));
         add_Extra_Button('九宫摩天楼', () => create_skyscraper_sudoku(9));
         add_Extra_Button('九宫候选数', () => create_candidates_sudoku(9));
         add_Extra_Button('九宫VX', () => create_vx_sudoku(9));
+        add_Extra_Button('九宫连续', () => create_consecutive_sudoku(9));
+        add_Extra_Button('九宫缺一门', () => create_missing_sudoku(9));
     }
 }
 
-export function check_uniqueness() {
-    const container = document.querySelector('.sudoku-container');
-    const size = state.current_grid_size;
-    let board = Array.from({ length: size }, (_, i) =>
-        Array.from({ length: size }, (_, j) => {
-            const val = parseInt(container.querySelector(`input[data-row="${i}"][data-col="${j}"]`).value);
-            return isNaN(val) ? 0 : val;
-        })
-    );
+// 创建技巧开关面板
+function create_technique_panel() {
+    const panel = document.createElement('div');
+    panel.id = 'techniquePanel';
+    panel.style.position = 'fixed';
+    panel.style.right = '20px';
+    panel.style.top = '100px';
+    panel.style.width = '200px';
+    panel.style.backgroundColor = '#f5f5f5';
+    panel.style.padding = '10px';
+    panel.style.borderRadius = '5px';
+    panel.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+    panel.style.zIndex = '1000';
 
-    function isValid(row, col, num) {
-        for (let i = 0; i < size; i++) {
-            if (board[row][i] === num || board[i][col] === num) return false;
+    const title = document.createElement('h3');
+    title.textContent = '技巧开关';
+    title.style.marginTop = '0';
+    panel.appendChild(title);
+
+    // 技巧列表
+    const techniqueGroups = [
+        {
+            // name: '排除',
+            id: 'elimination',
+            items: [
+                { id: 'boxElimination', name: '宫排除', default: true },
+                { id: 'rowColElimination', name: '行列排除', default: true }
+            ]
+        },
+        {
+            // name: '区块',
+            id: 'block',
+            items: [
+                { id: 'boxBlock', name: '宫区块', default: true },
+                { id: 'rowColBlock', name: '行列区块', default: true }
+            ]
+        },
+        {
+            // name: '数组',
+            id: 'subset',
+            items: [
+                { id: 'boxSubset', name: '宫数组', default: true },
+                { id: 'rowColSubset', name: '行列数组', default: true }
+            ]
+        },
+        {
+            // name: '唯余',
+            id: 'cell',
+            items: [
+                { id: 'cellElimination', name: '唯余', default: true }
+            ]
         }
+    ];
 
-        const boxSize = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
-        const startRow = Math.floor(row / boxSize[0]) * boxSize[0];
-        const startCol = Math.floor(col / boxSize[1]) * boxSize[1];
-
-        for (let r = startRow; r < startRow + boxSize[0]; r++) {
-            for (let c = startCol; c < startCol + boxSize[1]; c++) {
-                if (board[r][c] === num) return false;
-            }
-        }
-        return true;
+    // 初始化技巧状态
+    if (!state.techniqueSettings) {
+        state.techniqueSettings = {
+            rowElimination: true,
+            colElimination: true,
+            rowBlock: true,
+            colBlock: true,
+            rowSubset: true,
+            colSubset: true
+        };
+        techniqueGroups.forEach(group => {
+            group.items.forEach(tech => {
+                state.techniqueSettings[tech.id] = tech.default;
+            });
+        });
     }
 
-    const { solutionCount, solution } = base_solve(board, size, isValid, true);
+    // 创建开关控件
+    techniqueGroups.forEach(group => {
+        // 添加分组标题
+        if (group.name) {
+            const groupTitle = document.createElement('h4');
+            groupTitle.textContent = group.name;
+            groupTitle.style.margin = '10px 0 5px 0';
+            groupTitle.style.fontSize = '14px';
+            panel.appendChild(groupTitle);
+        }
 
-    if (solutionCount === 0) {
-        show_result("当前数独无解！");
-    } else if (solutionCount === 1) {
-        fill_solution(container, solution, size);
-        show_result("当前数独恰好有唯一解！已自动填充答案。");
-    } else if (solutionCount > 100) {
-        show_result("当前数独有多于100个解。");
-    } else {
-        show_result(`当前数独有${solutionCount}个解！`);
-    }
+        // 添加总开关（排除、区块、数组才有）
+        if (group.id) {
+            const masterDiv = document.createElement('div');
+            masterDiv.style.margin = '5px 0';
+            masterDiv.style.display = 'flex';
+            masterDiv.style.alignItems = 'center';
+
+            const masterCheckbox = document.createElement('input');
+            masterCheckbox.type = 'checkbox';
+            masterCheckbox.id = `tech_master_${group.id}`;
+            masterCheckbox.checked = group.items.every(tech => state.techniqueSettings[tech.id]);
+            masterCheckbox.style.marginRight = '10px';
+
+            masterCheckbox.addEventListener('change', () => {
+                group.items.forEach(tech => {
+                    state.techniqueSettings[tech.id] = masterCheckbox.checked;
+                    const checkbox = document.getElementById(`tech_${tech.id}`);
+                    if (checkbox) checkbox.checked = masterCheckbox.checked;
+                    
+                    // 处理行列排除/区块/数组的特殊情况
+                    if (tech.id === 'rowColElimination') {
+                        state.techniqueSettings.rowElimination = masterCheckbox.checked;
+                        state.techniqueSettings.colElimination = masterCheckbox.checked;
+                    } else if (tech.id === 'rowColBlock') {
+                        state.techniqueSettings.rowBlock = masterCheckbox.checked;
+                        state.techniqueSettings.colBlock = masterCheckbox.checked;
+                    } else if (tech.id === 'rowColSubset') {
+                        state.techniqueSettings.rowSubset = masterCheckbox.checked;
+                        state.techniqueSettings.colSubset = masterCheckbox.checked;
+                    }
+                });
+            });
+
+            const masterLabel = document.createElement('label');
+            masterLabel.htmlFor = `tech_master_${group.id}`;
+            masterLabel.textContent = `${group.id === 'elimination' ? '排除' : group.id === 'block' ? '区块' :group.id === 'subset' ? '数组' : '唯余'}`;
+            masterLabel.style.fontWeight = 'bold';
+
+            masterDiv.appendChild(masterCheckbox);
+            masterDiv.appendChild(masterLabel);
+            panel.appendChild(masterDiv);
+        }
+
+        // 添加子技巧开关
+        group.items.forEach(tech => {
+            const div = document.createElement('div');
+            div.style.margin = group.id ? '5px 0 5px 20px' : '5px 0';
+            div.style.display = 'flex';
+            div.style.alignItems = 'center';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = `tech_${tech.id}`;
+            checkbox.checked = state.techniqueSettings[tech.id];
+            checkbox.style.marginRight = '10px';
+
+            checkbox.addEventListener('change', () => {
+                state.techniqueSettings[tech.id] = checkbox.checked;
+                
+                // 更新总开关状态
+                if (group.id) {
+                    const masterCheckbox = document.getElementById(`tech_master_${group.id}`);
+                    if (masterCheckbox) {
+                        masterCheckbox.checked = group.items.every(
+                            t => state.techniqueSettings[t.id]
+                        );
+                    }
+                }
+                
+                // 处理行列排除/区块/数组的特殊情况
+                if (tech.id === 'rowColElimination') {
+                    state.techniqueSettings.rowElimination = checkbox.checked;
+                    state.techniqueSettings.colElimination = checkbox.checked;
+                } else if (tech.id === 'rowColBlock') {
+                    state.techniqueSettings.rowBlock = checkbox.checked;
+                    state.techniqueSettings.colBlock = checkbox.checked;
+                } else if (tech.id === 'rowColSubset') {
+                    state.techniqueSettings.rowSubset = checkbox.checked;
+                    state.techniqueSettings.colSubset = checkbox.checked;
+                }
+            });
+
+            const label = document.createElement('label');
+            label.htmlFor = `tech_${tech.id}`;
+            label.textContent = tech.name;
+
+            div.appendChild(checkbox);
+            div.appendChild(label);
+            panel.appendChild(div);
+        });
+    });
+
+    document.body.appendChild(panel);
 }

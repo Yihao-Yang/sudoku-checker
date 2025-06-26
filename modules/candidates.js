@@ -1,5 +1,8 @@
 import { state } from './state.js';
-import { show_result, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid } from './core.js';
+import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, show_logical_solution } from './core.js';
+import { eliminate_Candidates, getRowLetter, isValid } from '../solver/solver_tool.js';
+import { solve_By_Elimination } from '../solver/Technique.js';
+
 
 export function create_candidates_sudoku(size) {
     // 初始化状态 - 强制设置为候选数模式
@@ -12,8 +15,10 @@ export function create_candidates_sudoku(size) {
     // 存储所有输入框的引用
     const inputs = Array.from({ length: size }, () => new Array(size));
 
-    // 隐藏切换候选数模式的按钮（因为始终是候选数模式）
-    document.getElementById('toggleCandidatesMode').style.display = 'none';
+    // // 隐藏切换候选数模式的按钮（因为始终是候选数模式）
+    // document.getElementById('toggleCandidatesMode').style.display = 'none';
+    // 修改：不再隐藏切换候选数模式的按钮
+    document.getElementById('toggleCandidatesMode').textContent = '退出候选数模式';
 
     for (let i = 0; i < size * size; i++) {
         const row = Math.floor(i / size);
@@ -39,9 +44,12 @@ export function create_candidates_sudoku(size) {
         candidatesGrid.style.display = 'grid'; // 默认显示候选数网格
 
         // 根据数独尺寸创建候选数格子
-        const subSize = Math.sqrt(size);
-        candidatesGrid.style.gridTemplateColumns = `repeat(${subSize}, 1fr)`;
-        candidatesGrid.style.gridTemplateRows = `repeat(${subSize}, 1fr)`;
+        // const subSize = Math.sqrt(size);
+        // candidatesGrid.style.gridTemplateColumns = `repeat(${subSize}, 1fr)`;
+        // candidatesGrid.style.gridTemplateRows = `repeat(${subSize}, 1fr)`;
+        const subSize = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)]; // 六宫格特殊处理
+        candidatesGrid.style.gridTemplateColumns = `repeat(${subSize[1]}, 1fr)`; // 列数
+        candidatesGrid.style.gridTemplateRows = `repeat(${subSize[0]}, 1fr)`; // 行数
         
         // 创建固定位置的候选数格子
         for (let n = 1; n <= size; n++) {
@@ -55,10 +63,23 @@ export function create_candidates_sudoku(size) {
         }
 
         // 辅助函数：计算固定位置
+        // function getGridArea(number, subSize) {
+        //     const row = Math.ceil(number / subSize);
+        //     const col = ((number - 1) % subSize) + 1;
+        //     return `${row} / ${col} / ${row} / ${col}`;
+        // }
         function getGridArea(number, subSize) {
-            const row = Math.ceil(number / subSize);
-            const col = ((number - 1) % subSize) + 1;
-            return `${row} / ${col} / ${row} / ${col}`;
+            if (size === 6) {
+                // 六宫格特殊布局 (2行3列)
+                const row = Math.ceil(number / subSize[1]);
+                const col = ((number - 1) % subSize[1]) + 1;
+                return `${row} / ${col} / ${row} / ${col}`;
+            } else {
+                // 标准正方形宫格布局
+                const row = Math.ceil(number / subSize[0]);
+                const col = ((number - 1) % subSize[0]) + 1;
+                return `${row} / ${col} / ${row} / ${col}`;
+            }
         }
 
         // 添加元素到DOM
@@ -148,7 +169,8 @@ export function create_candidates_sudoku(size) {
     const extraButtons = document.getElementById('extraButtons');
     extraButtons.innerHTML = '';
 
-    add_Extra_Button('验证唯一性', check_candidates_uniqueness, '#2196F3');
+    add_Extra_Button('验证候选数唯一性', check_candidates_uniqueness, '#2196F3');
+    add_Extra_Button('显示可逻辑解部分', show_logical_solution, '#2196F3');
     add_Extra_Button('隐藏答案', restore_original_board, '#2196F3');
 }
 
@@ -156,6 +178,9 @@ export function create_candidates_sudoku(size) {
  * 验证候选数数独的唯一解
  */
 export function check_candidates_uniqueness() {
+    // 清空之前的日志
+    log_process('', true);
+
     const container = document.querySelector('.sudoku-container');
     const size = state.current_grid_size;
 
@@ -172,97 +197,84 @@ export function check_candidates_uniqueness() {
             if (state.is_candidates_mode && input.value.length > 1) {
                 return [...new Set(input.value.split('').map(Number))].filter(n => n >= 1 && n <= size);
             }
-            return isNaN(val) ? 0 : val;
+            return isNaN(val) ? Array.from({length: size}, (_, n) => n + 1) : val;
         })
     );
 
+    for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
+            const cell = board[i][j];
+            if (cell === 0) {
+                board[i][j] = Array.from({length: size}, (_, n) => n + 1);
+            }
+            else if (typeof cell === 'number' && cell !== 0) {
+                const num = cell;
+                board[i][j] = 0; // 临时清空
+                if (!isValid(board, size, i, j, num)) {
+                    show_result(`[冲突] ${getRowLetter(i+1)}${j+1}=${num}与已有数字冲突，无解！`);
+                    return { changed: false, hasEmptyCandidate: true }; // 直接返回冲突状态
+                }
+                board[i][j] = num; // 恢复原值
+                eliminate_Candidates(board, size, i, j, num); // 移除相关候选数
+            }
+        }
+    }
+
     let solutionCount = 0;
-    let arrayCount = 0;
     let solution = null;
 
-    /**
-     * 自定义验证函数
-     */
-    function isValid(row, col, num) {
-        for (let i = 0; i < size; i++) {
-            if (board[row][i] === num || board[i][col] === num) return false;
+    // 主求解函数
+    function solve() {
+        // 先尝试逻辑求解
+        const logicalResult = solve_By_Logic();
+        
+        // 如果逻辑求解未完成，则尝试暴力求解
+        if (!logicalResult.isSolved) {
+            solve_By_BruteForce();
         }
-
-        const boxSize = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
-        const startRow = Math.floor(row / boxSize[0]) * boxSize[0];
-        const startCol = Math.floor(col / boxSize[1]) * boxSize[1];
-
-        for (let r = startRow; r < startRow + boxSize[0]; r++) {
-            for (let c = startCol; c < startCol + boxSize[1]; c++) {
-                if (board[r][c] === num) return false;
-            }
-        }
-        return true;
     }
 
-    // 求解函数
-    function solve_Array(r = 0, c = 0) {
-
-        if (r === size) {
-            arrayCount++;
-            // if (arrayCount === 1) {
-            //     solution = board.map(row => row.map(cell => 
-            //         Array.isArray(cell) ? cell[0] : cell
-            //     ));
-            // }
-            // 保存当前解的状态
-            const tempBoard = board.map(row => [...row]);
-            
-            // 基于当前解进行验证
-            // const { solutionCount: verifyCount } = solve(0, 0);
-            solve(0, 0);
-            
-            // 恢复状态
-            board = tempBoard.map(row => [...row]);
-            return;
-        }
-
-        const nextRow = c === size - 1 ? r + 1 : r;
-        const nextCol = (c + 1) % size;
-
-        const cellValue = board[r][c];
+    // 逻辑求解函数
+    function solve_By_Logic() {
+        const { changed, hasEmptyCandidate } = solve_By_Elimination(board, size);
+        log_process("1...");
         
-        // 如果单元格已经有确定值，判断该值是否合理，再跳到下一个
-        if (typeof cellValue === 'number' && cellValue !== 0) {
-            const num = cellValue;
-            board[r][c] = 0; // Temporarily clear
-            if (!isValid(r, c, num)) {
-                board[r][c] = num; // Restore before returning
-                return; // Invalid board
-            }
-            board[r][c] = num; // Restore
-            solve_Array(nextRow, nextCol);
-            return;
+        if (hasEmptyCandidate) {
+            solutionCount = 0;
+            return { isSolved: false };
         }
-        
-        // 如果是候选数数组，只尝试数组中的数字
-        if (Array.isArray(cellValue)) {
-            for (const num of cellValue) {
-                if (isValid(r, c, num)) {
-                    const original = board[r][c];
-                    board[r][c] = num; // 暂时设为确定值
-                    solve_Array(nextRow, nextCol);
-                    board[r][c] = original; // 恢复候选数
+        log_process("2...");
+
+        state.logicalSolution = board.map(row => [...row]);
+
+        // 检查是否已完全解出
+        let isSolved = true;
+        for (let i = 0; i < size; i++) {
+            for (let j = 0; j < size; j++) {
+                if (Array.isArray(board[i][j])) {
+                    isSolved = false;
+                    break;
                 }
             }
-            return;
+            if (!isSolved) break;
         }
-        
-        // 如果是空单元格，先跳过（最后处理）
-        if (cellValue === 0) {
-            solve_Array(nextRow, nextCol);
-            return;
+        log_process("3...");
+
+        if (isSolved) {
+            solutionCount = 1;
+            solution = board.map(row => [...row]);
+            return { isSolved: true };
         }
 
+        log_process("当前候选数数独无法通过逻辑推理完全解出，尝试回溯法...");
+        return { isSolved: false };
     }
 
-    function solve(r = 0, c = 0) {
-        if (solutionCount >= 51) return;
+    // 暴力求解函数
+    function solve_By_BruteForce(r = 0, c = 0) {
+        const backup = board.map(row => [...row]);
+        
+        if (solutionCount >= 2) return;
         if (r === size) {
             solutionCount++;
             if (solutionCount === 1) {
@@ -278,51 +290,39 @@ export function check_candidates_uniqueness() {
 
         const cellValue = board[r][c];
         
-        // 如果单元格已经有确定值，判断该值是否合理，再跳到下一个
         if (typeof cellValue === 'number' && cellValue !== 0) {
-            const num = cellValue;
-            board[r][c] = 0; // Temporarily clear
-            if (!isValid(r, c, num)) {
-                board[r][c] = num; // Restore before returning
-                return; // Invalid board
-            }
-            board[r][c] = num; // Restore
-            solve(nextRow, nextCol);
+            solve_By_BruteForce(nextRow, nextCol);
             return;
         }
         
-        // 如果是候选数数组，只尝试数组中的数字
         if (Array.isArray(cellValue)) {
             for (const num of cellValue) {
-                if (isValid(r, c, num)) {
-                    const original = board[r][c];
-                    board[r][c] = num; // 暂时设为确定值
-                    solve(nextRow, nextCol);
-                    board[r][c] = original; // 恢复候选数
+                if (isValid(board, size, r, c, num)) {
+                    const boardBackup = JSON.parse(JSON.stringify(board));
+                    board[r][c] = num;
+                    log_process(`[试数] ${getRowLetter(r+1)}${c+1}=${num}`);
+                    eliminate_Candidates(board, size, r, c, num);
+                    
+                    const { changed, hasEmptyCandidate } = solve_By_Elimination(board, size);
+                    if (hasEmptyCandidate) {
+                        board = JSON.parse(JSON.stringify(boardBackup));
+                        continue;
+                    }
+                    
+                    solve_By_BruteForce(nextRow, nextCol);
+                    board = JSON.parse(JSON.stringify(boardBackup));
                 }
             }
             return;
         }
-        // 普通空单元格，尝试所有可能数字
-        for (let num = 1; num <= size; num++) {
-            if (isValid(r, c, num)) {
-                board[r][c] = num;
-                solve(nextRow, nextCol);
-                board[r][c] = 0;
-            }
-        }
-
     }
 
-    solve_Array(0, 0);
-    // solve(0, 0);
-    // if (solutionCount < 2) {
-    //     processEmptyCells();
-    // }
+    solve(); // 调用主求解函数
+
 
     // 显示结果
     if (solutionCount === 0) {
-        show_result("当前候选数数独无解！");
+        show_result("当前数独无解！");
     } else if (solutionCount === 1) {
         // 退出候选数模式
         state.is_candidates_mode = false;
@@ -349,116 +349,10 @@ export function check_candidates_uniqueness() {
                 }
             }
         }
-        show_result("当前候选数数独恰好有唯一解！已自动填充答案并退出候选数模式。");
-    } else if (solutionCount > 50) {
-        show_result("当前数独有多于50个解。");
+        show_result("当前数独恰好有唯一解！已自动填充答案。");
+    } else if (solutionCount > 1) {
+        show_result("当前数独有多个解。");
     } else {
         show_result(`当前数独有${solutionCount}个解！`);
     }
-}
-
-
-/**
- * 备份当前题目状态
- */
-function backup_original_board() {
-    const container = document.querySelector('.sudoku-container');
-    const size = state.current_grid_size;
-    
-    state.originalBoard = Array.from({ length: size }, (_, i) =>
-        Array.from({ length: size }, (_, j) => {
-            const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
-            return {
-                value: input.value,
-                isCandidateMode: state.is_candidates_mode,
-                displayStyle: input.style.display,
-                classList: [...input.classList]
-            };
-        })
-    );
-}
-
-/**
- * 填充答案并更新状态
- */
-function fill_solution_with_backup(solution) {
-    const container = document.querySelector('.sudoku-container');
-    const size = state.current_grid_size;
-    
-    // 退出候选数模式
-    state.is_candidates_mode = false;
-    state.isShowingSolution = true;
-    document.getElementById('toggleCandidatesMode').textContent = '切换候选数模式';
-    
-    // 更新检查按钮文本
-    const checkBtn = document.getElementById('checkUniqueness');
-    const originalBtnText = checkBtn.textContent;
-    checkBtn.textContent = '隐藏答案';
-    
-    // 填充唯一解
-    for (let i = 0; i < size; i++) {
-        for (let j = 0; j < size; j++) {
-            const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
-            const cell = input.parentElement;
-            const candidatesGrid = cell.querySelector('.candidates-grid');
-            
-            // 更新显示状态
-            input.style.display = 'block';
-            input.classList.remove('hide-input-text');
-            if (candidatesGrid) {
-                candidatesGrid.style.display = 'none';
-            }
-            
-            // 填充答案
-            if (solution[i][j] > 0) {
-                input.value = solution[i][j];
-                input.classList.add("solution-cell");
-            }
-        }
-    }
-    
-    // 存储原始按钮文本以便恢复
-    checkBtn.dataset.originalText = originalBtnText;
-    show_result("当前候选数数独恰好有唯一解！已自动填充答案。点击隐藏答案按钮可恢复题目。");
-}
-
-/**
- * 恢复原始题目状态
- */
-function restore_original_board() {
-    const container = document.querySelector('.sudoku-container');
-    const size = state.current_grid_size;
-    
-    if (!state.originalBoard) return;
-    
-    // 恢复原始状态
-    for (let i = 0; i < size; i++) {
-        for (let j = 0; j < size; j++) {
-            const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
-            const original = state.originalBoard[i][j];
-            
-            input.value = original.value;
-            input.style.display = original.displayStyle;
-            input.className = 'main-input';
-            original.classList.forEach(cls => input.classList.add(cls));
-            
-            // 恢复候选数网格显示
-            const candidatesGrid = input.parentElement.querySelector('.candidates-grid');
-            if (candidatesGrid) {
-                candidatesGrid.style.display = original.isCandidateMode ? 'grid' : 'none';
-            }
-        }
-    }
-    
-    // 恢复候选数模式状态
-    state.is_candidates_mode = state.originalBoard[0][0].isCandidateMode;
-    state.isShowingSolution = false;
-    document.getElementById('toggleCandidatesMode').textContent = 
-        state.is_candidates_mode ? '退出候选数模式' : '切换候选数模式';
-    
-    // 恢复按钮文本
-    const checkBtn = document.getElementById('checkUniqueness');
-    checkBtn.textContent = checkBtn.dataset.originalText || '验证唯一性';
-    
-    show_result("已恢复原始题目状态");
 }

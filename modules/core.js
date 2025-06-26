@@ -2,6 +2,7 @@ import { create_skyscraper_sudoku } from './skyscraper.js';
 import { create_vx_sudoku } from './vx.js';
 import { create_candidates_sudoku } from './candidates.js';
 import { state } from './state.js';
+import { solve_By_Elimination } from '../solver/Technique.js';
 
 
 /**
@@ -11,6 +12,38 @@ export function show_result(message, type = 'info') {
     resultDisplay.textContent = message;
     resultDisplay.className = '';
     resultDisplay.classList.add(type);
+}
+
+/**
+ * 显示中间过程日志
+ */
+export function log_process(message, clearBeforeLog = false) {
+    let logContainer = document.getElementById('processLogContainer');
+    
+    // 如果需要先清空日志
+    if (clearBeforeLog) {
+        if (logContainer) {
+            logContainer.innerHTML = '';  // 清空现有日志
+        } else {
+            logContainer = document.createElement('div');
+            logContainer.id = 'processLogContainer';
+            logContainer.style.marginTop = '10px';
+            logContainer.style.width = '80%';
+            logContainer.style.maxWidth = '800px';
+            resultDisplay.parentNode.insertBefore(logContainer, resultDisplay.nextSibling);
+        }
+    } else if (!logContainer) {
+        logContainer = document.createElement('div');
+        logContainer.id = 'processLogContainer';
+        logContainer.style.marginTop = '10px';
+        logContainer.style.width = '80%';
+        logContainer.style.maxWidth = '800px';
+        resultDisplay.parentNode.insertBefore(logContainer, resultDisplay.nextSibling);
+    }
+    
+    const logEntry = document.createElement('div');
+    logEntry.textContent = message;
+    logContainer.appendChild(logEntry);
 }
 
 /**
@@ -139,21 +172,6 @@ export function base_solve(board, size, isValidFunc, saveSolution = false) {
     let solution = null;
     let solutionCount = 0;
 
-    // // 判断题目是否合理
-    // for (let r = 0; r < size; r++) {
-    //     for (let c = 0; c < size; c++) {
-    //         if (board[r][c] !== 0) {
-    //             const num = board[r][c];
-    //             // Temporarily set the cell to 0 to check validity
-    //             board[r][c] = 0;
-    //             if (!isValidFunc(r, c, num)) {
-    //                 // Invalid starting board
-    //                 return { solutionCount: 0, solution: null };
-    //             }
-    //             board[r][c] = num;
-    //         }
-    //     }
-    // }
 
     function solve(r = 0, c = 0) {
         if (solutionCount >= 101) return;
@@ -219,9 +237,12 @@ export function create_candidates_grid(cell, size) {
     candidatesGrid.className = 'candidates-grid';
     candidatesGrid.style.display = 'none';
 
-    const subSize = Math.sqrt(size);
-    candidatesGrid.style.gridTemplateColumns = `repeat(${subSize}, 1fr)`;
-    candidatesGrid.style.gridTemplateRows = `repeat(${subSize}, 1fr)`;
+    // const subSize = Math.sqrt(size);
+    // candidatesGrid.style.gridTemplateColumns = `repeat(${subSize}, 1fr)`;
+    // candidatesGrid.style.gridTemplateRows = `repeat(${subSize}, 1fr)`;
+    const subSize = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
+    candidatesGrid.style.gridTemplateColumns = `repeat(${subSize[1]}, 1fr)`;
+    candidatesGrid.style.gridTemplateRows = `repeat(${subSize[0]}, 1fr)`;
     
     for (let n = 1; n <= size; n++) {
         const candidateCell = document.createElement('div');
@@ -235,10 +256,21 @@ export function create_candidates_grid(cell, size) {
 
     return candidatesGrid;
 
+    // function getGridArea(number, subSize) {
+    //     const row = Math.ceil(number / subSize);
+    //     const col = ((number - 1) % subSize) + 1;
+    //     return `${row} / ${col} / ${row} / ${col}`;
+    // }
     function getGridArea(number, subSize) {
-        const row = Math.ceil(number / subSize);
-        const col = ((number - 1) % subSize) + 1;
-        return `${row} / ${col} / ${row} / ${col}`;
+        if (size === 6) {
+            const row = Math.ceil(number / subSize[1]);
+            const col = ((number - 1) % subSize[1]) + 1;
+            return `${row} / ${col} / ${row} / ${col}`;
+        } else {
+            const row = Math.ceil(number / subSize[0]);
+            const col = ((number - 1) % subSize[0]) + 1;
+            return `${row} / ${col} / ${row} / ${col}`;
+        }
     }
 }
 
@@ -341,8 +373,38 @@ export function hide_solution() {
     show_result("已隐藏所有系统自动填充的答案和提示数字！");
 }
 
+// export function clear_all_inputs() {
+//     document.querySelectorAll('.sudoku-cell input').forEach(input => input.value = '');
+//     show_result("已清除所有数字！", 'info');
+// }
+
 export function clear_all_inputs() {
-    document.querySelectorAll('.sudoku-cell input').forEach(input => input.value = '');
+    const container = document.querySelector('.sudoku-container');
+    if (!container) return;
+
+    const size = state.current_grid_size;
+    
+    for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
+            const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+            if (!input) continue;
+            
+            // 清除输入框值
+            input.value = '';
+            
+            // 如果是候选数模式，还需要清除候选数显示
+            if (state.is_candidates_mode) {
+                const cell = input.parentElement;
+                const candidatesGrid = cell.querySelector('.candidates-grid');
+                if (candidatesGrid) {
+                    candidatesGrid.querySelectorAll('.candidates-cell').forEach(cell => {
+                        cell.style.display = 'none';
+                    });
+                }
+            }
+        }
+    }
+    
     show_result("已清除所有数字！", 'info');
 }
 
@@ -492,4 +554,258 @@ export function export_sudoku_to_string() {
 
     document.getElementById("exportedString").value = result;
     show_result('题目导出成功！');
+}
+
+/**
+ * 备份当前题目状态
+ */
+export function backup_original_board() {
+    const container = document.querySelector('.sudoku-container');
+    const size = state.current_grid_size;
+    
+    state.originalBoard = Array.from({ length: size }, (_, i) =>
+        Array.from({ length: size }, (_, j) => {
+            const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+            return {
+                value: input.value,
+                isCandidateMode: state.is_candidates_mode,
+                displayStyle: input.style.display,
+                classList: [...input.classList]
+            };
+        })
+    );
+}
+
+// /**
+//  * 恢复原始题目状态
+//  */
+// export function restore_original_board() {
+//     const container = document.querySelector('.sudoku-container');
+//     const size = state.current_grid_size;
+    
+//     if (!state.originalBoard) return;
+    
+//     // 恢复原始状态
+//     for (let i = 0; i < size; i++) {
+//         for (let j = 0; j < size; j++) {
+//             const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+//             const original = state.originalBoard[i][j];
+            
+//             input.value = original.value;
+//             input.style.display = original.displayStyle;
+//             input.className = 'main-input';
+//             original.classList.forEach(cls => input.classList.add(cls));
+            
+//             // 恢复候选数网格显示
+//             const candidatesGrid = input.parentElement.querySelector('.candidates-grid');
+//             if (candidatesGrid) {
+//                 candidatesGrid.style.display = original.isCandidateMode ? 'grid' : 'none';
+//             }
+//         }
+//     }
+    
+//     // 恢复候选数模式状态
+//     state.is_candidates_mode = state.originalBoard[0][0].isCandidateMode;
+//     state.isShowingSolution = false;
+//     document.getElementById('toggleCandidatesMode').textContent = 
+//         state.is_candidates_mode ? '退出候选数模式' : '切换候选数模式';
+    
+//     // 恢复按钮文本
+//     const checkBtn = document.getElementById('checkUniqueness');
+//     checkBtn.textContent = checkBtn.dataset.originalText || '验证唯一性';
+    
+//     show_result("已恢复原始题目状态");
+// }
+
+export function restore_original_board() {
+    const container = document.querySelector('.sudoku-container');
+    const size = state.current_grid_size;
+    
+    if (!state.originalBoard) return;
+    
+    for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
+            const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+            const original = state.originalBoard[i][j];
+            const candidatesGrid = input.parentElement.querySelector('.candidates-grid');
+            
+            // 完全恢复原始值
+            input.value = original.value;
+            input.className = 'main-input';
+            input.classList.remove("solution-cell");
+            original.classList.forEach(cls => input.classList.add(cls));
+            
+            // 恢复候选数显示
+            if (candidatesGrid) {
+                if (original.isCandidateMode) {
+                    const nums = original.value ? [...original.value].map(Number).filter(n => !isNaN(n)) : [];
+                    candidatesGrid.querySelectorAll('.candidates-cell').forEach(cell => {
+                        const num = parseInt(cell.dataset.number);
+                        cell.style.display = nums.includes(num) ? 'flex' : 'none';
+                    });
+                    candidatesGrid.style.display = 'grid';
+                    input.classList.add('hide-input-text');
+                } else {
+                    candidatesGrid.style.display = 'none';
+                    input.classList.remove('hide-input-text');
+                }
+            }
+        }
+    }
+    
+    // 恢复模式状态
+    state.is_candidates_mode = state.originalBoard[0][0].isCandidateMode;
+    document.getElementById('toggleCandidatesMode').textContent = 
+        state.is_candidates_mode ? '退出候选数模式' : '切换候选数模式';
+}
+
+
+
+// /**
+//  * 显示逻辑解出的部分
+//  */
+// export function show_logical_solution() {
+//     if (!state.logicalSolution) {
+//         show_result("请先验证候选数唯一性以获取逻辑解");
+//         return;
+//     }
+
+//     const container = document.querySelector('.sudoku-container');
+//     const size = state.current_grid_size;
+
+//     // 备份当前题目状态
+//     backup_original_board();
+
+//     // 填充逻辑解出的部分
+//     for (let i = 0; i < size; i++) {
+//         for (let j = 0; j < size; j++) {
+//             const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+//             const cell = input.parentElement;
+//             const candidatesGrid = cell.querySelector('.candidates-grid');
+            
+//             // 处理已确定的数字
+//             if (typeof state.logicalSolution[i][j] === 'number' && state.logicalSolution[i][j] !== 0) {
+//                 // 只填充空单元格或候选数单元格
+//                 if (input.value === "" || Array.isArray(state.originalBoard[i][j])) {
+//                     input.value = state.logicalSolution[i][j];
+//                     input.classList.add("solution-cell");
+                    
+//                     // 更新显示状态
+//                     input.style.display = 'block';
+//                     input.classList.remove('hide-input-text');
+//                     if (candidatesGrid) {
+//                         candidatesGrid.style.display = 'none';
+//                     }
+//                 }
+//             } 
+//             // 处理候选数数组
+//             else if (Array.isArray(state.logicalSolution[i][j])) {
+//                 // 只更新候选数显示
+//                 const candidates = state.logicalSolution[i][j];
+//                 const candidateCells = candidatesGrid.querySelectorAll('.candidates-cell');
+                
+//                 // 更新候选数显示
+//                 candidateCells.forEach(cell => {
+//                     const num = parseInt(cell.dataset.number);
+//                     cell.style.display = candidates.includes(num) ? 'flex' : 'none';
+//                 });
+                
+//                 // 更新输入框值和显示状态
+//                 input.value = candidates.join('');
+//                 input.classList.add('hide-input-text');
+//                 input.style.display = 'block';
+//                 candidatesGrid.style.display = 'grid';
+//             }
+//         }
+//     }
+
+//     show_result("已显示通过逻辑推理解出的部分数字和候选数！");
+// }
+
+// export function show_logical_solution() {
+//     if (!state.logicalSolution) {
+//         show_result("请先验证候选数唯一性以获取逻辑解");
+//         return;
+//     }
+
+//     // 先备份当前状态
+//     if (!state.originalBoard) {
+//         backup_original_board();
+//     }
+
+//     const container = document.querySelector('.sudoku-container');
+//     const size = state.current_grid_size;
+
+//     for (let i = 0; i < size; i++) {
+//         for (let j = 0; j < size; j++) {
+//             const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+//             const cell = input.parentElement;
+//             const candidatesGrid = cell.querySelector('.candidates-grid');
+            
+//             // 只修改空单元格或候选数单元格
+//             if (input.value === "" || state.originalBoard[i][j].isCandidateMode) {
+//                 if (typeof state.logicalSolution[i][j] === 'number') {
+//                     input.value = state.logicalSolution[i][j];
+//                     input.classList.add("solution-cell");
+//                     candidatesGrid.style.display = 'none';
+//                 } else if (Array.isArray(state.logicalSolution[i][j])) {
+//                     const candidates = state.logicalSolution[i][j];
+//                     input.value = candidates.join('');
+//                     candidatesGrid.querySelectorAll('.candidates-cell').forEach(cell => {
+//                         const num = parseInt(cell.dataset.number);
+//                         cell.style.display = candidates.includes(num) ? 'flex' : 'none';
+//                     });
+//                     candidatesGrid.style.display = 'grid';
+//                 }
+//             }
+//         }
+//     }
+// }
+
+export function show_logical_solution() {
+    if (!state.logicalSolution) {
+        show_result("请先验证候选数唯一性以获取逻辑解");
+        return;
+    }
+
+    // 先备份当前状态
+    if (!state.originalBoard) {
+        backup_original_board();
+    }
+
+    const container = document.querySelector('.sudoku-container');
+    const size = state.current_grid_size;
+
+    for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
+            const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+            const cell = input.parentElement;
+            const candidatesGrid = cell.querySelector('.candidates-grid');
+            
+            // 只修改空单元格或候选数单元格
+            if (input.value === "" || state.originalBoard[i][j].isCandidateMode) {
+                if (typeof state.logicalSolution[i][j] === 'number') {
+                    // 单个数字直接显示
+                    input.value = state.logicalSolution[i][j];
+                    input.classList.add("solution-cell");
+                    input.style.display = 'block';
+                    input.classList.remove('hide-input-text');
+                    if (candidatesGrid) candidatesGrid.style.display = 'none';
+                } else if (Array.isArray(state.logicalSolution[i][j])) {
+                    const candidates = state.logicalSolution[i][j];
+                    // 多个候选数显示候选数网格
+                    input.value = candidates.join('');
+                    input.classList.add('hide-input-text');
+                    input.style.display = 'block';
+                    if (candidatesGrid) {
+                        candidatesGrid.querySelectorAll('.candidates-cell').forEach(cell => {
+                            const num = parseInt(cell.dataset.number);
+                            cell.style.display = candidates.includes(num) ? 'flex' : 'none';
+                        });
+                        candidatesGrid.style.display = 'grid';
+                    }
+                }
+            }
+        }
+    }
 }
