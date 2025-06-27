@@ -17,7 +17,8 @@ import {
     base_solve,
     fill_solution,
     log_process,
-    backup_original_board
+    backup_original_board,
+    change_Candidates_Mode
 } from './core.js';
 
 // 最关键的创建数独函数
@@ -45,45 +46,9 @@ export function create_sudoku_grid(size) {
         state.is_candidates_mode = !state.is_candidates_mode;
         this.textContent = state.is_candidates_mode ? '退出候选数模式' : '切换候选数模式';
 
-        // 使用当前网格尺寸而不是固定size
-        const currentSize = state.current_grid_size;
-        
-        // 更新所有单元格的显示
-        for (let row = 0; row < currentSize; row++) {
-            for (let col = 0; col < currentSize; col++) {
-                const cell = inputs[row][col].parentElement;
-                const mainInput = inputs[row][col];
-                const candidatesGrid = cell.querySelector('.candidates-grid');
-                
-                if (state.is_candidates_mode) {
-                    // 切换到候选数模式
-                    mainInput.style.display = 'block';
-                    mainInput.classList.add('hide-input-text');
-                    candidatesGrid.style.display = 'grid';
-                    
-                    // 更新候选数显示
-                    updateCandidatesDisplay(mainInput, candidatesGrid, currentSize);
-                } else {
-                    // 切换回普通模式
-                    mainInput.style.display = 'block';
-                    mainInput.classList.remove('hide-input-text');
-                    candidatesGrid.style.display = 'none';
-                }
-            }
-        }
+        change_Candidates_Mode(inputs, state.current_grid_size, state.is_candidates_mode);
     });
-    
-    // 辅助函数：更新候选数显示 (保持原状)
-    function updateCandidatesDisplay(mainInput, candidatesGrid, size) {
-        const inputNumbers = [...new Set(mainInput.value.split(''))]
-            .map(Number)
-            .filter(n => !isNaN(n) && n >= 1 && n <= size);
-        
-        candidatesGrid.querySelectorAll('.candidates-cell').forEach(cell => {
-            const num = parseInt(cell.dataset.number);
-            cell.style.display = inputNumbers.includes(num) ? 'flex' : 'none';
-        });
-    }
+
 
     for (let i = 0; i < size * size; i++) {
         const row = Math.floor(i / size);
@@ -244,24 +209,24 @@ export function create_sudoku_grid(size) {
     extraButtons.innerHTML = '';
 
     if (size === 4) {
-        add_Extra_Button('四宫乘积', () => show_result('这是四宫乘积的功能！(待实现)'));
-        add_Extra_Button('四宫摩天楼', () => create_skyscraper_sudoku(4));
-        add_Extra_Button('四宫候选数', () => create_candidates_sudoku(4));
-        add_Extra_Button('四宫连续', () => create_consecutive_sudoku(4));
-        add_Extra_Button('四宫缺一门', () => create_missing_sudoku(4));
+        add_Extra_Button('乘积', () => show_result('这是四宫乘积的功能！(待实现)'));
+        add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(4));
+        add_Extra_Button('候选数', () => create_candidates_sudoku(4));
+        add_Extra_Button('连续', () => create_consecutive_sudoku(4));
+        add_Extra_Button('缺一门', () => create_missing_sudoku(4));
     } else if (size === 6) {
-        add_Extra_Button('六宫乘积', () => show_result('这是六宫乘积的功能！(待实现)'));
-        add_Extra_Button('六宫摩天楼', () => create_skyscraper_sudoku(6));
-        add_Extra_Button('六宫候选数', () => create_candidates_sudoku(6));
-        add_Extra_Button('六宫连续', () => create_consecutive_sudoku(6));
-        add_Extra_Button('六宫缺一门', () => create_missing_sudoku(6));
+        add_Extra_Button('乘积', () => show_result('这是六宫乘积的功能！(待实现)'));
+        add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(6));
+        add_Extra_Button('候选数', () => create_candidates_sudoku(6));
+        add_Extra_Button('连续', () => create_consecutive_sudoku(6));
+        add_Extra_Button('缺一门', () => create_missing_sudoku(6));
     } else if (size === 9) {
-        add_Extra_Button('九宫乘积', () => show_result('这是九宫乘积的功能！(待实现)'));
-        add_Extra_Button('九宫摩天楼', () => create_skyscraper_sudoku(9));
-        add_Extra_Button('九宫候选数', () => create_candidates_sudoku(9));
-        add_Extra_Button('九宫VX', () => create_vx_sudoku(9));
-        add_Extra_Button('九宫连续', () => create_consecutive_sudoku(9));
-        add_Extra_Button('九宫缺一门', () => create_missing_sudoku(9));
+        add_Extra_Button('乘积', () => show_result('这是九宫乘积的功能！(待实现)'));
+        add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(9));
+        add_Extra_Button('候选数', () => create_candidates_sudoku(9));
+        add_Extra_Button('VX', () => create_vx_sudoku(9));
+        add_Extra_Button('连续', () => create_consecutive_sudoku(9));
+        add_Extra_Button('缺一门', () => create_missing_sudoku(9));
     }
 }
 
@@ -279,6 +244,11 @@ function create_technique_panel() {
     panel.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
     panel.style.zIndex = '1000';
 
+    // 移除旧的技巧面板（如果存在）
+    const oldPanel = document.getElementById('techniquePanel');
+    if (oldPanel) {
+        oldPanel.remove();
+    }
     const title = document.createElement('h3');
     title.textContent = '技巧开关';
     title.style.marginTop = '0';
@@ -316,6 +286,12 @@ function create_technique_panel() {
             items: [
                 { id: 'cellElimination', name: '唯余', default: true }
             ]
+        },
+        {
+            id: 'bruteForce',
+            items: [
+                { id: 'bruteForce', name: '暴力求解', default: false }
+            ]
         }
     ];
 
@@ -327,7 +303,8 @@ function create_technique_panel() {
             rowBlock: true,
             colBlock: true,
             rowSubset: true,
-            colSubset: true
+            colSubset: true,
+            bruteForce: false
         };
         techniqueGroups.forEach(group => {
             group.items.forEach(tech => {
@@ -361,28 +338,29 @@ function create_technique_panel() {
             masterCheckbox.style.marginRight = '10px';
 
             masterCheckbox.addEventListener('change', () => {
+                const newValue = masterCheckbox.checked;
                 group.items.forEach(tech => {
-                    state.techniqueSettings[tech.id] = masterCheckbox.checked;
+                    state.techniqueSettings[tech.id] = newValue;
                     const checkbox = document.getElementById(`tech_${tech.id}`);
-                    if (checkbox) checkbox.checked = masterCheckbox.checked;
+                    if (checkbox) checkbox.checked = newValue;
                     
                     // 处理行列排除/区块/数组的特殊情况
                     if (tech.id === 'rowColElimination') {
-                        state.techniqueSettings.rowElimination = masterCheckbox.checked;
-                        state.techniqueSettings.colElimination = masterCheckbox.checked;
+                        state.techniqueSettings.rowElimination = newValue;
+                        state.techniqueSettings.colElimination = newValue;
                     } else if (tech.id === 'rowColBlock') {
-                        state.techniqueSettings.rowBlock = masterCheckbox.checked;
-                        state.techniqueSettings.colBlock = masterCheckbox.checked;
+                        state.techniqueSettings.rowBlock = newValue;
+                        state.techniqueSettings.colBlock = newValue;
                     } else if (tech.id === 'rowColSubset') {
-                        state.techniqueSettings.rowSubset = masterCheckbox.checked;
-                        state.techniqueSettings.colSubset = masterCheckbox.checked;
+                        state.techniqueSettings.rowSubset = newValue;
+                        state.techniqueSettings.colSubset = newValue;
                     }
                 });
             });
 
             const masterLabel = document.createElement('label');
             masterLabel.htmlFor = `tech_master_${group.id}`;
-            masterLabel.textContent = `${group.id === 'elimination' ? '排除' : group.id === 'block' ? '区块' :group.id === 'subset' ? '数组' : '唯余'}`;
+            masterLabel.textContent = `${group.id === 'elimination' ? '排除' : group.id === 'block' ? '区块' :group.id === 'subset' ? '数组' :group.id === 'cell' ? '唯余' : '暴力'}`;
             masterLabel.style.fontWeight = 'bold';
 
             masterDiv.appendChild(masterCheckbox);

@@ -165,6 +165,51 @@ export function handle_key_navigation(e, row, col, size, inputs) {
     }
 }
 
+// 切换候选数模式函数
+export function change_Candidates_Mode(inputs, size, isCandidatesMode, isSkyscraper = false) {
+    const startRow = isSkyscraper ? 1 : 0;
+    const endRow = isSkyscraper ? size : size - 1;
+    const startCol = isSkyscraper ? 1 : 0;
+    const endCol = isSkyscraper ? size : size - 1;
+
+    for (let row = startRow; row <= endRow; row++) {
+        if (!inputs[row] || !Array.isArray(inputs[row])) continue;
+        for (let col = startCol; col <= endCol; col++) {
+            const mainInput = inputs[row][col];
+            if (!mainInput || !mainInput.parentElement) continue;
+            const cell = inputs[row][col].parentElement;
+            const candidatesGrid = cell.querySelector('.candidates-grid');
+            
+            if (isCandidatesMode) {
+                // 切换到候选数模式
+                mainInput.style.display = 'block';
+                mainInput.classList.add('hide-input-text');
+                candidatesGrid.style.display = 'grid';
+                
+                // 更新候选数显示
+                updateCandidatesDisplay(mainInput, candidatesGrid, size);
+            } else {
+                // 切换回普通模式
+                mainInput.style.display = 'block';
+                mainInput.classList.remove('hide-input-text');
+                candidatesGrid.style.display = 'none';
+            }
+        }
+    }
+
+    // 辅助函数：更新候选数显示 (保持原状)
+    function updateCandidatesDisplay(mainInput, candidatesGrid, size) {
+        const inputNumbers = [...new Set(mainInput.value.split(''))]
+            .map(Number)
+            .filter(n => !isNaN(n) && n >= 1 && n <= size);
+        
+        candidatesGrid.querySelectorAll('.candidates-cell').forEach(cell => {
+            const num = parseInt(cell.dataset.number);
+            cell.style.display = inputNumbers.includes(num) ? 'flex' : 'none';
+        });
+    }
+}
+
 /**
  * 基础求解函数
  */

@@ -230,7 +230,13 @@ export function check_candidates_uniqueness() {
         
         // 如果逻辑求解未完成，则尝试暴力求解
         if (!logicalResult.isSolved) {
-            solve_By_BruteForce();
+            if (state.techniqueSettings.bruteForce) {
+                solve_By_BruteForce();
+            } else {
+                
+                solutionCount = -1;  // 设置特殊标记值
+                return;  // 提前返回防止后续覆盖
+            }
         }
     }
 
@@ -321,7 +327,9 @@ export function check_candidates_uniqueness() {
 
 
     // 显示结果
-    if (solutionCount === 0) {
+    if (solutionCount === -1) {
+        show_result("当前技巧无法解出");
+    } else if (solutionCount === 0) {
         show_result("当前数独无解！");
     } else if (solutionCount === 1) {
         // 退出候选数模式

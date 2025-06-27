@@ -9,11 +9,12 @@ export function solve_By_Elimination(board, size) {
         const initialBoard = JSON.parse(JSON.stringify(board));
 
         // 根据技巧开关状态执行不同的排除方法
+        // 宫排除
         if (state.techniqueSettings?.boxElimination) {
             const Box_Conflict = check_Box_Elimination(board, size);
             if (Box_Conflict) return { changed: false, hasEmptyCandidate: true };
         }
-        
+        // 行/列排除
         if (state.techniqueSettings?.rowElimination) {
             const Row_Conflict = check_Row_Elimination(board, size);
             if (Row_Conflict) return { changed: false, hasEmptyCandidate: true };
@@ -23,10 +24,30 @@ export function solve_By_Elimination(board, size) {
             const Col_Conflict = check_Col_Elimination(board, size);
             if (Col_Conflict) return { changed: false, hasEmptyCandidate: true };
         }
-        
+        // 唯余
         if (state.techniqueSettings?.cellElimination) {
-            const Cell_Conflict = check_Cell_Elimination(board, size);
-            if (Cell_Conflict) return { changed: false, hasEmptyCandidate: true };
+            const Cell_Conflict_1 = check_Cell_Elimination(board, size, 1);
+            if (Cell_Conflict_1) return { changed: false, hasEmptyCandidate: true };
+        }
+        if (state.techniqueSettings?.cellElimination) {
+            const Cell_Conflict_2 = check_Cell_Elimination(board, size, 2);
+            if (Cell_Conflict_2) return { changed: false, hasEmptyCandidate: true };
+        }
+        if (state.techniqueSettings?.cellElimination) {
+            const Cell_Conflict_3 = check_Cell_Elimination(board, size, 3);
+            if (Cell_Conflict_3) return { changed: false, hasEmptyCandidate: true };
+        }
+        if (state.techniqueSettings?.cellElimination) {
+            const Cell_Conflict_4 = check_Cell_Elimination(board, size, 4);
+            if (Cell_Conflict_4) return { changed: false, hasEmptyCandidate: true };
+        }
+        if (state.techniqueSettings?.cellElimination) {
+            const Cell_Conflict_5 = check_Cell_Elimination(board, size, 5);
+            if (Cell_Conflict_5) return { changed: false, hasEmptyCandidate: true };
+        }
+        if (state.techniqueSettings?.cellElimination) {
+            const Cell_Conflict_6 = check_Cell_Elimination(board, size, 6);
+            if (Cell_Conflict_6) return { changed: false, hasEmptyCandidate: true };
         }
         
         if (state.techniqueSettings?.boxBlock) {
@@ -64,7 +85,7 @@ export function solve_By_Elimination(board, size) {
     return { changed, hasEmptyCandidate: false };
 }
 
-// 检查宫唯一候选数
+// 宫排除
 function check_Box_Elimination(board, size) {
     // 宫的大小定义（兼容6宫格）
     const boxSize = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
@@ -122,7 +143,7 @@ function check_Box_Elimination(board, size) {
     }
 }
 
-// 检查行唯一候选数
+// 行排除 
 function check_Row_Elimination(board, size) {    
     let hasConflict = false;
     
@@ -167,7 +188,7 @@ function check_Row_Elimination(board, size) {
     return hasConflict;
 }
 
-// 检查列唯一候选数
+// 列排除
 function check_Col_Elimination(board, size) {    
     let hasConflict = false;
     
@@ -212,23 +233,193 @@ function check_Col_Elimination(board, size) {
     return hasConflict;
 }
 
-// 检查格唯一候选数（唯一余数法）
-function check_Cell_Elimination(board, size) {
+//行/列排除
+function check_Line_Elimination(board, size) {
     let hasConflict = false;
+    
+    // 同时处理行和列
+    for (let i = 0; i < size; i++) {
+        
+        // 行排除逻辑
+        const rowNumPositions = {};
+        const rowExistingNums = new Set();
+        
+        // 收集列的已填数字
+        for (let j = 0; j < size; j++) {
+            // 行数据收集
+            const rowCell = board[i][j];
+            if (typeof rowCell === 'number') {
+                rowExistingNums.add(rowCell);
+            }
+        }
+        
+        // 检查行和列的数字候选情况
+        for (let num = 1; num <= size; num++) {
+            // 行检查
+            if (!rowExistingNums.has(num)) {
+                rowNumPositions[num] = [];
+                for (let j = 0; j < size; j++) {
+                    const cell = board[i][j];
+                    if (Array.isArray(cell) && cell.includes(num)) {
+                        rowNumPositions[num].push(j);
+                    }
+                }
+                
+                if (rowNumPositions[num].length === 1) {
+                    const col = rowNumPositions[num][0];
+                    const cell = board[i][col];
+                    if (Array.isArray(cell) && cell.includes(num)) {
+                        board[i][col] = num;
+                        log_process(`[行排除] ${getRowLetter(i+1)}${col+1}=${num}`);
+                        eliminate_Candidates(board, size, i, col, num);
+                    }
+                } 
+                else if (rowNumPositions[num].length === 0) {
+                    hasConflict = true;
+                    log_process(`[冲突] ${getRowLetter(i+1)}行数字${num}无可填入位置，无解`);
+                    return true;
+                }
+            }
+        }
+    }
+    // 列排除
+    for (let i = 0; i < size; i++) {
+        // 列排除逻辑
+        const colNumPositions = {};
+        const colExistingNums = new Set();
+        
+        // 收集列的已填数字
+        for (let j = 0; j < size; j++) {
+            // 列数据收集
+            const colCell = board[j][i];
+            if (typeof colCell === 'number') {
+                colExistingNums.add(colCell);
+            }
+        }
+        
+        for (let num = 1; num <= size; num++) {   
+            // 列检查
+            if (!colExistingNums.has(num)) {
+                colNumPositions[num] = [];
+                for (let j = 0; j < size; j++) {
+                    const cell = board[j][i];
+                    if (Array.isArray(cell) && cell.includes(num)) {
+                        colNumPositions[num].push(j);
+                    }
+                }
+                
+                if (colNumPositions[num].length === 1) {
+                    const row = colNumPositions[num][0];
+                    const cell = board[row][i];
+                    if (Array.isArray(cell) && cell.includes(num)) {
+                        board[row][i] = num;
+                        log_process(`[列排除] ${getRowLetter(row+1)}${i+1}=${num}`);
+                        eliminate_Candidates(board, size, row, i, num);
+                    }
+                } 
+                else if (colNumPositions[num].length === 0) {
+                    hasConflict = true;
+                    log_process(`[冲突] ${i+1}列数字${num}无可填入位置，无解1`);
+                    return true;
+                }
+            }
+        }
+    }
+    
+    return hasConflict;
+}
+
+// // 检查格唯一候选数（唯一余数法）
+// function check_Cell_Elimination(board, size) {
+//     let hasConflict = false;
+    
+//     for (let row = 0; row < size; row++) {
+//         for (let col = 0; col < size; col++) {
+//             const cell = board[row][col];
+//             if (Array.isArray(cell)) {
+//                 if (cell.length === 1) {
+//                     const num = cell[0];
+//                     board[row][col] = num;
+//                     log_process(`[唯一余数] ${getRowLetter(row+1)}${col+1}=${num}`);
+//                     eliminate_Candidates(board, size, row, col, num);
+//                 } else if (cell.length === 0) {
+//                     hasConflict = true;
+//                     log_process(`[冲突] ${getRowLetter(row+1)}${col+1}无候选数，无解`);
+//                     return true;
+//                 }
+//             }
+//         }
+//     }
+//     return hasConflict;
+// }
+
+// 检查格唯一候选数（唯一余数法）
+function check_Cell_Elimination(board, size, nat = 1) {
+    let hasConflict = false;
+    const boxSize = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
     
     for (let row = 0; row < size; row++) {
         for (let col = 0; col < size; col++) {
             const cell = board[row][col];
+            
             if (Array.isArray(cell)) {
-                if (cell.length === 1) {
-                    const num = cell[0];
-                    board[row][col] = num;
-                    log_process(`[唯一余数] ${getRowLetter(row+1)}${col+1}=${num}`);
-                    eliminate_Candidates(board, size, row, col, num);
-                } else if (cell.length === 0) {
+                // 先检查冲突情况
+                if (cell.length === 0) {
                     hasConflict = true;
                     log_process(`[冲突] ${getRowLetter(row+1)}${col+1}无候选数，无解`);
                     return true;
+                }
+                
+                // 检查单一候选数情况
+                if (cell.length === 1) {
+                    const num = cell[0];
+                    
+                    // 检查当前宫是否已填size-1个数字
+                    const boxRow = Math.floor(row / boxSize[0]);
+                    const boxCol = Math.floor(col / boxSize[1]);
+                    const startRow = boxRow * boxSize[0];
+                    const startCol = boxCol * boxSize[1];
+                    const boxNums = new Set();
+                    
+                    for (let r = startRow; r < startRow + boxSize[0]; r++) {
+                        for (let c = startCol; c < startCol + boxSize[1]; c++) {
+                            if (typeof board[r][c] === 'number') {
+                                boxNums.add(board[r][c]);
+                            }
+                        }
+                    }
+
+                    if (boxNums.size === size - nat && !boxNums.has(num)) {
+                        board[row][col] = num;
+                        log_process(`[唯余法] ${getRowLetter(row+1)}${col+1}=${num}（宫内余${nat}数）`);
+                        eliminate_Candidates(board, size, row, col, num);
+                        continue; // 处理完后直接进入下一个格子
+                    }
+                    
+                    // 检查当前行是否已填size-1个数字
+                    const rowNums = new Set();
+                    for (let c = 0; c < size; c++) {
+                        if (typeof board[row][c] === 'number') {
+                            rowNums.add(board[row][c]);
+                        }
+                    }
+                    
+                    // 检查当前列是否已填size-1个数字
+                    const colNums = new Set();
+                    for (let r = 0; r < size; r++) {
+                        if (typeof board[r][col] === 'number') {
+                            colNums.add(board[r][col]);
+                        }
+                    }
+                    
+                    // 如果宫/行/列中已填size-1个数字，且当前数字是缺失的那个
+                    if (rowNums.size === size - nat && !rowNums.has(num) ||
+                        colNums.size === size - nat && !colNums.has(num)) {
+                        
+                        board[row][col] = num;
+                        log_process(`[唯余法] ${getRowLetter(row+1)}${col+1}=${num}（行/列余${nat}数）`);
+                        eliminate_Candidates(board, size, row, col, num);
+                    }
                 }
             }
         }

@@ -8,9 +8,11 @@ import {
     create_base_cell,
     handle_key_navigation,
     base_solve,
-    fill_solution
+    fill_solution,
+    change_Candidates_Mode
 } from './core.js';
 import { state } from './state.js';
+import { create_candidates_grid } from './core.js';
 
 /**
  * 创建摩天楼数独网格
@@ -19,18 +21,53 @@ export function create_skyscraper_sudoku(size) {
     state.is_skyscraper_mode = true;
     state.is_vx_mode = false;
     state.is_candidates_mode = false;
+
+        // 移除旧的事件监听器
+    const toggleBtn = document.getElementById('toggleCandidatesMode');
+    const newToggleBtn = toggleBtn.cloneNode(true);
+    toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
     
     // 使用基础网格创建函数
     const { container, grid } = create_base_grid(size, true);
-    
+
     // 存储所有输入框的引用（包括边线）
     const inputs = Array.from({ length: size + 2 }, () => new Array(size + 2));
 
+    // // 为内部网格创建候选数网格
+    // for (let row = 1; row <= size; row++) {
+    //     for (let col = 1; col <= size; col++) {
+    //         const { cell, input } = create_base_cell(row, col, size, true);
+    //         inputs[row][col] = input;
+            
+    //         // 添加候选数网格(但初始隐藏)
+    //         const candidatesGrid = create_candidates_grid(cell, size);
+    //         cell.appendChild(candidatesGrid);
+    //         candidatesGrid.style.display = 'none';
+            
+    //         // ... 其余单元格初始化代码 ...
+    //     }
+    // }
+
+    // 添加切换候选数模式按钮事件 (保持原状)
+    document.getElementById('toggleCandidatesMode').addEventListener('click', function() {
+        state.is_candidates_mode = !state.is_candidates_mode;
+        this.textContent = state.is_candidates_mode ? '退出候选数模式' : '切换候选数模式';
+
+        change_Candidates_Mode(inputs, size, state.is_candidates_mode, true);
+    });
+    
     for (let row = 0; row < size + 2; row++) {
         for (let col = 0; col < size + 2; col++) {
             // 使用基础单元格创建函数
             const { cell, input } = create_base_cell(row, col, size, true);
             inputs[row][col] = input;
+
+            // 在这里添加候选数网格(仅内部网格)
+            if (row >= 1 && row <= size && col >= 1 && col <= size) {
+                const candidatesGrid = create_candidates_grid(cell, size);
+                cell.appendChild(candidatesGrid);
+                candidatesGrid.style.display = 'none';
+            }
 
             // 摩天楼特有的边线处理
             if ((row === 0 || row === size + 1 || col === 0 || col === size + 1) &&
@@ -194,63 +231,201 @@ export function check_skyscraper_uniqueness() {
     let solution = null;
     let solutionCount = 0;
 
+    // function solve(r = 0, c = 0, saveSolution = false) {
+    //     // 预处理：根据已有数字减少候选数
+    //     if (r === 0 && c === 0) {
+    //         for (let i = 0; i < size; i++) {
+    //             for (let j = 0; j < size; j++) {
+    //                 // 将空单元格初始化为全候选数
+    //                 if (board[i][j] === 0) {
+    //                     board[i][j] = Array.from({length: size}, (_, n) => n + 1);
+    //                 }
+                    
+    //             }
+    //         }
+    //     }
+    //     if (r === 0 && c === 0) {
+    //         for (let i = 0; i < size; i++) {
+    //             for (let j = 0; j < size; j++) {
+    //                 const cell = board[i][j];
+    //                 if (typeof cell === 'number' && cell !== 0) {
+    //                     // 移除同行同列同宫的候选数
+    //                     const num = cell;
+    //                     for (let k = 0; k < size; k++) {
+    //                         // 处理行
+    //                         if (Array.isArray(board[i][k])) {
+    //                             board[i][k] = board[i][k].filter(n => n !== num);
+    //                         }
+    //                         // 处理列
+    //                         if (Array.isArray(board[k][j])) {
+    //                             board[k][j] = board[k][j].filter(n => n !== num);
+    //                         }
+    //                     }
+    //                     // 处理宫
+    //                     const boxSize = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
+    //                     const startRow = Math.floor(i / boxSize[0]) * boxSize[0];
+    //                     const startCol = Math.floor(j / boxSize[1]) * boxSize[1];
+    //                     for (let r = startRow; r < startRow + boxSize[0]; r++) {
+    //                         for (let c = startCol; c < startCol + boxSize[1]; c++) {
+    //                             if (Array.isArray(board[r][c])) {
+    //                                 board[r][c] = board[r][c].filter(n => n !== num);
+    //                             }
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     if (r === 0 && c === 0) {
+    //         // 删减候选数后检查空候选情况
+    //         for (let i = 0; i < size; i++) {
+    //             for (let j = 0; j < size; j++) {
+    //                 if (Array.isArray(board[i][j]) && board[i][j].length === 0) {
+    //                     // solutionCount = 0; // 标记无解
+    //                     return; // 提前终止
+    //                 }
+    //             }
+    //         }
+    //     }
+
+    //     if (solutionCount >= 2) return;
+    //     if (r === size) {
+    //         // 最终检查所有摩天楼规则
+    //         for (let i = 0; i < size; i++) {
+    //             const rowData = board[i];
+    //             const colData = board.map(row => row[i]);
+
+    //             if ((clues.left[i] > 0 && get_skyscraper_length(rowData) !== clues.left[i]) ||
+    //                 (clues.right[i] > 0 && get_skyscraper_length([...rowData].reverse()) !== clues.right[i]) ||
+    //                 (clues.top[i] > 0 && get_skyscraper_length(colData) !== clues.top[i]) ||
+    //                 (clues.bottom[i] > 0 && get_skyscraper_length([...colData].reverse()) !== clues.bottom[i])) {
+    //                 return;
+    //             }
+    //         }
+
+    //         solutionCount++;
+    //         if (saveSolution && solutionCount === 1) {
+    //             solution = board.map(row => [...row]);
+    //         }
+    //         return;
+    //     }
+
+    //     const nextRow = c === size - 1 ? r + 1 : r;
+    //     const nextCol = (c + 1) % size;
+
+    //     // 如果单元格已经有确定值，判断该值是否合理，再跳到下一个
+    //     if (typeof board[r][c] === 'number' && board[r][c] !== 0) {
+    //         const num = board[r][c];
+    //         board[r][c] = 0;
+    //         if (!isValid(r, c, num)) {
+    //             board[r][c] = num;
+    //             return;
+    //         }
+    //         board[r][c] = num;
+    //         solve(nextRow, nextCol, saveSolution);
+    //         return;
+    //     }
+        
+    //     // 如果是候选数数组，只尝试数组中的数字
+    //     if (Array.isArray(board[r][c])) {
+    //         for (const num of board[r][c]) {
+    //             if (isValid(r, c, num)) {
+    //                 const original = board[r][c];
+    //                 board[r][c] = num;
+    //                 solve(nextRow, nextCol, saveSolution);
+    //                 board[r][c] = original;
+    //             }
+    //         }
+    //         return;
+    //     }
+    //     // 普通空单元格处理
+    //     for (let num = 1; num <= size; num++) {
+    //         if (isValid(r, c, num)) {
+    //             board[r][c] = num;
+    //             solve(nextRow, nextCol, saveSolution);
+    //             board[r][c] = 0;
+    //         }
+    //     }
+    // }
+
     function solve(r = 0, c = 0, saveSolution = false) {
         // 预处理：根据已有数字减少候选数
         if (r === 0 && c === 0) {
-            for (let i = 0; i < size; i++) {
-                for (let j = 0; j < size; j++) {
-                    // 将空单元格初始化为全候选数
-                    if (board[i][j] === 0) {
-                        board[i][j] = Array.from({length: size}, (_, n) => n + 1);
-                    }
-                    
-                }
-            }
-        }
-        if (r === 0 && c === 0) {
-            for (let i = 0; i < size; i++) {
-                for (let j = 0; j < size; j++) {
-                    const cell = board[i][j];
-                    if (typeof cell === 'number' && cell !== 0) {
-                        // 移除同行同列同宫的候选数
-                        const num = cell;
-                        for (let k = 0; k < size; k++) {
-                            // 处理行
-                            if (Array.isArray(board[i][k])) {
-                                board[i][k] = board[i][k].filter(n => n !== num);
-                            }
-                            // 处理列
-                            if (Array.isArray(board[k][j])) {
-                                board[k][j] = board[k][j].filter(n => n !== num);
-                            }
+            // 逻辑求解部分（原solve_By_Logic）
+            let changed;
+            do {
+                changed = false;
+                for (let i = 0; i < size; i++) {
+                    for (let j = 0; j < size; j++) {
+                        // 将空单元格初始化为全候选数
+                        if (board[i][j] === 0) {
+                            board[i][j] = Array.from({length: size}, (_, n) => n + 1);
                         }
-                        // 处理宫
-                        const boxSize = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
-                        const startRow = Math.floor(i / boxSize[0]) * boxSize[0];
-                        const startCol = Math.floor(j / boxSize[1]) * boxSize[1];
-                        for (let r = startRow; r < startRow + boxSize[0]; r++) {
-                            for (let c = startCol; c < startCol + boxSize[1]; c++) {
-                                if (Array.isArray(board[r][c])) {
-                                    board[r][c] = board[r][c].filter(n => n !== num);
+                        
+                        // 处理已确定的数字
+                        if (typeof board[i][j] === 'number' && board[i][j] !== 0) {
+                            const num = board[i][j];
+                            // 移除同行同列同宫的候选数
+                            for (let k = 0; k < size; k++) {
+                                // 处理行
+                                if (Array.isArray(board[i][k])) {
+                                    board[i][k] = board[i][k].filter(n => n !== num);
+                                    if (board[i][k].length === 1) {
+                                        board[i][k] = board[i][k][0];
+                                        changed = true;
+                                    }
+                                }
+                                // 处理列
+                                if (Array.isArray(board[k][j])) {
+                                    board[k][j] = board[k][j].filter(n => n !== num);
+                                    if (board[k][j].length === 1) {
+                                        board[k][j] = board[k][j][0];
+                                        changed = true;
+                                    }
+                                }
+                            }
+                            // 处理宫
+                            const boxSize = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
+                            const startRow = Math.floor(i / boxSize[0]) * boxSize[0];
+                            const startCol = Math.floor(j / boxSize[1]) * boxSize[1];
+                            for (let r = startRow; r < startRow + boxSize[0]; r++) {
+                                for (let c = startCol; c < startCol + boxSize[1]; c++) {
+                                    if (Array.isArray(board[r][c])) {
+                                        board[r][c] = board[r][c].filter(n => n !== num);
+                                        if (board[r][c].length === 1) {
+                                            board[r][c] = board[r][c][0];
+                                            changed = true;
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
-        }
-        if (r === 0 && c === 0) {
-            // 删减候选数后检查空候选情况
+            } while (changed);
+
+            // 检查是否已完全解出
+            let isSolved = true;
             for (let i = 0; i < size; i++) {
                 for (let j = 0; j < size; j++) {
-                    if (Array.isArray(board[i][j]) && board[i][j].length === 0) {
-                        // solutionCount = 0; // 标记无解
-                        return; // 提前终止
+                    if (Array.isArray(board[i][j])) {
+                        isSolved = false;
+                        break;
                     }
                 }
+                if (!isSolved) break;
+            }
+
+            if (isSolved) {
+                solutionCount = 1;
+                if (saveSolution) {
+                    solution = board.map(row => [...row]);
+                }
+                return;
             }
         }
 
+        // 暴力求解部分（原solve_By_BruteForce）
         if (solutionCount >= 2) return;
         if (r === size) {
             // 最终检查所有摩天楼规则
