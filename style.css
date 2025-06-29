@@ -108,7 +108,7 @@ button:focus,
 }
 
 #gridDisplay {
-    margin-top: 20px;
+    /* margin-top: 20px; */
     position: relative;
     display: flex;
     justify-content: center;
@@ -116,6 +116,9 @@ button:focus,
     align-items: center;
     width: 100%;
 }
+/* #techniquePanel {
+    margin-left: 20px; 
+} */
 
 .sudoku-container {
     display: inline-block;
@@ -335,7 +338,7 @@ button:focus,
 }
 
 /* 过程日志容器 */
-#processLogContainer {
+/* #processLogContainer {
     margin-top: 10px;
     width: 80%;
     max-width: 800px;
@@ -344,12 +347,27 @@ button:focus,
     padding: 10px;
     max-height: 200px;
     overflow-y: auto;
+} */
+#processLogContainer {
+    position: absolute;
+    left: calc(50% + 400px);
+    top: 100px;
+    width: 300px;
+    max-height: 500px;
+    overflow-y: auto;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    z-index: 1000;
 }
 
 #processLogContainer div {
     padding: 5px 0;
     border-bottom: 1px solid #eee;
-    color: #333; /* 统一文字颜色 */
+    color: #333;
+    font-size: 14px;
+    line-height: 1.4;
 }
 
 #processLogContainer div:last-child {

@@ -25,25 +25,52 @@ export function log_process(message, clearBeforeLog = false) {
         if (logContainer) {
             logContainer.innerHTML = '';  // 清空现有日志
         } else {
+            // logContainer = document.createElement('div');
+            // logContainer.id = 'processLogContainer';
+            // logContainer.style.marginTop = '10px';
+            // logContainer.style.width = '80%';
+            // logContainer.style.maxWidth = '800px';
+            // resultDisplay.parentNode.insertBefore(logContainer, resultDisplay.nextSibling);
             logContainer = document.createElement('div');
             logContainer.id = 'processLogContainer';
-            logContainer.style.marginTop = '10px';
-            logContainer.style.width = '80%';
-            logContainer.style.maxWidth = '800px';
-            resultDisplay.parentNode.insertBefore(logContainer, resultDisplay.nextSibling);
+            logContainer.style.position = 'absolute';
+            logContainer.style.left = 'calc(50% + 350px)';  // 放在数独容器右侧
+            logContainer.style.top = '290px';
+            logContainer.style.width = '300px';
+            logContainer.style.maxHeight = '500px';
+            logContainer.style.overflowY = 'auto';
+            logContainer.style.backgroundColor = '#f8f9fa';
+            logContainer.style.borderRadius = '8px';
+            logContainer.style.padding = '10px';
+            logContainer.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+            document.body.appendChild(logContainer);
         }
     } else if (!logContainer) {
+        // logContainer = document.createElement('div');
+        // logContainer.id = 'processLogContainer';
+        // logContainer.style.marginTop = '10px';
+        // logContainer.style.width = '80%';
+        // logContainer.style.maxWidth = '800px';
+        // resultDisplay.parentNode.insertBefore(logContainer, resultDisplay.nextSibling);
         logContainer = document.createElement('div');
         logContainer.id = 'processLogContainer';
-        logContainer.style.marginTop = '10px';
-        logContainer.style.width = '80%';
-        logContainer.style.maxWidth = '800px';
-        resultDisplay.parentNode.insertBefore(logContainer, resultDisplay.nextSibling);
+        logContainer.style.position = 'absolute';
+        logContainer.style.left = 'calc(50% + 350px)';
+        logContainer.style.top = '290px';
+        logContainer.style.width = '300px';
+        logContainer.style.maxHeight = '500px';
+        logContainer.style.overflowY = 'auto';
+        logContainer.style.backgroundColor = '#f8f9fa';
+        logContainer.style.borderRadius = '8px';
+        logContainer.style.padding = '10px';
+        logContainer.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+        document.body.appendChild(logContainer);
     }
     
     const logEntry = document.createElement('div');
     logEntry.textContent = message;
     logContainer.appendChild(logEntry);
+    logContainer.scrollTop = logContainer.scrollHeight;
 }
 
 /**

@@ -234,9 +234,12 @@ export function create_sudoku_grid(size) {
 function create_technique_panel() {
     const panel = document.createElement('div');
     panel.id = 'techniquePanel';
-    panel.style.position = 'fixed';
-    panel.style.right = '20px';
-    panel.style.top = '100px';
+    panel.style.position = 'absolute';  // 改为绝对定位
+    // panel.style.position = 'fixed';
+    panel.style.left = 'calc(50% - 550px)';  // 放在数独容器右侧
+    // panel.style.left = '20px';
+    panel.style.top = '290px';  // 与数独容器顶部对齐
+    // panel.style.top = '100px';
     panel.style.width = '200px';
     panel.style.backgroundColor = '#f5f5f5';
     panel.style.padding = '10px';
@@ -257,40 +260,57 @@ function create_technique_panel() {
     // 技巧列表
     const techniqueGroups = [
         {
-            // name: '排除',
             id: 'elimination',
             items: [
-                { id: 'boxElimination', name: '宫排除', default: true },
-                { id: 'rowColElimination', name: '行列排除', default: true }
+                { id: 'Box_Elimination', name: '宫排除', default: true },
+                { id: 'Row_Col_Elimination', name: '行列排除', default: true }
             ]
         },
         {
-            // name: '区块',
             id: 'block',
+        items: [
+            { id: 'Box_Block', name: '宫区块', default: true },
+            { id: 'Row_Col_Block', name: '行列区块', default: true }
+        ]
+        },
+        {
+            id: 'pair',
             items: [
-                { id: 'boxBlock', name: '宫区块', default: true },
-                { id: 'rowColBlock', name: '行列区块', default: true }
+                // 隐性数对
+                { id: 'Box_Hidden_Pair', name: '宫隐性数对', default: true },
+                { id: 'Row_Col_Hidden_Pair', name: '行列隐性数对', default: true },
+                // 显性数对
+                { id: 'Box_Naked_Pair', name: '宫显性数对', default: true },
+                { id: 'Row_Col_Naked_Pair', name: '行列显性数对', default: true }
             ]
         },
         {
-            // name: '数组',
             id: 'subset',
             items: [
-                { id: 'boxSubset', name: '宫数组', default: true },
-                { id: 'rowColSubset', name: '行列数组', default: true }
+                // 隐性数组
+                { id: 'Box_Hidden_Triple', name: '宫隐性三数组', default: true },
+                { id: 'Row_Col_Hidden_Triple', name: '行列隐性三数组', default: true },
+                // { id: 'Box_Hidden_Quad', name: '宫隐性四数组', default: true },
+                // { id: 'Row_Col_Hidden_Quad', name: '行列隐性四数组', default: true },
+                // 显性数组
+                { id: 'Box_Naked_Triple', name: '宫显性三数组', default: true },
+                { id: 'Row_Col_Naked_Triple', name: '行列显性三数组', default: true },
+                // { id: 'Box_Naked_Quad', name: '宫显性四数组', default: true },
+                // { id: 'Row_Col_Naked_Quad', name: '行列显性四数组', default: true }
+                // 合并所有四数组为一个开关
+                { id: 'All_Quad', name: '四数组(显性+隐性)', default: true },
             ]
         },
         {
-            // name: '唯余',
             id: 'cell',
             items: [
-                { id: 'cellElimination', name: '唯余', default: true }
+                { id: 'Cell_Elimination', name: '唯余', default: true }
             ]
         },
         {
             id: 'bruteForce',
             items: [
-                { id: 'bruteForce', name: '暴力求解', default: false }
+                { id: 'Brute_Force', name: '暴力求解', default: false }
             ]
         }
     ];
@@ -298,13 +318,30 @@ function create_technique_panel() {
     // 初始化技巧状态
     if (!state.techniqueSettings) {
         state.techniqueSettings = {
-            rowElimination: true,
-            colElimination: true,
-            rowBlock: true,
-            colBlock: true,
-            rowSubset: true,
-            colSubset: true,
-            bruteForce: false
+            Box_Elimination: true,
+            Row_Elimination: true,
+            Col_Elimination: true,
+            Box_Block: true,
+            Row_Block: true,
+            Col_Block: true,
+            Box_Naked_Pair: true,
+            Row_Naked_Pair: true,
+            Col_Naked_Pair: true,
+            Box_Naked_Triple: true,
+            Row_Naked_Triple: true,
+            Col_Naked_Triple: true,
+            // Row_Naked_Quad: true,
+            // Col_Naked_Quad: true,
+            Box_Hidden_Pair: true,
+            Row_Hidden_Pair: true,
+            Col_Hidden_Pair: true,
+            Box_Hidden_Triple: true,
+            Row_Hidden_Triple: true,
+            Col_Hidden_Triple: true,
+            // Row_Hidden_Quad: true,
+            // Col_Hidden_Quad: true,
+            All_Quad: true,
+            Brute_Force: false
         };
         techniqueGroups.forEach(group => {
             group.items.forEach(tech => {
@@ -345,22 +382,42 @@ function create_technique_panel() {
                     if (checkbox) checkbox.checked = newValue;
                     
                     // 处理行列排除/区块/数组的特殊情况
-                    if (tech.id === 'rowColElimination') {
-                        state.techniqueSettings.rowElimination = newValue;
-                        state.techniqueSettings.colElimination = newValue;
-                    } else if (tech.id === 'rowColBlock') {
-                        state.techniqueSettings.rowBlock = newValue;
-                        state.techniqueSettings.colBlock = newValue;
-                    } else if (tech.id === 'rowColSubset') {
-                        state.techniqueSettings.rowSubset = newValue;
-                        state.techniqueSettings.colSubset = newValue;
+                    if (tech.id === 'Row_Col_Elimination') {
+                        state.techniqueSettings.Row_Elimination = newValue;
+                        state.techniqueSettings.Col_Elimination = newValue;
+                    } else if (tech.id === 'Row_Col_Block') {
+                        state.techniqueSettings.Row_Block = newValue;
+                        state.techniqueSettings.Col_Block = newValue;
+                    } else if (tech.id === 'Row_Col_Hidden_Pair') {
+                        state.techniqueSettings.Row_Hidden_Pair = newValue;
+                        state.techniqueSettings.Col_Hidden_Pair = newValue;
+                    } else if (tech.id === 'Row_Col_Hidden_Triple') {
+                        state.techniqueSettings.Row_Hidden_Triple = newValue;
+                        state.techniqueSettings.Col_Hidden_Triple = newValue;
+                    } else if (tech.id === 'Row_Col_Naked_Pair') {
+                        state.techniqueSettings.Row_Naked_Pair = newValue;
+                        state.techniqueSettings.Col_Naked_Pair = newValue;
+                    } else if (tech.id === 'Row_Col_Naked_Triple') {
+                        state.techniqueSettings.Row_Naked_Triple = newValue;
+                        state.techniqueSettings.Col_Naked_Triple = newValue;
+                    } else if (tech.id === 'All_Quad') {
+                        state.techniqueSettings.Box_Hidden_Quad = newValue;
+                        state.techniqueSettings.Row_Hidden_Quad = newValue;
+                        state.techniqueSettings.Col_Hidden_Quad = newValue;
+                        state.techniqueSettings.Box_Naked_Quad = newValue;
+                        state.techniqueSettings.Row_Naked_Quad = newValue;
+                        state.techniqueSettings.Col_Naked_Quad = newValue;
                     }
                 });
             });
 
             const masterLabel = document.createElement('label');
             masterLabel.htmlFor = `tech_master_${group.id}`;
-            masterLabel.textContent = `${group.id === 'elimination' ? '排除' : group.id === 'block' ? '区块' :group.id === 'subset' ? '数组' :group.id === 'cell' ? '唯余' : '暴力'}`;
+            masterLabel.textContent = `${group.id === 'elimination' ? '排除' : 
+                                    group.id === 'block' ? '区块' :
+                                    group.id === 'pair' ? '数对' :
+                                    group.id === 'subset' ? '数组' :
+                                    group.id === 'cell' ? '唯余' : '暴力'}`;
             masterLabel.style.fontWeight = 'bold';
 
             masterDiv.appendChild(masterCheckbox);
@@ -395,15 +452,31 @@ function create_technique_panel() {
                 }
                 
                 // 处理行列排除/区块/数组的特殊情况
-                if (tech.id === 'rowColElimination') {
-                    state.techniqueSettings.rowElimination = checkbox.checked;
-                    state.techniqueSettings.colElimination = checkbox.checked;
-                } else if (tech.id === 'rowColBlock') {
-                    state.techniqueSettings.rowBlock = checkbox.checked;
-                    state.techniqueSettings.colBlock = checkbox.checked;
-                } else if (tech.id === 'rowColSubset') {
-                    state.techniqueSettings.rowSubset = checkbox.checked;
-                    state.techniqueSettings.colSubset = checkbox.checked;
+                if (tech.id === 'Row_Col_Elimination') {
+                    state.techniqueSettings.Row_Elimination = checkbox.checked;
+                    state.techniqueSettings.Col_Elimination = checkbox.checked;
+                } else if (tech.id === 'Row_Col_Block') {
+                    state.techniqueSettings.Row_Block = checkbox.checked;
+                    state.techniqueSettings.Col_Block = checkbox.checked;
+                } else if (tech.id === 'Row_Col_Hidden_Pair') {
+                    state.techniqueSettings.Row_Hidden_Pair = checkbox.checked;
+                    state.techniqueSettings.Col_Hidden_Pair = checkbox.checked;
+                } else if (tech.id === 'Row_Col_Hidden_Triple') {
+                    state.techniqueSettings.Row_Hidden_Triple = checkbox.checked;
+                    state.techniqueSettings.Col_Hidden_Triple = checkbox.checked;
+                } else if (tech.id === 'Row_Col_Naked_Pair') {
+                    state.techniqueSettings.Row_Naked_Pair = checkbox.checked;
+                    state.techniqueSettings.Col_Naked_Pair = checkbox.checked;
+                } else if (tech.id === 'Row_Col_Naked_Triple') {
+                    state.techniqueSettings.Row_Naked_Triple = checkbox.checked;
+                    state.techniqueSettings.Col_Naked_Triple = checkbox.checked;
+                } else if (tech.id === 'All_Quad') {
+                    state.techniqueSettings.Box_Hidden_Quad = checkbox.checked;
+                    state.techniqueSettings.Row_Hidden_Quad = checkbox.checked;
+                    state.techniqueSettings.Col_Hidden_Quad = checkbox.checked;
+                    state.techniqueSettings.Box_Naked_Quad = checkbox.checked;
+                    state.techniqueSettings.Row_Naked_Quad = checkbox.checked;
+                    state.techniqueSettings.Col_Naked_Quad = checkbox.checked;
                 }
             });
 
@@ -418,4 +491,9 @@ function create_technique_panel() {
     });
 
     document.body.appendChild(panel);
+    // // 将面板添加到数独容器中而不是body
+    // const gridDisplay = document.getElementById('gridDisplay');
+    // gridDisplay.appendChild(panel);
+    // 添加一个包装容器来保持相对定位
+    gridDisplay.style.position = 'relative';
 }
