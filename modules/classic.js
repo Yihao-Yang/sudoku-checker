@@ -340,7 +340,13 @@ function create_technique_panel() {
             Col_Hidden_Triple: true,
             // Row_Hidden_Quad: true,
             // Col_Hidden_Quad: true,
-            All_Quad: true,
+            // All_Quad: true,
+            Box_Hidden_Quad: true,
+            Row_Hidden_Quad: true,
+            Col_Hidden_Quad: true,
+            Box_Naked_Quad: true,
+            Row_Naked_Quad: true,
+            Col_Naked_Quad: true,
             Brute_Force: false
         };
         techniqueGroups.forEach(group => {
