@@ -25,12 +25,6 @@ export function log_process(message, clearBeforeLog = false) {
         if (logContainer) {
             logContainer.innerHTML = '';  // 清空现有日志
         } else {
-            // logContainer = document.createElement('div');
-            // logContainer.id = 'processLogContainer';
-            // logContainer.style.marginTop = '10px';
-            // logContainer.style.width = '80%';
-            // logContainer.style.maxWidth = '800px';
-            // resultDisplay.parentNode.insertBefore(logContainer, resultDisplay.nextSibling);
             logContainer = document.createElement('div');
             logContainer.id = 'processLogContainer';
             logContainer.style.position = 'absolute';
@@ -46,12 +40,6 @@ export function log_process(message, clearBeforeLog = false) {
             document.body.appendChild(logContainer);
         }
     } else if (!logContainer) {
-        // logContainer = document.createElement('div');
-        // logContainer.id = 'processLogContainer';
-        // logContainer.style.marginTop = '10px';
-        // logContainer.style.width = '80%';
-        // logContainer.style.maxWidth = '800px';
-        // resultDisplay.parentNode.insertBefore(logContainer, resultDisplay.nextSibling);
         logContainer = document.createElement('div');
         logContainer.id = 'processLogContainer';
         logContainer.style.position = 'absolute';
@@ -881,3 +869,117 @@ export function show_logical_solution() {
         }
     }
 }
+
+
+
+export function save_sudoku_as_image() {
+    const container = document.querySelector('.sudoku-container');
+    if (!container) {
+        show_result('请先创建数独网格！', 'error');
+        return;
+    }
+
+    // 创建临时容器只包含需要截图的部分
+    const tempContainer = document.createElement('div');
+    tempContainer.style.position = 'absolute';
+    tempContainer.style.left = '-9999px';
+    tempContainer.style.backgroundColor = null;//'#f4f7fb'; // 匹配页面背景色
+    tempContainer.style.padding = '0px 3px 3px 0px';
+    tempContainer.style.borderRadius = '8px';
+    
+    // 克隆数独容器和结果显示
+    const clone = container.cloneNode(true);
+    // const resultClone = document.getElementById('resultDisplay').cloneNode(true);
+    
+    const inputs = clone.querySelectorAll('input');
+    inputs.forEach(input => {
+        const span = document.createElement('span');
+        span.textContent = input.value;
+        span.className = input.className;
+        span.style.display = 'inline-flex';
+        span.style.justifyContent = 'center';
+        span.style.alignItems = 'center';
+        span.style.width = input.style.width || '80%';
+        span.style.height = input.style.height || '80%';
+        span.style.fontSize = input.style.fontSize || '48px';
+        span.style.fontFamily = 'Arial, sans-serif';
+        span.style.fontWeight = 'normal';
+        span.style.border = 'none';
+        span.style.background = 'transparent';
+        span.style.boxSizing = 'border-box';
+        span.style.textAlign = 'center';
+        span.style.lineHeight = 'normal'; // 避免基线错位
+        input.replaceWith(span);
+    });
+
+    tempContainer.appendChild(clone);
+    // tempContainer.appendChild(resultClone);
+    document.body.appendChild(tempContainer);
+
+    html2canvas(tempContainer, {
+        backgroundColor: null,
+        scale: 3,
+        logging: false,
+        useCORS: true,
+        allowTaint: true
+    }).then(canvas => {
+        // 移除临时容器
+        document.body.removeChild(tempContainer);
+        
+        // 创建下载链接
+        const link = document.createElement('a');
+        link.download = 'sudoku-' + new Date().toISOString().slice(0, 10) + '.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        
+        show_result('数独已保存为图片！', 'success');
+    }).catch(err => {
+        document.body.removeChild(tempContainer);
+        show_result('保存图片失败: ' + err.message, 'error');
+    });
+}
+
+// export function save_sudoku_as_image() {
+//     const container = document.querySelector('.sudoku-container');
+//     if (!container) {
+//         show_result('请先创建数独网格！', 'error');
+//         return;
+//     }
+
+//     // 临时克隆
+//     const clone = container.cloneNode(true);
+//     const inputs = clone.querySelectorAll('input');
+
+//     inputs.forEach(input => {
+//         const span = document.createElement('span');
+//         span.textContent = input.value;
+//         span.style.display = 'inline-block';
+//         span.style.width = input.style.width;
+//         span.style.height = input.style.height;
+//         span.style.fontSize = input.style.fontSize || '48px';
+//         span.style.textAlign = 'center';
+//         span.style.lineHeight = '60px';
+//         span.style.color = '#333';
+//         input.replaceWith(span);
+//     });
+
+//     const tempContainer = document.createElement('div');
+//     tempContainer.style.position = 'absolute';
+//     tempContainer.style.left = '-9999px';
+//     tempContainer.appendChild(clone);
+//     document.body.appendChild(tempContainer);
+
+//     html2canvas(tempContainer, {
+//         backgroundColor: null,
+//         scale: 3,
+//         logging: true,
+//         useCORS: true
+//     }).then(canvas => {
+//         document.body.removeChild(tempContainer);
+//         const link = document.createElement('a');
+//         link.download = 'sudoku.png';
+//         link.href = canvas.toDataURL();
+//         link.click();
+//         show_result('保存完成', 'success');
+//     });
+// }

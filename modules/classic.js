@@ -20,6 +20,7 @@ import {
     backup_original_board,
     change_Candidates_Mode
 } from './core.js';
+import { solve, isValid, eliminate_Candidates } from '../solver/solver_tool.js';
 
 // 最关键的创建数独函数
 export function create_sudoku_grid(size) {
@@ -502,4 +503,104 @@ function create_technique_panel() {
     // gridDisplay.appendChild(panel);
     // 添加一个包装容器来保持相对定位
     gridDisplay.style.position = 'relative';
+}
+
+/**
+ * 验证数独的唯一解
+ */
+export function check_uniqueness() {
+    // 清空之前的日志
+    log_process('', true);
+
+    const container = document.querySelector('.sudoku-container');
+    const size = state.current_grid_size;
+
+    // 备份当前题目状态
+    backup_original_board();
+    
+    // 获取当前数独状态，包括候选数信息
+    let board = Array.from({ length: size }, (_, i) =>
+        Array.from({ length: size }, (_, j) => {
+            const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+            const val = parseInt(input.value);
+            
+            // 如果是候选数模式且有候选数，则返回候选数数组，否则返回单个数字或0
+            if (state.is_candidates_mode && input.value.length > 1) {
+                return [...new Set(input.value.split('').map(Number))].filter(n => n >= 1 && n <= size);
+            }
+            return isNaN(val) ? Array.from({length: size}, (_, n) => n + 1) : val;
+        })
+    );
+
+    // for (let i = 0; i < size; i++) {
+    //     for (let j = 0; j < size; j++) {
+    //         const cell = board[i][j];
+    //         if (cell === 0) {
+    //             board[i][j] = Array.from({length: size}, (_, n) => n + 1);
+    //         }
+    //         else if (typeof cell === 'number' && cell !== 0) {
+    //             const num = cell;
+    //             board[i][j] = 0; // 临时清空
+    //             if (!isValid(board, size, i, j, num)) {
+    //                 show_result(`[冲突] ${getRowLetter(i+1)}${j+1}=${num}与已有数字冲突，无解！`);
+    //                 return { changed: false, hasEmptyCandidate: true }; // 直接返回冲突状态
+    //             }
+    //             board[i][j] = num; // 恢复原值
+    //             eliminate_Candidates(board, size, i, j, num); // 移除相关候选数
+    //         }
+    //     }
+    // }
+
+    // let solutionCount = 0;
+    // let solution = null;
+
+
+
+
+
+    const { solutionCount, solution } = solve(board, size); // 调用主求解函数
+    state.solutionCount = solutionCount;
+
+
+    // 显示结果
+    if (state.solutionCount === -1) {
+        show_result("当前技巧无法解出");
+    } else if (state.solutionCount === 0 || state.solutionCount === -2) {
+        show_result("当前数独无解！");
+    } else if (state.solutionCount === 1) {
+        // 退出候选数模式
+        state.is_candidates_mode = false;
+        document.getElementById('toggleCandidatesMode').textContent = '切换候选数模式';
+        
+        // 填充唯一解
+        for (let i = 0; i < size; i++) {
+            for (let j = 0; j < size; j++) {
+                const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+                const cell = input.parentElement;
+                const candidatesGrid = cell.querySelector('.candidates-grid');
+                
+                // 更新显示状态
+                input.style.display = 'block';
+                input.classList.remove('hide-input-text');
+                if (candidatesGrid) {
+                    candidatesGrid.style.display = 'none';
+                }
+                
+                // 填充答案
+                if (solution[i][j] > 0) {
+                    // 如果是标准数独模式且该格已有数字，则跳过
+                    if (!state.is_candidates_mode && input.value) {
+                        continue;
+                    }
+                    input.value = solution[i][j];
+                    input.classList.add("solution-cell");
+                }
+            }
+        }
+        show_result("当前数独恰好有唯一解！已自动填充答案。");
+    } else if (state.solutionCount > 1) {
+        show_result("当前数独有多个解。");
+    } else {
+        show_result(`当前数独有${state.solutionCount}个解！`);
+    }
 }

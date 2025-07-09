@@ -25,7 +25,7 @@
         <button id="exportSudokuToString">导出题目</button>
         <input type="text" id="exportedString" placeholder="导出的数独字符串将显示在这里" readonly>
     </div>
-    
+    <div style="height: 20px;"></div>
     <div id="gridDisplay"></div>
     <div id="resultDisplay"></div>
     <div class="controls hidden" id="controls">
@@ -39,8 +39,11 @@
             <button id="clearOuter">清除外部提示</button> -->
         </div>
         <button id="hideSolution">隐藏答案</button>
+        <button id="generate_puzzle">自动出题</button>
+        <button id="saveAsImage">保存为图片</button>
     </div>
 
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <script type="module" src="main.js"></script>
 </body>
 </html>

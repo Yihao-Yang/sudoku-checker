@@ -242,11 +242,20 @@ export function check_candidates_uniqueness() {
                 }
             }
         }
+        // 添加技巧使用统计
+        if (logicalResult.techniqueCounts) {
+            log_process("\n=== 技巧使用统计 ===");
+            for (const [technique, count] of Object.entries(logicalResult.techniqueCounts)) {
+                if (count > 0) {
+                    log_process(`${technique}: ${count}次`);
+                }
+            }
+        }
     }
 
     // 逻辑求解函数
     function solve_By_Logic() {
-        const { changed, hasEmptyCandidate } = solve_By_Elimination(board, size);
+        const { changed, hasEmptyCandidate, techniqueCounts } = solve_By_Elimination(board, size);
         log_process("1...判断当前数独是否有解");
         
         if (hasEmptyCandidate) {
@@ -273,11 +282,11 @@ export function check_candidates_uniqueness() {
         if (isSolved) {
             solutionCount = 1;
             solution = board.map(row => [...row]);
-            return { isSolved: true };
+            return { isSolved: true, techniqueCounts };
         }
 
         log_process("4...当前候选数数独无法通过逻辑推理完全解出，尝试暴力求解...");
-        return { isSolved: false };
+        return { isSolved: false, techniqueCounts };
     }
 
     // 暴力求解函数
@@ -331,11 +340,11 @@ export function check_candidates_uniqueness() {
 
 
     // 显示结果
-    if (solutionCount === -1) {
+    if (state.solutionCount === -1) {
         show_result("当前技巧无法解出");
-    } else if (solutionCount === 0 || solutionCount === -2) {
+    } else if (state.solutionCount === 0 || state.solutionCount === -2) {
         show_result("当前数独无解！");
-    } else if (solutionCount === 1) {
+    } else if (state.solutionCount === 1) {
         // 退出候选数模式
         state.is_candidates_mode = false;
         document.getElementById('toggleCandidatesMode').textContent = '切换候选数模式';
@@ -356,15 +365,19 @@ export function check_candidates_uniqueness() {
                 
                 // 填充答案
                 if (solution[i][j] > 0) {
+                    // 如果是标准数独模式且该格已有数字，则跳过
+                    if (!state.is_candidates_mode && input.value) {
+                        continue;
+                    }
                     input.value = solution[i][j];
                     input.classList.add("solution-cell");
                 }
             }
         }
         show_result("当前数独恰好有唯一解！已自动填充答案。");
-    } else if (solutionCount > 1) {
+    } else if (state.solutionCount > 1) {
         show_result("当前数独有多个解。");
     } else {
-        show_result(`当前数独有${solutionCount}个解！`);
+        show_result(`当前数独有${state.solutionCount}个解！`);
     }
 }

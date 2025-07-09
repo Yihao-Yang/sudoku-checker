@@ -160,7 +160,7 @@ function add_vx_mark(row1, col1, row2, col2, type) {
     
     // 微调偏移量
     const horizontalAdjust = 1; // 水平方向微调
-    const verticalAdjust = 21;   // 垂直方向微调
+    const verticalAdjust = 1;   // 垂直方向微调
     
     // 确定是水平还是垂直边线
     const isHorizontal = row1 !== row2;

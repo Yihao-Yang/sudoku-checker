@@ -5,5 +5,8 @@ export const state = {
     current_grid_size: 0,
     is_candidates_mode: false,
     originalBoard: null, // 备份原始题目状态
-    isShowingSolution: false // 是否正在显示答案
+    isShowingSolution: false, // 是否正在显示答案
+    solution: null,
+    solutionCount: 0,
+    silentMode: false,
 };

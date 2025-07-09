@@ -251,8 +251,8 @@ function add_consecutive_mark(row1, col1, row2, col2, direction) {
     
     // 计算位置 (在两格中间)
     let x, y;
-    const horizontalAdjust = 0; // 水平方向微调
-    const verticalAdjust = 21;   // 垂直方向微调
+    const horizontalAdjust = 1; // 水平方向微调
+    const verticalAdjust = 1;   // 垂直方向微调
     
     if (direction === 'horizontal') {
         // 水平方向标记 (左右关系)
@@ -637,7 +637,7 @@ function add_directional_mark(row1, col1, row2, col2, direction, isFirstGreater)
     
     let x, y;
     const horizontalAdjust = 1; // 水平方向微调
-    const verticalAdjust = 21;   // 垂直方向微调
+    const verticalAdjust = 1;   // 垂直方向微调
 
     if (direction === 'horizontal') {
         // 水平方向标记 (左右关系)
