@@ -282,18 +282,26 @@ button:focus,
 
 .bold-top {
     border-top: 2px solid #000 !important;
+    margin-top: -0.5px;
+    /* box-sizing: border-box; */
 }
 
 .bold-left {
     border-left: 2px solid #000 !important;
+    margin-left: -0.5px;
+    /* box-sizing: border-box; */
 }
 
 .bold-right {
     border-right: 2px solid #000 !important;
+    margin-right: -0.5px;
+    /* box-sizing: border-box; */
 }
 
 .bold-bottom {
     border-bottom: 2px solid #000 !important;
+    margin-bottom: -0.5px;
+    /* box-sizing: border-box; */
 }
 /* 当显示候选数时隐藏主输入 */
 .sudoku-cell.showing-candidates .main-input {

@@ -78,12 +78,36 @@ export function isValid(board, size, row, col, num) {
     return true;
 }
 
+// // 修改 isValid 函数以处理黑格
+// export function isValid(board, size, row, col, num) {
+//     // 如果是黑格，直接返回false（不应该被填充）
+//     if (board[row][col] === -1) return false;
+
+//     for (let i = 0; i < size; i++) {
+//         // 跳过黑格
+//         if (board[row][i] !== -1 && board[row][i] === num) return false;
+//         if (board[i][col] !== -1 && board[i][col] === num) return false;
+//     }
+
+//     const boxSize = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
+//     const startRow = Math.floor(row / boxSize[0]) * boxSize[0];
+//     const startCol = Math.floor(col / boxSize[1]) * boxSize[1];
+
+//     for (let r = startRow; r < startRow + boxSize[0]; r++) {
+//         for (let c = startCol; c < startCol + boxSize[1]; c++) {
+//             // 跳过黑格
+//             if (board[r][c] !== -1 && board[r][c] === num) return false;
+//         }
+//     }
+//     return true;
+// }
+
 let board = null;
 let size = 0;
 // let solutionCount = 0;
 let solution = null;
 // 主求解函数
-export function solve(currentBoard, currentSize, silent = false) {
+export function solve(currentBoard, currentSize, isValid = isValid, silent = false) {
     
     board = currentBoard;
     size = currentSize;
@@ -199,7 +223,7 @@ function solve_By_Logic() {
 }
 
 // 暴力求解函数
-function solve_By_BruteForce(r = 0, c = 0) {
+function solve_By_BruteForce(r = 0, c = 0, isValid = isValid) {
     const backup = board.map(row => [...row]);
     
     if (state.solutionCount >= 2) return;
@@ -250,43 +274,7 @@ export function getRowLetter(rowNum) {
     return String.fromCharCode(64 + rowNum); // 65 is 'A' in ASCII
 }
 
-// ... 其他代码保持不变 ...
 
-// // 新增 countSolutions 函数
-// export function countSolutions(board, size) {
-//     const copy = board.map(row => [...row]);
-//     let count = 0;
-    
-//     function backtrack() {
-//         for (let r = 0; r < size; r++) {
-//             for (let c = 0; c < size; c++) {
-//                 if (copy[r][c] === 0) {
-//                     for (let num = 1; num <= size; num++) {
-//                         if (isValid(copy, size, r, c, num)) {
-//                             copy[r][c] = num;
-//                             if (count < 2) backtrack();
-//                             copy[r][c] = 0;
-//                             if (count >= 2) return; // 提前终止
-//                         }
-//                     }
-//                     return;
-//                 }
-//             }
-//         }
-//         count++;
-//     }
-    
-//     // 重置技巧统计
-//     state.lastTechniqueCounts = {};
-//     // 先尝试逻辑求解以获取技巧统计
-//     const logicalResult = solve_By_Logic(copy, size);
-//     if (logicalResult.techniqueCounts) {
-//         state.lastTechniqueCounts = logicalResult.techniqueCounts;
-//     }
-    
-//     backtrack();
-//     return count;
-// }
 
 // 修改 countSolutions 函数
 export function countSolutions(board, size) {

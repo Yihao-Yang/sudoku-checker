@@ -11,6 +11,7 @@ import {
     fill_solution
 } from './core.js';
 import { state } from './state.js';
+import { solve } from '../solver/solver_tool.js';
 
 let is_consecutive_mode_active = false;
 let is_inequality_mode_active = false;
@@ -251,8 +252,8 @@ function add_consecutive_mark(row1, col1, row2, col2, direction) {
     
     // 计算位置 (在两格中间)
     let x, y;
-    const horizontalAdjust = 1; // 水平方向微调
-    const verticalAdjust = 1;   // 垂直方向微调
+    const horizontalAdjust = 0.5; // 水平方向微调
+    const verticalAdjust = 0.5;   // 垂直方向微调
     
     if (direction === 'horizontal') {
         // 水平方向标记 (左右关系)
@@ -418,6 +419,90 @@ export function check_consecutive_uniqueness() {
         show_result(`当前定向连续数独有 ${solutionCount} 个解！`, 'error');
     }
 }
+
+// /**
+//  * 验证定向连续数独唯一性
+//  */
+// export function check_consecutive_uniqueness() {
+//     const container = document.querySelector('.sudoku-container');
+//     const size = state.current_grid_size;
+    
+//     // 收集当前盘面数据
+//     let board = Array.from({ length: size }, (_, i) =>
+//         Array.from({ length: size }, (_, j) => {
+//             const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+//             const val = input ? parseInt(input.value) : NaN;
+//             return isNaN(val) ? 0 : val;
+//         })
+//     );
+    
+//     // 收集所有相邻关系
+//     const allAdjacentPairs = getAllAdjacentPairs(size);
+    
+//     // 收集连续约束
+//     const consecutiveConstraints = consecutive_marks.map(mark => {
+//         // 对于方向性标记
+//         if (mark.isDirectional) {
+//             return {
+//                 cell1: { row: mark.row1, col: mark.col1 },
+//                 cell2: { row: mark.row2, col: mark.col2 },
+//                 direction: mark.direction,
+//                 isDirectional: true,
+//                 isFirstGreater: mark.isFirstGreater
+//             };
+//         }
+//         // 对于普通连续标记
+//         else {
+//             const input1 = container.querySelector(`input[data-row="${mark.row1}"][data-col="${mark.col1}"]`);
+//             const input2 = container.querySelector(`input[data-row="${mark.row2}"][data-col="${mark.col2}"]`);
+            
+//             const val1 = parseInt(input1?.value);
+//             const val2 = parseInt(input2?.value);
+            
+//             return {
+//                 cell1: { row: mark.row1, col: mark.col1 },
+//                 cell2: { row: mark.row2, col: mark.col2 },
+//                 direction: mark.direction,
+//                 isDirectional: false,
+//                 isFirstGreater: !isNaN(val1) && !isNaN(val2) ? val1 > val2 : null
+//             };
+//         }
+//     });
+    
+//     // 验证当前盘面是否有效
+//     if (!validateCurrentBoard(board, size, consecutiveConstraints)) {
+//         show_result("当前盘面存在冲突，无法验证唯一解", 'error');
+//         return;
+//     }
+
+//     // 转换为候选数板格式
+//     const candidateBoard = board.map(row => 
+//         row.map(cell => cell === 0 ? 
+//             [...Array(size)].map((_, i) => i + 1) : 
+//             cell
+//         )
+//     );
+
+//     // 调用solve函数，传入自定义验证函数处理连续约束
+//     const { solutionCount, solution } = solve(
+//         candidateBoard, 
+//         size,
+//         (r, c, num) => isValidPlacement(r, c, num, board, size, consecutiveConstraints, allAdjacentPairs)
+//     );
+    
+//     // 显示结果
+//     if (solutionCount === 0) {
+//         show_result("当前定向连续数独无解！请检查数字和连续标记是否正确。", 'error');
+//     } else if (solutionCount === 1) {
+//         show_result("当前定向连续数独有唯一解！", 'success');
+        
+//         if (confirm("是否要填充唯一解？")) {
+//             fill_solution(container, solution, size);
+//         }
+//     } else {
+//         show_result(`当前定向连续数独有 ${solutionCount} 个解！`, 'error');
+//     }
+// }
 
 /**
  * 检查数字放置是否有效
@@ -636,8 +721,8 @@ function add_directional_mark(row1, col1, row2, col2, direction, isFirstGreater)
     const markSize = 20; // 标记的大小
     
     let x, y;
-    const horizontalAdjust = 1; // 水平方向微调
-    const verticalAdjust = 1;   // 垂直方向微调
+    const horizontalAdjust = 0.5; // 水平方向微调
+    const verticalAdjust = 0.5;   // 垂直方向微调
 
     if (direction === 'horizontal') {
         // 水平方向标记 (左右关系)

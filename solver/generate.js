@@ -70,7 +70,7 @@ function dig_holes(solution, size, _, symmetry = 'none') {
             // 验证唯一解
             const testBoard = puzzle.map(row => [...row]);
             // const solutionCount = countSolutions(testBoard, size);
-            const { solutionCount } = solve(testBoard, size, true);
+            const { solutionCount } = solve(testBoard, size, isValid, true);
             
             if (solutionCount === 1) {
                 holesDug += positionsToDig.length;
@@ -100,7 +100,7 @@ function dig_holes(solution, size, _, symmetry = 'none') {
     return puzzle;
 }
 
-function get_symmetric_positions(row, col, size, symmetry) {
+export function get_symmetric_positions(row, col, size, symmetry) {
     const positions = [];
     const center = (size - 1) / 2;
     
@@ -135,7 +135,7 @@ function get_symmetric_positions(row, col, size, symmetry) {
     return positions;
 }
 
-function shuffle(array) {
+export function shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [array[i], array[j]] = [array[j], array[i]];
@@ -196,7 +196,7 @@ export function generate_puzzle(size, difficulty = 'medium') {
             cell  // 已有数字保持不变
         )
     );
-    const result = solve(testBoard, size, true);
+    const result = solve(testBoard, size, isValid, true);
     if (result.techniqueCounts) {
         log_process("\n=== 技巧使用统计 ===");
         for (const [technique, count] of Object.entries(result.techniqueCounts)) {

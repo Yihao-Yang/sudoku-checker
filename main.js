@@ -37,9 +37,9 @@ function initializeEventHandlers() {
     fourGridBtn.addEventListener('click', () => create_sudoku_grid(4));
     sixGridBtn.addEventListener('click', () => create_sudoku_grid(6));
     nineGridBtn.addEventListener('click', () => create_sudoku_grid(9));
-    checkSolutionBtn.addEventListener('click', check_solution);
+    // checkSolutionBtn.addEventListener('click', check_solution);
     checkUniquenessBtn.addEventListener('click', check_uniqueness);
-    hideSolutionBtn.addEventListener('click', restore_original_board);
+    hideSolutionBtn.addEventListener('click', hide_solution);
     // generatepuzzleBtn.addEventListener('click', () => generate_puzzle(9));
     generatepuzzleBtn.addEventListener('click', async () => {
         generate_puzzle(state.current_grid_size);

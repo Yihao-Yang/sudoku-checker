@@ -232,7 +232,7 @@ export function create_sudoku_grid(size) {
 }
 
 // 创建技巧开关面板
-function create_technique_panel() {
+export function create_technique_panel() {
     const panel = document.createElement('div');
     panel.id = 'techniquePanel';
     panel.style.position = 'absolute';  // 改为绝对定位
@@ -558,7 +558,7 @@ export function check_uniqueness() {
 
 
 
-    const { solutionCount, solution } = solve(board, size); // 调用主求解函数
+    const { solutionCount, solution } = solve(board, size, isValid); // 调用主求解函数
     state.solutionCount = solutionCount;
 
 

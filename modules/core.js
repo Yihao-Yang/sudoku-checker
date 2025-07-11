@@ -451,6 +451,12 @@ export function clear_all_inputs() {
             
             // 清除输入框值
             input.value = '';
+
+            // 重置单元格样式为出题样式
+            input.classList.remove("solution-cell");
+            input.classList.remove("hide-input-text");
+            input.style.color = ""; // 重置颜色
+            input.style.backgroundColor = ""; // 重置背景色
             
             // 如果是候选数模式，还需要清除候选数显示
             if (state.is_candidates_mode) {
