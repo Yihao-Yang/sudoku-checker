@@ -1,14 +1,15 @@
-import { state } from './state.js';
+import { state, set_current_mode } from './state.js';
 import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, show_logical_solution } from './core.js';
 import { eliminate_Candidates, getRowLetter, isValid } from '../solver/solver_tool.js';
 import { solve_By_Elimination } from '../solver/Technique.js';
 
 
 export function create_candidates_sudoku(size) {
+    set_current_mode('candidates');
     // 初始化状态 - 强制设置为候选数模式
-    state.is_skyscraper_mode = false;
-    state.is_vx_mode = false;
-    state.is_candidates_mode = true; // 强制为候选数模式
+    // state.is_skyscraper_mode = false;
+    // state.is_vx_mode = false;
+    // state.is_candidates_mode = true; // 强制为候选数模式
     const { container, grid } = create_base_grid(size, false);
     
 

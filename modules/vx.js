@@ -10,7 +10,7 @@ import {
     base_solve,
     fill_solution
 } from './core.js';
-import { state } from './state.js';
+import { state, set_current_mode } from './state.js';
 
 let is_vx_mode_active = false;
 let current_vx_mark = null;
@@ -20,7 +20,8 @@ let vx_marks = [];
  * 创建VX数独网格
  */
 export function create_vx_sudoku(size = 9) {
-    state.is_vx_mode = true;
+    set_current_mode('vx');
+    // state.is_vx_mode = true;
     clear_result();
     vx_marks = [];
     

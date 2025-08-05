@@ -4,7 +4,7 @@ import { state } from '../modules/state.js';
 
 
 // 生成数独终盘（直接使用回溯法生成）
-function generate_solution(size) {
+export function generate_solution(size) {
     const board = Array.from({ length: size }, () => 
         Array.from({ length: size }, () => 0)
     );
@@ -173,7 +173,7 @@ export function generate_puzzle(size, difficulty = 'medium') {
         }
     }
     
-    log_process(`生成${size}宫格${difficulty}难度数独，实际挖洞数: ${holesDug}，对称模式: ${symmetry}`);
+    log_process(`生成${size}宫格${difficulty}难度数独，提示数: ${size*size-holesDug}，对称模式: ${symmetry}`);
     
 
     // 3. 填充到网格

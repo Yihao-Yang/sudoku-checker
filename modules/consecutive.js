@@ -8,10 +8,13 @@ import {
     add_base_input_handlers,
     handle_key_navigation,
     base_solve,
-    fill_solution
+    fill_solution,
+    log_process,
+    backup_original_board
 } from './core.js';
-import { state } from './state.js';
+import { state, set_current_mode } from './state.js';
 import { solve } from '../solver/solver_tool.js';
+import { shuffle, get_symmetric_positions, generate_solution } from '../solver/generate.js';
 
 let is_consecutive_mode_active = false;
 let is_inequality_mode_active = false;
@@ -22,7 +25,8 @@ let consecutive_marks = [];
  * 创建定向连续数独网格
  */
 export function create_consecutive_sudoku(size = 9) {
-    state.is_consecutive_mode = true;
+    set_current_mode('consecutive');
+    // state.is_consecutive_mode = true;
     clear_result();
     consecutive_marks = [];
     
@@ -63,11 +67,547 @@ export function create_consecutive_sudoku(size = 9) {
     add_Extra_Button('定向连续', convert_to_directional_marks);
     add_Extra_Button('验证唯一性', check_consecutive_uniqueness);
     add_Extra_Button('清除标记', clear_consecutive_marks);
+    add_Extra_Button('自动出题', () => generate_consecutive_puzzle(size));
     
     gridDisplay.appendChild(container);
     setup_consecutive_event_listeners();
 }
 
+/**
+ * 验证定向连续数独唯一性
+ */
+export function check_consecutive_uniqueness() {
+    const container = document.querySelector('.sudoku-container');
+    const size = state.current_grid_size;
+    
+    // 收集当前盘面数据
+    let board = Array.from({ length: size }, (_, i) =>
+        Array.from({ length: size }, (_, j) => {
+            const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+            const val = input ? parseInt(input.value) : NaN;
+            return isNaN(val) ? 0 : val;
+        })
+    );
+    
+    // 收集所有相邻关系
+    const allAdjacentPairs = getAllAdjacentPairs(size);
+    
+    // 收集连续约束
+    const consecutiveConstraints = consecutive_marks.map(mark => {
+        // 对于方向性标记
+        if (mark.isDirectional) {
+            return {
+                cell1: { row: mark.row1, col: mark.col1 },
+                cell2: { row: mark.row2, col: mark.col2 },
+                direction: mark.direction,
+                isDirectional: true,
+                isFirstGreater: mark.isFirstGreater
+            };
+        }
+        // 对于普通连续标记
+        else {
+            const input1 = container.querySelector(`input[data-row="${mark.row1}"][data-col="${mark.col1}"]`);
+            const input2 = container.querySelector(`input[data-row="${mark.row2}"][data-col="${mark.col2}"]`);
+            
+            const val1 = parseInt(input1?.value);
+            const val2 = parseInt(input2?.value);
+            
+            return {
+                cell1: { row: mark.row1, col: mark.col1 },
+                cell2: { row: mark.row2, col: mark.col2 },
+                direction: mark.direction,
+                isDirectional: false,
+                isFirstGreater: !isNaN(val1) && !isNaN(val2) ? val1 > val2 : null
+            };
+        }
+    });
+    
+    // 验证当前盘面是否有效
+    if (!validateCurrentBoard(board, size, consecutiveConstraints)) {
+        show_result("当前盘面存在冲突，无法验证唯一解", 'error');
+        return;
+    }
+
+    // 使用基础求解函数
+    const { solutionCount, solution } = base_solve(
+        board, 
+        size, 
+        (r, c, num) => isValidPlacement(r, c, num, board, size, consecutiveConstraints, allAdjacentPairs),
+        true // 查找所有解
+    );
+    
+    // 显示结果
+    if (solutionCount === 0) {
+        show_result("当前定向连续数独无解！请检查数字和连续标记是否正确。", 'error');
+    } else if (solutionCount === 1) {
+        show_result("当前定向连续数独有唯一解！", 'success');
+        
+        // if (confirm("是否要填充唯一解？")) {
+            fill_solution(container, solution, size);
+        // }
+    } else {
+        show_result(`当前定向连续数独有 ${solutionCount} 个解！`, 'error');
+    }
+}
+// ... 其他已有代码保持不变 ...
+
+const SYMMETRY_TYPES = ['horizontal', 'vertical', 'central', 'diagonal', 'anti-diagonal'];
+
+// /**
+//  * 生成连续数独终盘
+//  * @param {number} size - 数独大小 (4,6,9)
+//  */
+// export function generate_consecutive_solution(size) {
+//     // 1. 创建空盘面
+//     const board = Array.from({ length: size }, () => 
+//         Array.from({ length: size }, () => 0)
+//     );
+
+//     // 2. 回溯填充数字
+//     function backtrack() {
+//         for (let row = 0; row < size; row++) {
+//             for (let col = 0; col < size; col++) {
+//                 if (board[row][col] === 0) {
+//                     const nums = shuffle([...Array(size)].map((_, i) => i + 1));
+                    
+//                     for (const num of nums) {
+//                         if (isValidPlacement(row, col, num, board, size, [], getAllAdjacentPairs(size))) {
+//                             board[row][col] = num;
+                            
+//                             if (backtrack()) {
+//                                 return true;
+//                             }
+                            
+//                             board[row][col] = 0;
+//                         }
+//                     }
+//                     return false;
+//                 }
+//             }
+//         }
+//         // 回溯完成后，收集所有相邻差为1的数字对作为连续标记
+//         consecutive_marks = [];
+//         for (let row = 0; row < size; row++) {
+//             for (let col = 0; col < size; col++) {
+//                 // 检查右侧相邻
+//                 if (col < size - 1 && Math.abs(board[row][col] - board[row][col+1]) === 1) {
+//                     consecutive_marks.push({
+//                         row1: row, col1: col,
+//                         row2: row, col2: col+1,
+//                         direction: 'horizontal'
+//                     });
+//                 }
+//                 // 检查下方相邻
+//                 if (row < size - 1 && Math.abs(board[row][col] - board[row+1][col]) === 1) {
+//                     consecutive_marks.push({
+//                         row1: row, col1: col,
+//                         row2: row+1, col2: col,
+//                         direction: 'vertical'
+//                     });
+//                 }
+//             }
+//         }
+//         return true;
+//     }
+    
+//     backtrack();
+//     return board;
+// }
+
+export function generate_consecutive_solution(size) {
+    // 1. 调用标准数独生成函数
+    const solution = generate_solution(size);
+    
+    // 2. 填充到网格以便自动标记
+    const container = document.querySelector('.sudoku-container');
+    for (let row = 0; row < size; row++) {
+        for (let col = 0; col < size; col++) {
+            const input = container.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
+            input.value = solution[row][col];
+        }
+    }
+    
+    // 3. 自动标记连续关系
+    auto_mark_consecutive();
+    
+    // 4. 返回终盘
+    return solution;
+}
+
+/**
+ * 生成连续数独题目
+ * @param {number} size - 数独大小 (4,6,9)
+ */
+export function generate_consecutive_puzzle(size) {
+    log_process('', true);
+
+    // 1. 重置盘面 - 清除所有数字和标记
+    const container = document.querySelector('.sudoku-container');
+    const inputs = container.querySelectorAll('input');
+    
+    // 清除所有数字
+    inputs.forEach(input => {
+        input.value = '';
+        input.disabled = false;
+        input.style.backgroundColor = '';
+        input.style.color = '';
+        input.classList.remove('solution-cell');
+    });
+    
+    // 清除所有连续标记
+    clear_consecutive_marks();
+    
+    // 2. 生成终盘
+    const solution = generate_consecutive_solution(size);
+    
+    // 3. 创建可挖洞的盘面副本
+    // const puzzle = solution.map(row => [...row]);
+    
+    // 4. 随机选择对称模式并挖洞
+    const symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
+    const { puzzle, holesDug } = dig_consecutive_holes(solution, size, symmetry);
+    
+    log_process(`生成${size}宫格连续数独，提示数: ${size*size-holesDug}，对称模式: ${symmetry}`);
+    
+    // 5. 填充到网格
+    for (let row = 0; row < size; row++) {
+        for (let col = 0; col < size; col++) {
+            const input = container.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
+            input.value = puzzle[row][col] || '';
+        }
+    }
+    
+    // 6. 自动标记所有相邻差为1的数字对
+    auto_mark_consecutive();
+    
+    backup_original_board();
+    show_result(`已生成${size}宫格连续数独题目`);
+
+    // 7. 验证题目唯一性并显示技巧统计
+    const testBoard = puzzle.map(row => [...row]);
+    const { solutionCount, techniqueCounts } = base_solve(
+        testBoard, 
+        size,
+        (r, c, num) => isValidPlacement(r, c, num, testBoard, size, consecutive_marks, getAllAdjacentPairs(size)),
+        true
+    );
+    
+    if (techniqueCounts) {
+        log_process("\n=== 技巧使用统计 ===");
+        for (const [technique, count] of Object.entries(techniqueCounts)) {
+            if (count > 0) {
+                log_process(`${technique}: ${count}次`);
+            }
+        }
+    }
+    
+    return {
+        puzzle: puzzle,
+        solution: solution,
+        consecutiveMarks: [...consecutive_marks]
+    };
+}
+
+/**
+ * 挖洞函数（支持对称挖洞，考虑连续约束）
+ */
+function dig_consecutive_holes(puzzle, size, solution, symmetry = 'none') {
+// 创建可挖洞的盘面副本
+    // const puzzle = solution.map(row => [...row]);
+
+    // 收集所有可挖洞的位置
+    const positions = [...Array(size * size).keys()];
+    shuffle(positions);
+    
+    let holesDug = 0;
+    let changed;
+    
+    do {
+        changed = false;
+        for (let i = 0; i < positions.length; i++) {
+            const pos = positions[i];
+            const row = Math.floor(pos / size);
+            const col = pos % size;
+            
+            if (puzzle[row][col] === 0) continue;
+            
+            // 获取对称位置
+            const symmetricPositions = get_symmetric_positions(row, col, size, symmetry);
+            const positionsToDig = [ [row, col], ...symmetricPositions ];
+            
+            // 临时保存数字
+            const tempValues = positionsToDig.map(([r, c]) => puzzle[r][c]);
+            
+            // 尝试挖洞
+            for (const [r, c] of positionsToDig) {
+                puzzle[r][c] = 0;
+            }
+            
+            // 验证唯一解（考虑连续约束）
+            const testBoard = puzzle.map(row => [...row]);
+            const { solutionCount } = base_solve(
+                testBoard, 
+                size,
+                (r, c, num) => isValidPlacement(r, c, num, testBoard, size, consecutive_marks, getAllAdjacentPairs(size)),
+                true
+            );
+            
+            if (solutionCount === 1) {
+                // 输出挖洞信息
+                positionsToDig.forEach(([r, c], idx) => {
+                    log_process(`挖除位置: (${r+1},${c+1}) 数字: ${tempValues[idx]}`);
+                });
+                holesDug += positionsToDig.length;
+                changed = true;
+            } else {
+                // 恢复数字
+                positionsToDig.forEach(([r, c], idx) => {
+                    puzzle[r][c] = tempValues[idx];
+                });
+            }
+        }
+    } while (changed);
+    
+    return { puzzle, holesDug };
+}
+// /**
+//  * 生成连续数独题目
+//  * @param {number} size - 数独大小 (4,6,9)
+//  */
+// export function generate_consecutive_puzzle(size) {
+//     log_process('', true);
+
+//     // 1. 重置盘面 - 清除所有数字和标记
+//     const container = document.querySelector('.sudoku-container');
+//     const inputs = container.querySelectorAll('input');
+    
+//     // 清除所有数字
+//     inputs.forEach(input => {
+//         input.value = '';
+//         input.disabled = false;
+//         input.style.backgroundColor = '';
+//         input.style.color = '';
+//         input.classList.remove('solution-cell');
+//     });
+    
+//     // 清除所有连续标记
+//     clear_consecutive_marks();
+    
+//     // 2. 生成终盘
+//     const solution = generate_consecutive_solution(size);
+    
+//     // 3. 创建可挖洞的盘面副本
+//     const puzzle = solution.map(row => [...row]);
+    
+//     // 4. 随机选择对称模式并挖洞
+//     const symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
+//     const holesDug = dig_consecutive_holes(puzzle, size, symmetry);
+    
+//     log_process(`生成${size}宫格连续数独，提示数: ${size*size-holesDug}，对称模式: ${symmetry}`);
+    
+//     // 5. 填充到网格
+//     for (let row = 0; row < size; row++) {
+//         for (let col = 0; col < size; col++) {
+//             const input = container.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
+//             input.value = puzzle[row][col] || '';
+//         }
+//     }
+    
+//     // 6. 自动标记所有相邻差为1的数字对
+//     auto_mark_consecutive();
+    
+//     backup_original_board();
+//     show_result(`已生成${size}宫格连续数独题目`);
+
+//     // 7. 验证题目唯一性并显示技巧统计
+//     const testBoard = puzzle.map(row => [...row]);
+//     const { solutionCount, techniqueCounts } = base_solve(
+//         testBoard, 
+//         size,
+//         (r, c, num) => isValidPlacement(r, c, num, testBoard, size, consecutive_marks, getAllAdjacentPairs(size)),
+//         true
+//     );
+    
+//     if (techniqueCounts) {
+//         log_process("\n=== 技巧使用统计 ===");
+//         for (const [technique, count] of Object.entries(techniqueCounts)) {
+//             if (count > 0) {
+//                 log_process(`${technique}: ${count}次`);
+//             }
+//         }
+//     }
+    
+//     return {
+//         puzzle: puzzle,
+//         solution: solution,
+//         consecutiveMarks: [...consecutive_marks]
+//     };
+// }
+
+// /**
+//  * 挖洞函数（支持对称挖洞）
+//  */
+// function dig_consecutive_holes(puzzle, size, symmetry = 'none') {
+//     // 收集所有可挖洞的位置
+//     const positions = [...Array(size * size).keys()];
+//     shuffle(positions);
+    
+//     let holesDug = 0;
+//     let changed;
+    
+//     do {
+//         changed = false;
+//         for (let i = 0; i < positions.length; i++) {
+//             const pos = positions[i];
+//             const row = Math.floor(pos / size);
+//             const col = pos % size;
+            
+//             if (puzzle[row][col] === 0) continue;
+            
+//             // 获取对称位置
+//             const symmetricPositions = get_symmetric_positions(row, col, size, symmetry);
+//             const positionsToDig = [ [row, col], ...symmetricPositions ];
+            
+//             // 临时保存数字
+//             const tempValues = positionsToDig.map(([r, c]) => puzzle[r][c]);
+            
+//             // 尝试挖洞
+//             for (const [r, c] of positionsToDig) {
+//                 puzzle[r][c] = 0;
+//             }
+            
+//             // 验证唯一解（考虑连续约束）
+//             const testBoard = puzzle.map(row => [...row]);
+//             const { solutionCount } = base_solve(
+//                 testBoard, 
+//                 size,
+//                 (r, c, num) => isValidPlacement(r, c, num, testBoard, size, consecutive_marks, getAllAdjacentPairs(size)),
+//                 true
+//             );
+            
+//             if (solutionCount === 1) {
+//                 // 输出挖洞信息
+//                 positionsToDig.forEach(([r, c], idx) => {
+//                     log_process(`挖除位置: (${r+1},${c+1}) 数字: ${tempValues[idx]}`);
+//                 });
+//                 holesDug += positionsToDig.length;
+//                 changed = true;
+//             } else {
+//                 // 恢复数字
+//                 positionsToDig.forEach(([r, c], idx) => {
+//                     puzzle[r][c] = tempValues[idx];
+//                 });
+//             }
+//         }
+//     } while (changed);
+    
+//     return holesDug;
+// }
+// /**
+//  * 生成连续数独题目
+//  * @param {number} size - 数独大小 (4,6,9)
+//  */
+// export function generate_consecutive_puzzle(size) {
+//     log_process('', true);
+
+//     // 1. 生成终盘
+//     const solution = generate_consecutive_solution(size);
+    
+//     // 2. 创建可挖洞的盘面副本
+//     const puzzle = solution.map(row => [...row]);
+    
+//     // 3. 随机选择对称模式并挖洞
+//     const symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
+//     const holesDug = dig_consecutive_holes(puzzle, size, symmetry);
+    
+//     log_process(`生成${size}宫格连续数独，提示数: ${size*size-holesDug}，对称模式: ${symmetry}`);
+    
+//     // // 4. 自动标记所有相邻差为1的数字对
+//     // const container = document.querySelector('.sudoku-container');
+//     // for (let row = 0; row < size; row++) {
+//     //     for (let col = 0; col < size; col++) {
+//     //         const input = container.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
+//     //         input.value = puzzle[row][col] || '';
+//     //     }
+//     // }
+    
+//     // // 自动标记连续关系
+//     // auto_mark_consecutive();
+//     // // 5. 清除现有标记并重新渲染
+//     // clear_consecutive_marks();
+//     // consecutive_marks.forEach(mark => {
+//     //     add_consecutive_mark(mark.row1, mark.col1, mark.row2, mark.col2, mark.direction);
+//     // });
+    
+//     backup_original_board();
+//     show_result(`已生成${size}宫格连续数独题目`);
+
+//     return {
+//         puzzle: puzzle,
+//         solution: solution
+//     };
+// }
+
+/**
+ * 挖洞函数（支持对称挖洞）
+ */
+// function dig_consecutive_holes(puzzle, size, symmetry = 'none') {
+//     // 收集所有可挖洞的位置
+//     // const puzzle = solution.map(row => [...row]);
+//     const positions = [...Array(size * size).keys()];
+//     shuffle(positions);
+    
+//     let holesDug = 0;
+//     let changed;
+    
+//     do {
+//         changed = false;
+//         for (let i = 0; i < positions.length; i++) {
+//             const pos = positions[i];
+//             const row = Math.floor(pos / size);
+//             const col = pos % size;
+            
+//             if (puzzle[row][col] === 0) continue;
+            
+//             // 获取对称位置
+//             const symmetricPositions = get_symmetric_positions(row, col, size, symmetry);
+//             const positionsToDig = [ [row, col], ...symmetricPositions ];
+            
+//             // 临时保存数字
+//             const tempValues = positionsToDig.map(([r, c]) => puzzle[r][c]);
+            
+//             // 尝试挖洞
+//             for (const [r, c] of positionsToDig) {
+//                 puzzle[r][c] = 0;
+//             }
+            
+//             // 验证唯一解（考虑连续约束）
+//             const testBoard = puzzle.map(row => [...row]);
+//             const { solutionCount } = base_solve(
+//                 testBoard, 
+//                 size,
+//                 (r, c, num) => isValidPlacement(r, c, num, testBoard, size, consecutive_marks, getAllAdjacentPairs(size)),
+//                 // (r, c, num) => isValidPlacement(r, c, num, testBoard, size, consecutiveConstraints, getAllAdjacentPairs(size)),
+//                 true
+//             );
+            
+//             if (solutionCount === 1) {
+//                 holesDug += positionsToDig.length;
+//                 changed = true;
+//             } else {
+//                 // 恢复数字
+//                 positionsToDig.forEach(([r, c], idx) => {
+//                     puzzle[r][c] = tempValues[idx];
+//                 });
+//             }
+//         }
+//     } while (changed);
+    
+//     return holesDug;
+// }
+
+
+// ... 其他已有代码保持不变 ...
 /**
  * 切换连续标记模式
  */
@@ -343,83 +883,6 @@ function check_and_mark_pair(row1, col1, row2, col2, direction) {
     }
 }
 
-/**
- * 验证定向连续数独唯一性
- */
-export function check_consecutive_uniqueness() {
-    const container = document.querySelector('.sudoku-container');
-    const size = state.current_grid_size;
-    
-    // 收集当前盘面数据
-    let board = Array.from({ length: size }, (_, i) =>
-        Array.from({ length: size }, (_, j) => {
-            const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
-            const val = input ? parseInt(input.value) : NaN;
-            return isNaN(val) ? 0 : val;
-        })
-    );
-    
-    // 收集所有相邻关系
-    const allAdjacentPairs = getAllAdjacentPairs(size);
-    
-    // 收集连续约束
-    const consecutiveConstraints = consecutive_marks.map(mark => {
-        // 对于方向性标记
-        if (mark.isDirectional) {
-            return {
-                cell1: { row: mark.row1, col: mark.col1 },
-                cell2: { row: mark.row2, col: mark.col2 },
-                direction: mark.direction,
-                isDirectional: true,
-                isFirstGreater: mark.isFirstGreater
-            };
-        }
-        // 对于普通连续标记
-        else {
-            const input1 = container.querySelector(`input[data-row="${mark.row1}"][data-col="${mark.col1}"]`);
-            const input2 = container.querySelector(`input[data-row="${mark.row2}"][data-col="${mark.col2}"]`);
-            
-            const val1 = parseInt(input1?.value);
-            const val2 = parseInt(input2?.value);
-            
-            return {
-                cell1: { row: mark.row1, col: mark.col1 },
-                cell2: { row: mark.row2, col: mark.col2 },
-                direction: mark.direction,
-                isDirectional: false,
-                isFirstGreater: !isNaN(val1) && !isNaN(val2) ? val1 > val2 : null
-            };
-        }
-    });
-    
-    // 验证当前盘面是否有效
-    if (!validateCurrentBoard(board, size, consecutiveConstraints)) {
-        show_result("当前盘面存在冲突，无法验证唯一解", 'error');
-        return;
-    }
-
-    // 使用基础求解函数
-    const { solutionCount, solution } = base_solve(
-        board, 
-        size, 
-        (r, c, num) => isValidPlacement(r, c, num, board, size, consecutiveConstraints, allAdjacentPairs),
-        true // 查找所有解
-    );
-    
-    // 显示结果
-    if (solutionCount === 0) {
-        show_result("当前定向连续数独无解！请检查数字和连续标记是否正确。", 'error');
-    } else if (solutionCount === 1) {
-        show_result("当前定向连续数独有唯一解！", 'success');
-        
-        if (confirm("是否要填充唯一解？")) {
-            fill_solution(container, solution, size);
-        }
-    } else {
-        show_result(`当前定向连续数独有 ${solutionCount} 个解！`, 'error');
-    }
-}
-
 // /**
 //  * 验证定向连续数独唯一性
 //  */
@@ -528,8 +991,64 @@ function isValidPlacement(row, col, num, board, size, consecutiveConstraints, al
         }
     }
     
-    // 检查连续约束 - 修复点2
+    // // 检查连续约束 - 修复点2
+    // for (const constraint of consecutiveConstraints) {
+    //     const isCell1 = (constraint.cell1.row === row && constraint.cell1.col === col);
+    //     const isCell2 = (constraint.cell2.row === row && constraint.cell2.col === col);
+        
+    //     if (isCell1 || isCell2) {
+    //         const otherCell = isCell1 ? constraint.cell2 : constraint.cell1;
+    //         const otherValue = board[otherCell.row][otherCell.col];
+            
+    //         if (otherValue !== 0) {
+    //             if (constraint.isDirectional) {
+    //                 // 方向标记检查
+    //                 if (isCell1) {
+    //                     if (constraint.isFirstGreater && num <= otherValue) return false;
+    //                     if (!constraint.isFirstGreater && num >= otherValue) return false;
+    //                 } else {
+    //                     if (constraint.isFirstGreater && otherValue <= num) return false;
+    //                     if (!constraint.isFirstGreater && otherValue >= num) return false;
+    //                 }
+    //             } 
+    //             // 额外检查：方向标记的相邻数字差必须为1
+    //             if (Math.abs(num - otherValue) !== 1) return false;
+    //         }
+    //     }
+    // }
+    
+    // // 检查未标记的相邻单元格不能差为1 - 修复点3
+    // for (const pair of allAdjacentPairs) {
+    //     if ((pair.row1 === row && pair.col1 === col) || 
+    //         (pair.row2 === row && pair.col2 === col)) {
+            
+    //         const otherRow = pair.row1 === row ? pair.row2 : pair.row1;
+    //         const otherCol = pair.col1 === col ? pair.col2 : pair.col1;
+    //         const otherValue = board[otherRow][otherCol];
+            
+    //         if (otherValue !== 0) {
+    //             const diff = Math.abs(num - otherValue);
+    //             const hasMark = consecutiveConstraints.some(c => 
+    //                 (c.cell1.row === pair.row1 && c.cell1.col === pair.col1 &&
+    //                  c.cell2.row === pair.row2 && c.cell2.col === pair.col2) ||
+    //                 (c.cell1.row === pair.row2 && c.cell1.col === pair.col2 &&
+    //                  c.cell2.row === pair.row1 && c.cell2.col === pair.col1));
+                
+    //             if (!hasMark && diff === 1) {
+    //                 return false;
+    //             }
+    //         }
+    //     }
+    // }
+    // 检查连续约束 - 添加空约束检查
+    if (!consecutiveConstraints || !Array.isArray(consecutiveConstraints)) {
+        consecutiveConstraints = [];
+    }
+
     for (const constraint of consecutiveConstraints) {
+        // 确保约束对象有效
+        if (!constraint || !constraint.cell1 || !constraint.cell2) continue;
+        
         const isCell1 = (constraint.cell1.row === row && constraint.cell1.col === col);
         const isCell2 = (constraint.cell2.row === row && constraint.cell2.col === col);
         
@@ -554,7 +1073,7 @@ function isValidPlacement(row, col, num, board, size, consecutiveConstraints, al
         }
     }
     
-    // 检查未标记的相邻单元格不能差为1 - 修复点3
+    // 检查未标记的相邻单元格不能差为1
     for (const pair of allAdjacentPairs) {
         if ((pair.row1 === row && pair.col1 === col) || 
             (pair.row2 === row && pair.col2 === col)) {
@@ -566,10 +1085,11 @@ function isValidPlacement(row, col, num, board, size, consecutiveConstraints, al
             if (otherValue !== 0) {
                 const diff = Math.abs(num - otherValue);
                 const hasMark = consecutiveConstraints.some(c => 
-                    (c.cell1.row === pair.row1 && c.cell1.col === pair.col1 &&
+                    c && c.cell1 && c.cell2 && 
+                    ((c.cell1.row === pair.row1 && c.cell1.col === pair.col1 &&
                      c.cell2.row === pair.row2 && c.cell2.col === pair.col2) ||
                     (c.cell1.row === pair.row2 && c.cell1.col === pair.col2 &&
-                     c.cell2.row === pair.row1 && c.cell2.col === pair.col1));
+                     c.cell2.row === pair.row1 && c.cell2.col === pair.col1)));
                 
                 if (!hasMark && diff === 1) {
                     return false;

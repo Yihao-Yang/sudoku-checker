@@ -3,7 +3,7 @@ import { create_vx_sudoku } from './vx.js';
 import { create_candidates_sudoku } from './candidates.js';
 import { create_consecutive_sudoku } from './consecutive.js';
 import { create_missing_sudoku } from './missing.js';
-import { state } from './state.js';
+import { state, set_current_mode } from './state.js';
 import { 
     show_result, 
     clear_result, 
@@ -24,9 +24,10 @@ import { solve, isValid, eliminate_Candidates } from '../solver/solver_tool.js';
 
 // 最关键的创建数独函数
 export function create_sudoku_grid(size) {
-    state.is_skyscraper_mode = false;
-    state.is_vx_mode = false;
-    state.is_candidates_mode = false;
+    set_current_mode('classic');
+    // state.is_skyscraper_mode = false;
+    // state.is_vx_mode = false;
+    // state.is_candidates_mode = false;
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
@@ -38,6 +39,25 @@ export function create_sudoku_grid(size) {
 
     const { container, grid } = create_base_grid(size);
     const inputs = Array.from({ length: size }, () => new Array(size));
+
+    // 修改技巧开关 - 关闭不适合缺一门数独的技巧
+    state.techniqueSettings = {
+        Box_Elimination: true,
+        Row_Col_Elimination: true,
+        Box_Block: true,        
+        Row_Col_Block: true,    
+        Box_Naked_Pair: true,   
+        Row_Col_Naked_Pair: true, 
+        Box_Hidden_Pair: true,  
+        Row_Col_Hidden_Pair: true, 
+        Box_Naked_Triple: true, 
+        Row_Col_Naked_Triple: true, 
+        Box_Hidden_Triple: true, 
+        Row_Col_Hidden_Triple: true, 
+        All_Quad: false,         
+        Cell_Elimination: true,  
+        Brute_Force: false       
+    };
 
     // 创建技巧开关面板
     create_technique_panel();
@@ -299,7 +319,7 @@ export function create_technique_panel() {
                 // { id: 'Box_Naked_Quad', name: '宫显性四数组', default: true },
                 // { id: 'Row_Col_Naked_Quad', name: '行列显性四数组', default: true }
                 // 合并所有四数组为一个开关
-                { id: 'All_Quad', name: '四数组(显性+隐性)', default: true },
+                { id: 'All_Quad', name: '四数组(显性+隐性)(可能有bug，慎用)', default: false },
             ]
         },
         {
@@ -313,6 +333,12 @@ export function create_technique_panel() {
             items: [
                 { id: 'Brute_Force', name: '暴力求解', default: false }
             ]
+        },
+        {
+            id: 'missing', // 新增欠一排除分组
+            items: [
+                { id: 'Missing_One', name: '欠一排除', default: state.current_mode === 'missing' }
+            ]
         }
     ];
 
@@ -320,35 +346,21 @@ export function create_technique_panel() {
     if (!state.techniqueSettings) {
         state.techniqueSettings = {
             Box_Elimination: true,
-            Row_Elimination: true,
-            Col_Elimination: true,
+            Row_Col_Elimination: true,
             Box_Block: true,
-            Row_Block: true,
-            Col_Block: true,
+            Row_Col_Block: true,
             Box_Naked_Pair: true,
-            Row_Naked_Pair: true,
-            Col_Naked_Pair: true,
-            Box_Naked_Triple: true,
-            Row_Naked_Triple: true,
-            Col_Naked_Triple: true,
-            // Row_Naked_Quad: true,
-            // Col_Naked_Quad: true,
+            Row_Col_Naked_Pair: true,
             Box_Hidden_Pair: true,
-            Row_Hidden_Pair: true,
-            Col_Hidden_Pair: true,
+            Row_Col_Hidden_Pair: true,
+            Box_Naked_Triple: true,
+            Row_Col_Naked_Triple: true,
             Box_Hidden_Triple: true,
-            Row_Hidden_Triple: true,
-            Col_Hidden_Triple: true,
-            // Row_Hidden_Quad: true,
-            // Col_Hidden_Quad: true,
-            // All_Quad: true,
-            Box_Hidden_Quad: true,
-            Row_Hidden_Quad: true,
-            Col_Hidden_Quad: true,
-            Box_Naked_Quad: true,
-            Row_Naked_Quad: true,
-            Col_Naked_Quad: true,
-            Brute_Force: false
+            Row_Col_Hidden_Triple: true,
+            All_Quad: false,
+            Cell_Elimination: true,
+            Brute_Force: false,
+            Missing_One: state.current_mode === 'missing'
         };
         techniqueGroups.forEach(group => {
             group.items.forEach(tech => {
@@ -388,32 +400,11 @@ export function create_technique_panel() {
                     const checkbox = document.getElementById(`tech_${tech.id}`);
                     if (checkbox) checkbox.checked = newValue;
                     
-                    // 处理行列排除/区块/数组的特殊情况
-                    if (tech.id === 'Row_Col_Elimination') {
-                        state.techniqueSettings.Row_Elimination = newValue;
-                        state.techniqueSettings.Col_Elimination = newValue;
-                    } else if (tech.id === 'Row_Col_Block') {
-                        state.techniqueSettings.Row_Block = newValue;
-                        state.techniqueSettings.Col_Block = newValue;
-                    } else if (tech.id === 'Row_Col_Hidden_Pair') {
-                        state.techniqueSettings.Row_Hidden_Pair = newValue;
-                        state.techniqueSettings.Col_Hidden_Pair = newValue;
-                    } else if (tech.id === 'Row_Col_Hidden_Triple') {
-                        state.techniqueSettings.Row_Hidden_Triple = newValue;
-                        state.techniqueSettings.Col_Hidden_Triple = newValue;
-                    } else if (tech.id === 'Row_Col_Naked_Pair') {
-                        state.techniqueSettings.Row_Naked_Pair = newValue;
-                        state.techniqueSettings.Col_Naked_Pair = newValue;
-                    } else if (tech.id === 'Row_Col_Naked_Triple') {
-                        state.techniqueSettings.Row_Naked_Triple = newValue;
-                        state.techniqueSettings.Col_Naked_Triple = newValue;
-                    } else if (tech.id === 'All_Quad') {
+                    if (tech.id === 'All_Quad') {
                         state.techniqueSettings.Box_Hidden_Quad = newValue;
-                        state.techniqueSettings.Row_Hidden_Quad = newValue;
-                        state.techniqueSettings.Col_Hidden_Quad = newValue;
+                        state.techniqueSettings.Row_Col_Hidden_Quad = newValue;
                         state.techniqueSettings.Box_Naked_Quad = newValue;
-                        state.techniqueSettings.Row_Naked_Quad = newValue;
-                        state.techniqueSettings.Col_Naked_Quad = newValue;
+                        state.techniqueSettings.Row_Col_Naked_Quad = newValue;
                     }
                 });
             });
@@ -458,32 +449,11 @@ export function create_technique_panel() {
                     }
                 }
                 
-                // 处理行列排除/区块/数组的特殊情况
-                if (tech.id === 'Row_Col_Elimination') {
-                    state.techniqueSettings.Row_Elimination = checkbox.checked;
-                    state.techniqueSettings.Col_Elimination = checkbox.checked;
-                } else if (tech.id === 'Row_Col_Block') {
-                    state.techniqueSettings.Row_Block = checkbox.checked;
-                    state.techniqueSettings.Col_Block = checkbox.checked;
-                } else if (tech.id === 'Row_Col_Hidden_Pair') {
-                    state.techniqueSettings.Row_Hidden_Pair = checkbox.checked;
-                    state.techniqueSettings.Col_Hidden_Pair = checkbox.checked;
-                } else if (tech.id === 'Row_Col_Hidden_Triple') {
-                    state.techniqueSettings.Row_Hidden_Triple = checkbox.checked;
-                    state.techniqueSettings.Col_Hidden_Triple = checkbox.checked;
-                } else if (tech.id === 'Row_Col_Naked_Pair') {
-                    state.techniqueSettings.Row_Naked_Pair = checkbox.checked;
-                    state.techniqueSettings.Col_Naked_Pair = checkbox.checked;
-                } else if (tech.id === 'Row_Col_Naked_Triple') {
-                    state.techniqueSettings.Row_Naked_Triple = checkbox.checked;
-                    state.techniqueSettings.Col_Naked_Triple = checkbox.checked;
-                } else if (tech.id === 'All_Quad') {
+                if (tech.id === 'All_Quad') {
                     state.techniqueSettings.Box_Hidden_Quad = checkbox.checked;
-                    state.techniqueSettings.Row_Hidden_Quad = checkbox.checked;
-                    state.techniqueSettings.Col_Hidden_Quad = checkbox.checked;
+                    state.techniqueSettings.Row_Col_Hidden_Quad = checkbox.checked;
                     state.techniqueSettings.Box_Naked_Quad = checkbox.checked;
-                    state.techniqueSettings.Row_Naked_Quad = checkbox.checked;
-                    state.techniqueSettings.Col_Naked_Quad = checkbox.checked;
+                    state.techniqueSettings.Row_Col_Naked_Quad = checkbox.checked;
                 }
             });
 

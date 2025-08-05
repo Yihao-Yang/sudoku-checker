@@ -230,14 +230,14 @@ export function change_Candidates_Mode(inputs, size, isCandidatesMode, isSkyscra
  */
 export function base_solve(board, size, isValidFunc, saveSolution = false) {
     let solution = null;
-    let solutionCount = 0;
+    state.solutionCount = 0;
 
 
     function solve(r = 0, c = 0) {
-        if (solutionCount >= 101) return;
+        if (state.solutionCount >= 101) return;
         if (r === size) {
-            solutionCount++;
-            if (saveSolution && solutionCount === 1) {
+            state.solutionCount++;
+            if (saveSolution && state.solutionCount === 1) {
                 solution = board.map(row => [...row]);
             }
             return;
@@ -268,7 +268,7 @@ export function base_solve(board, size, isValidFunc, saveSolution = false) {
     }
 
     solve(0, 0);
-    return { solutionCount, solution };
+    return { solutionCount: state.solutionCount, solution };
 }
 
 /**

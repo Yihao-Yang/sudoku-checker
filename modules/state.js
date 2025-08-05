@@ -1,12 +1,25 @@
 // state.js（使用对象包装以允许修改）
 export const state = {
-    is_skyscraper_mode: false,
-    is_vx_mode: false,
+    current_mode: null,
+    // is_skyscraper_mode: false,
+    // is_vx_mode: false,
     current_grid_size: 0,
-    is_candidates_mode: false,
+    // is_candidates_mode: false,
     originalBoard: null, // 备份原始题目状态
     isShowingSolution: false, // 是否正在显示答案
     solution: null,
     solutionCount: 0,
     silentMode: false,
+    box_missing_subsets: {},
+    row_missing_subsets: {},
+    col_missing_subsets: {},
 };
+
+// 设置当前模式(会自动取消其他模式)
+export function set_current_mode(mode) {
+    if (['classic', 'skyscraper', 'vx', 'candidates', 'missing', 'consecutive'].includes(mode)) {
+        state.current_mode = mode;
+    } else {
+        state.current_mode = null;
+    }
+}

@@ -11,16 +11,17 @@ import {
     fill_solution,
     change_Candidates_Mode
 } from './core.js';
-import { state } from './state.js';
+import { state, set_current_mode } from './state.js';
 import { create_candidates_grid } from './core.js';
 
 /**
  * 创建摩天楼数独网格
  */
 export function create_skyscraper_sudoku(size) {
-    state.is_skyscraper_mode = true;
-    state.is_vx_mode = false;
-    state.is_candidates_mode = false;
+    set_current_mode('skyscraper');
+    // state.is_skyscraper_mode = true;
+    // state.is_vx_mode = false;
+    // state.is_candidates_mode = false;
 
         // 移除旧的事件监听器
     const toggleBtn = document.getElementById('toggleCandidatesMode');
