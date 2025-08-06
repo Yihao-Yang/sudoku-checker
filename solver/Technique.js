@@ -32,6 +32,51 @@ export function solve_By_Elimination(board, size) {
         "欠一排除": 0
     };
 
+    let total_score = 0;
+    // 技巧分值表
+    const technique_scores = {
+        // 唯余法分值细分
+        "唯余法_1": 0,
+        "唯余法_2": 1,
+        "唯余法_3": 5,
+        "唯余法_4": 50,
+        "唯余法_5": 50,
+        "唯余法_6": 80,
+        "唯余法_7": 80,
+        "唯余法_8": 100,
+        "唯余法_9": 100,
+        // 行列排除法分值细分
+        "行列排除_1": 0,
+        "行列排除_2": 1,
+        "行列排除_3": 5,
+        "行列排除_4": 50,
+        "行列排除_5": 50,
+        "行列排除_6": 80,
+        "行列排除_7": 80,
+        "行列排除_8": 100,
+        "行列排除_9": 100,
+        // 其他技巧分值
+        // "唯余法": 1,
+        "宫排除": 2,
+        // "行列排除": 3,
+        "宫区块": 10,
+        "宫隐性数对": 30,
+        "行列区块": 40,
+        "宫隐性三数组": 70,
+        "宫显性数对": 80,
+        "行列显性数对": 90,
+        "行列隐性数对": 200,
+        "宫显性三数组": 250,
+        "行列显性三数组": 300,
+        "宫隐性四数组": 350,
+        "行列隐性三数组": 400,
+        "宫显性四数组": 500,
+        "行列显性四数组": 550,
+        "行列隐性四数组": 600,
+
+        "欠一排除": 50,
+    };
+
     const techniqueGroups = [
         // 第一优先级：余1数的唯余法
         [() => state.techniqueSettings?.Cell_Elimination && check_Cell_Elimination(board, size, 1)],
@@ -167,36 +212,77 @@ export function solve_By_Elimination(board, size) {
                     }
                     if (!groupChanged && !isEqual(board, groupInitialBoard)) {
                         groupChanged = true;
-                        // 根据技巧名称增加计数器
-                        const techniqueName = technique.toString().match(/state\.techniqueSettings\?\.(\w+)/)?.[1];
-                        if (techniqueName) {
-                            let chineseName;
+                        // 根据技巧名称增加计数器和分值
+                        const technique_name = technique.toString().match(/state\.techniqueSettings\?\.(\w+)/)?.[1];
+                        let nat = technique.toString().match(/check_\w+\(([^,]+),\s*[^,]+,\s*(\d+)/)?.[2]; // 获取nat参数
+                        if (technique_name) {
+                            let chinese_name;
+                            let score_key;
                             // 映射英文名到中文名
-                            switch(techniqueName) {
-                                case 'Cell_Elimination': chineseName = "唯余法"; break;
-                                case 'Box_Elimination': chineseName = "宫排除"; break;
-                                case 'Row_Col_Elimination': chineseName = "行列排除"; break;
-                                case 'Box_Block': chineseName = "宫区块"; break;
-                                case 'Row_Col_Block': chineseName = "行列区块"; break;
-                                case 'Box_Naked_Pair': chineseName = "宫显性数对"; break;
-                                case 'Row_Col_Naked_Pair': chineseName = "行列显性数对"; break;
-                                case 'Box_Naked_Triple': chineseName = "宫显性三数组"; break;
-                                case 'Row_Col_Naked_Triple': chineseName = "行列显性三数组"; break;
-                                case 'Box_Naked_Quad': chineseName = "宫显性四数组"; break;
-                                case 'Row_Col_Naked_Quad': chineseName = "行列显性四数组"; break;
-                                case 'Box_Hidden_Pair': chineseName = "宫隐性数对"; break;
-                                case 'Row_Col_Hidden_Pair': chineseName = "行列隐性数对"; break;
-                                case 'Box_Hidden_Triple': chineseName = "宫隐性三数组"; break;
-                                case 'Row_Col_Hidden_Triple': chineseName = "行列隐性三数组"; break;
-                                case 'Box_Hidden_Quad': chineseName = "宫隐性四数组"; break;
-                                case 'Row_Col_Hidden_Quad': chineseName = "行列隐性四数组"; break;
-                                case 'Missing_One': chineseName = "欠一排除"; break; // 缺一门专用
-                                default: chineseName = null;
+                            switch(technique_name) {
+                                case 'Cell_Elimination':
+                                    chinese_name = "唯余法";
+                                    score_key = nat ? `唯余法_${nat}` : "唯余法_1";
+                                    break;
+                                case 'Row_Col_Elimination':
+                                    chinese_name = "行列排除";
+                                    score_key = nat ? `行列排除_${nat}` : "行列排除_1";
+                                    break;
+                                // case 'Cell_Elimination': chinese_name = "唯余法"; break;
+                                case 'Box_Elimination': chinese_name = "宫排除"; break;
+                                // case 'Row_Col_Elimination': chinese_name = "行列排除"; break;
+                                case 'Box_Block': chinese_name = "宫区块"; break;
+                                case 'Row_Col_Block': chinese_name = "行列区块"; break;
+                                case 'Box_Naked_Pair': chinese_name = "宫显性数对"; break;
+                                case 'Row_Col_Naked_Pair': chinese_name = "行列显性数对"; break;
+                                case 'Box_Naked_Triple': chinese_name = "宫显性三数组"; break;
+                                case 'Row_Col_Naked_Triple': chinese_name = "行列显性三数组"; break;
+                                case 'Box_Naked_Quad': chinese_name = "宫显性四数组"; break;
+                                case 'Row_Col_Naked_Quad': chinese_name = "行列显性四数组"; break;
+                                case 'Box_Hidden_Pair': chinese_name = "宫隐性数对"; break;
+                                case 'Row_Col_Hidden_Pair': chinese_name = "行列隐性数对"; break;
+                                case 'Box_Hidden_Triple': chinese_name = "宫隐性三数组"; break;
+                                case 'Row_Col_Hidden_Triple': chinese_name = "行列隐性三数组"; break;
+                                case 'Box_Hidden_Quad': chinese_name = "宫隐性四数组"; break;
+                                case 'Row_Col_Hidden_Quad': chinese_name = "行列隐性四数组"; break;
+                                case 'Missing_One': chinese_name = "欠一排除"; break;
+                                default: chinese_name = null;
                             }
                             
-                            if (chineseName) {
-                                techniqueCounts[chineseName]++;
+                            if (chinese_name) {
+                                techniqueCounts[chinese_name]++;
+                                total_score += technique_scores[chinese_name] || 0;
                             }
+                        // // 根据技巧名称增加计数器
+                        // const techniqueName = technique.toString().match(/state\.techniqueSettings\?\.(\w+)/)?.[1];
+                        // if (techniqueName) {
+                        //     let chineseName;
+                        //     // 映射英文名到中文名
+                        //     switch(techniqueName) {
+                        //         case 'Cell_Elimination': chineseName = "唯余法"; break;
+                        //         case 'Box_Elimination': chineseName = "宫排除"; break;
+                        //         case 'Row_Col_Elimination': chineseName = "行列排除"; break;
+                        //         case 'Box_Block': chineseName = "宫区块"; break;
+                        //         case 'Row_Col_Block': chineseName = "行列区块"; break;
+                        //         case 'Box_Naked_Pair': chineseName = "宫显性数对"; break;
+                        //         case 'Row_Col_Naked_Pair': chineseName = "行列显性数对"; break;
+                        //         case 'Box_Naked_Triple': chineseName = "宫显性三数组"; break;
+                        //         case 'Row_Col_Naked_Triple': chineseName = "行列显性三数组"; break;
+                        //         case 'Box_Naked_Quad': chineseName = "宫显性四数组"; break;
+                        //         case 'Row_Col_Naked_Quad': chineseName = "行列显性四数组"; break;
+                        //         case 'Box_Hidden_Pair': chineseName = "宫隐性数对"; break;
+                        //         case 'Row_Col_Hidden_Pair': chineseName = "行列隐性数对"; break;
+                        //         case 'Box_Hidden_Triple': chineseName = "宫隐性三数组"; break;
+                        //         case 'Row_Col_Hidden_Triple': chineseName = "行列隐性三数组"; break;
+                        //         case 'Box_Hidden_Quad': chineseName = "宫隐性四数组"; break;
+                        //         case 'Row_Col_Hidden_Quad': chineseName = "行列隐性四数组"; break;
+                        //         case 'Missing_One': chineseName = "欠一排除"; break; // 缺一门专用
+                        //         default: chineseName = null;
+                        //     }
+                            
+                        //     if (chineseName) {
+                        //         techniqueCounts[chineseName]++;
+                        //     }
                         }
                         // const techniqueName = technique.toString().match(/state\.techniqueSettings\?\.(\w+)/)?.[1];
                         // if (techniqueName && techniqueCounts.hasOwnProperty(techniqueName)) {
@@ -214,7 +300,7 @@ export function solve_By_Elimination(board, size) {
         }
     } while (changed);
 
-    return { changed, hasEmptyCandidate: false, techniqueCounts };
+    return { changed, hasEmptyCandidate: false, techniqueCounts, total_score };
 }
 // // 宫排除
 // function check_Box_Elimination(board, size) {

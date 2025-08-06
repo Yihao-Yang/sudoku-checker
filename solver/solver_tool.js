@@ -145,10 +145,10 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
     }
 
     // 先尝试逻辑求解
-    const logicalResult = solve_By_Logic();
+    const logical_result = solve_By_Logic();
     
     // 如果逻辑求解未完成，则尝试暴力求解
-    if (!logicalResult.isSolved) {
+    if (!logical_result.isSolved) {
         if (state.techniqueSettings.Brute_Force) {
             solve_By_BruteForce();
         } else {
@@ -161,13 +161,27 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
             }
         }
     }
+    // // 添加技巧使用统计
+    // if (logical_result.techniqueCounts) {
+    //     if (!state.silentMode) log_process("\n=== 技巧使用统计 ===");
+    //     for (const [technique, count] of Object.entries(logical_result.techniqueCounts)) {
+    //         if (count > 0) {
+    //             if (!state.silentMode) log_process(`${technique}: ${count}次`);
+    //         }
+    //     }
+    // }
+
     // 添加技巧使用统计
-    if (logicalResult.techniqueCounts) {
+    if (logical_result.techniqueCounts) {
         if (!state.silentMode) log_process("\n=== 技巧使用统计 ===");
-        for (const [technique, count] of Object.entries(logicalResult.techniqueCounts)) {
+        for (const [technique, count] of Object.entries(logical_result.techniqueCounts)) {
             if (count > 0) {
                 if (!state.silentMode) log_process(`${technique}: ${count}次`);
             }
+        }
+        // 输出总分值
+        if (!state.silentMode && logical_result.total_score !== undefined) {
+            log_process(`总分值: ${logical_result.total_score}`);
         }
     }
 
@@ -177,17 +191,25 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
         state.silentMode = false;
     }
 
+    // // 返回求解结果
+    // return {
+    //     solutionCount: state.solutionCount,
+    //     solution,
+    //     techniqueCounts: logical_result.techniqueCounts
+    // };
+
     // 返回求解结果
     return {
         solutionCount: state.solutionCount,
         solution,
-        techniqueCounts: logicalResult.techniqueCounts
+        techniqueCounts: logical_result.techniqueCounts,
+        total_score: logical_result.total_score
     };
 }
 
 // 逻辑求解函数
 function solve_By_Logic() {
-    const { changed, hasEmptyCandidate, techniqueCounts } = solve_By_Elimination(board, size);
+    const { changed, hasEmptyCandidate, techniqueCounts, total_score } = solve_By_Elimination(board, size);
     if (!state.silentMode) log_process("1...判断当前数独是否有解");
     
     if (hasEmptyCandidate) {
@@ -215,11 +237,11 @@ function solve_By_Logic() {
     if (isSolved) {
         state.solutionCount = 1;
         solution = board.map(row => [...row]);
-        return { isSolved: true, techniqueCounts };
+        return { isSolved: true, techniqueCounts, total_score };
     }
 
     if (!state.silentMode) log_process("4...当前候选数数独无法通过逻辑推理完全解出，尝试暴力求解...");
-    return { isSolved: false, techniqueCounts };
+    return { isSolved: false, techniqueCounts, total_score };
 }
 
 // 暴力求解函数
