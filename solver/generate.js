@@ -145,10 +145,11 @@ function dig_holes(solution, size, _, symmetry = 'none') {
 
             // 仅考虑唯一解的情况
             if (result.solutionCount === 1 && result.total_score !== undefined) {
-                candidates.push({
-                    positions: positions_to_dig.map(([r, c]) => [r, c]),
-                    score: result.total_score
-                });
+                // // 测试用
+                // candidates.push({
+                //     positions: positions_to_dig.map(([r, c]) => [r, c]),
+                //     score: result.total_score
+                // });
                 if (result.total_score > best_score) {
                     best_score = result.total_score;
                     best_positions_to_dig = positions_to_dig.map(([r, c]) => [r, c]);
@@ -160,15 +161,16 @@ function dig_holes(solution, size, _, symmetry = 'none') {
             positions_to_dig.forEach(([r, c], idx) => puzzle[r][c] = temp_values[idx]);
         }
 
-        // 输出本轮所有候选方案及分值
-        if (candidates.length > 0) {
-            log_process(`本轮候选挖洞方案分值如下:`);
-            candidates.forEach((item, idx) => {
-                const pos_str = item.positions.map(([r, c]) => `(${r},${c})`).join(' ');
-                const chosen = (item.score === best_score) ? ' <-- 本轮最优' : '';
-                log_process(`方案${idx+1}: 挖洞位置: ${pos_str}，分值: ${item.score}${chosen}`);
-            });
-        }
+        // // 测试用
+        // // 输出本轮所有候选方案及分值
+        // if (candidates.length > 0) {
+        //     log_process(`本轮候选挖洞方案分值如下:`);
+        //     candidates.forEach((item, idx) => {
+        //         const pos_str = item.positions.map(([r, c]) => `(${r},${c})`).join(' ');
+        //         const chosen = (item.score === best_score) ? ' <-- 本轮最优' : '';
+        //         log_process(`方案${idx+1}: 挖洞位置: ${pos_str}，分值: ${item.score}${chosen}`);
+        //     });
+        // }
 
         // 如果本轮有最优挖洞方案，则实际挖洞
         if (best_positions_to_dig) {
@@ -356,11 +358,6 @@ export function generate_puzzle(size) {
         );
         result = solve(testBoard, size, isValid, true);
 
-        // // 六宫格分值判断
-        // if (size === 6 && result.total_score <= 50) {
-        //     log_process(`六宫格题目分值为${result.total_score}，低于阈值，重新生成...`);
-        //     continue;
-        // }
         // 分值判断（包含用户输入的下限）
         if (result.total_score < score_lower_limit) {
             log_process(`题目分值为${result.total_score}，低于下限${score_lower_limit}，重新生成...`);

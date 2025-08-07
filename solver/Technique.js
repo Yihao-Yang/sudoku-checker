@@ -35,7 +35,7 @@ export function solve_By_Elimination(board, size) {
     let total_score = 0;
     // 技巧分值表
     const technique_scores = {
-        // 唯余法分值细分
+        // 唯余法分值细分，行列排除法分值细分
         "唯余法_1": 0,
         "唯余法_2": 1,
         "唯余法_3": 5,
@@ -45,7 +45,6 @@ export function solve_By_Elimination(board, size) {
         "唯余法_7": 80,
         "唯余法_8": 100,
         "唯余法_9": 100,
-        // 行列排除法分值细分
         "行列排除_1": 0,
         "行列排除_2": 1,
         "行列排除_3": 5,
@@ -56,9 +55,7 @@ export function solve_By_Elimination(board, size) {
         "行列排除_8": 100,
         "行列排除_9": 100,
         // 其他技巧分值
-        // "唯余法": 1,
         "宫排除": 2,
-        // "行列排除": 3,
         "宫区块": 10,
         "宫隐性数对": 30,
         "行列区块": 40,
@@ -74,7 +71,13 @@ export function solve_By_Elimination(board, size) {
         "行列显性四数组": 550,
         "行列隐性四数组": 600,
 
-        "欠一排除": 50,
+        // 欠一排除分值细分
+        "欠一宫数对": 200,
+        "欠一宫三数组": 400,
+        "欠一宫四数组": 600,
+        "欠一行列数对": 400,
+        "欠一行列三数组": 600,
+        "欠一行列四数组": 800,
     };
 
     const techniqueGroups = [
@@ -127,10 +130,8 @@ export function solve_By_Elimination(board, size) {
 
 
         // 第十一优先级：宫隐性数对
-        [() => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Box_Missing_One_Subset_Elimination(board, size, 2)],//缺一门宫隐性欠一数对
         [() => state.techniqueSettings?.Box_Hidden_Pair && check_Box_Hidden_Subset_Elimination(board, size, 2)],
         // 第十二优先级：宫隐性三数组
-        [() => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Box_Missing_One_Subset_Elimination(board, size, 3)],//缺一门宫隐性欠一三数组
         [() => state.techniqueSettings?.Box_Hidden_Triple && check_Box_Hidden_Subset_Elimination(board, size, 3)],
         // 第十三优先级：宫显性数对
         [() => state.techniqueSettings?.Box_Naked_Pair && check_Box_Naked_Subset_Elimination(board, size, 2)],
@@ -140,24 +141,15 @@ export function solve_By_Elimination(board, size) {
         //     () => state.techniqueSettings?.Row_Naked_Pair && check_Row_Naked_Subset_Elimination(board, size, 2),
         //     () => state.techniqueSettings?.Col_Naked_Pair && check_Col_Naked_Subset_Elimination(board, size, 2)
         // ],
+
+        // 第十四点五优先级：宫隐性欠一数对
+        [() => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Box_Missing_One_Subset_Elimination(board, size, 2)],//缺一门宫隐性欠一数对
         // 第十五优先级：行列隐性数对
-        // [
-        //     () => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Row_Missing_One_Subset_Elimination(board, size, 2),//缺一门行隐性欠一数对
-        //     () => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Col_Missing_One_Subset_Elimination(board, size, 2),//缺一门列隐性欠一数对
-            // () => state.techniqueSettings?.Row_Hidden_Pair && check_Row_Hidden_Subset_Elimination(board, size, 2),
-            // () => state.techniqueSettings?.Col_Hidden_Pair && check_Col_Hidden_Subset_Elimination(board, size, 2)
-        // ],
-        [() => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Row_Col_Missing_One_Subset_Elimination(board, size, 2)],
         [() => (state.techniqueSettings?.Row_Col_Hidden_Pair) && check_Row_Col_Hidden_Subset_Elimination(board, size, 2)],
         // 第十六优先级：行列隐性三数组
-        [() => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Row_Col_Missing_One_Subset_Elimination(board, size, 3)],
         [() => (state.techniqueSettings?.Row_Col_Hidden_Triple) && check_Row_Col_Hidden_Subset_Elimination(board, size, 3)],
-        // [
-        //     () => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Row_Missing_One_Subset_Elimination(board, size, 3),//缺一门行隐性欠一三数组
-        //     () => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Col_Missing_One_Subset_Elimination(board, size, 3),//缺一门列隐性欠一三数组
-        //     () => state.techniqueSettings?.Row_Hidden_Triple && check_Row_Hidden_Subset_Elimination(board, size, 3),
-        //     () => state.techniqueSettings?.Col_Hidden_Triple && check_Col_Hidden_Subset_Elimination(board, size, 3)
-        // ],
+        // 第十六点五优先级：行列隐性欠一数对
+        [() => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Row_Col_Missing_One_Subset_Elimination(board, size, 2)],//缺一门行列隐性欠一数对
         // 第十七优先级：宫显性三数组
         [() => state.techniqueSettings?.Box_Naked_Triple && check_Box_Naked_Subset_Elimination(board, size, 3)],
         // 第十八优先级：行列显性三数组（同一级）
@@ -166,6 +158,9 @@ export function solve_By_Elimination(board, size) {
         //     () => state.techniqueSettings?.Row_Naked_Triple && check_Row_Naked_Subset_Elimination(board, size, 3),
         //     () => state.techniqueSettings?.Col_Naked_Triple && check_Col_Naked_Subset_Elimination(board, size, 3)
         // ],
+        // 第十八点五优先级：宫行列隐性欠一三数组
+        [() => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Box_Missing_One_Subset_Elimination(board, size, 3)],//缺一门宫隐性欠一三数组
+        [() => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Row_Col_Missing_One_Subset_Elimination(board, size, 3)],//缺一门行列隐性欠一三数组
 
 
 
@@ -185,11 +180,11 @@ export function solve_By_Elimination(board, size) {
         // 第二十一优先级：宫显性四数组
         [() => state.techniqueSettings?.Box_Naked_Quad && check_Box_Naked_Subset_Elimination(board, size, 4)],
         // 第二十二优先级：行列显性四数组
-        [() => (state.techniqueSettings?.Row_Col_Naked_Quad) && check_Row_Col_Naked_Subset_Elimination(board, size, 4)]
-    //     [
-    //         () => state.techniqueSettings?.Row_Naked_Quad && check_Row_Naked_Subset_Elimination(board, size, 4),
-    //         () => state.techniqueSettings?.Col_Naked_Quad && check_Col_Naked_Subset_Elimination(board, size, 4)
-    //     ]
+        [() => (state.techniqueSettings?.Row_Col_Naked_Quad) && check_Row_Col_Naked_Subset_Elimination(board, size, 4)],
+        // 第二十二点五优先级：宫行列隐性欠一四数组
+        [() => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Box_Missing_One_Subset_Elimination(board, size, 4)],//缺一门宫隐性欠一四数组
+        [() => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Row_Col_Missing_One_Subset_Elimination(board, size, 4)],//缺一门行列隐性欠一四数组
+
     ];
     do {
         changed = false;
@@ -228,30 +223,103 @@ export function solve_By_Elimination(board, size) {
                                     chinese_name = "行列排除";
                                     score_key = nat ? `行列排除_${nat}` : "行列排除_1";
                                     break;
+                                case 'Missing_One':
+                                    // 判断当前调用的是哪个函数和nat参数
+                                    if (technique.toString().includes('check_Box_Missing_One_Subset_Elimination')) {
+                                        if (nat == 2) {
+                                            chinese_name = "欠一宫数对";
+                                            score_key = "欠一宫数对";
+                                        } else if (nat == 3) {
+                                            chinese_name = "欠一宫三数组";
+                                            score_key = "欠一宫三数组";
+                                        } else if (nat == 4) {
+                                            chinese_name = "欠一宫四数组";
+                                            score_key = "欠一宫四数组";
+                                        }
+                                    } else if (technique.toString().includes('check_Row_Col_Missing_One_Subset_Elimination')) {
+                                        if (nat == 2) {
+                                            chinese_name = "欠一行列数对";
+                                            score_key = "欠一行列数对";
+                                        } else if (nat == 3) {
+                                            chinese_name = "欠一行列三数组";
+                                            score_key = "欠一行列三数组";
+                                        } else if (nat == 4) {
+                                            chinese_name = "欠一行列四数组";
+                                            score_key = "欠一行列四数组";
+                                        }
+                                    }
+                                    break;
+
                                 // case 'Cell_Elimination': chinese_name = "唯余法"; break;
-                                case 'Box_Elimination': chinese_name = "宫排除"; break;
+                                case 'Box_Elimination':
+                                    chinese_name = "宫排除";
+                                    score_key = "宫排除";
+                                    break;
                                 // case 'Row_Col_Elimination': chinese_name = "行列排除"; break;
-                                case 'Box_Block': chinese_name = "宫区块"; break;
-                                case 'Row_Col_Block': chinese_name = "行列区块"; break;
-                                case 'Box_Naked_Pair': chinese_name = "宫显性数对"; break;
-                                case 'Row_Col_Naked_Pair': chinese_name = "行列显性数对"; break;
-                                case 'Box_Naked_Triple': chinese_name = "宫显性三数组"; break;
-                                case 'Row_Col_Naked_Triple': chinese_name = "行列显性三数组"; break;
-                                case 'Box_Naked_Quad': chinese_name = "宫显性四数组"; break;
-                                case 'Row_Col_Naked_Quad': chinese_name = "行列显性四数组"; break;
-                                case 'Box_Hidden_Pair': chinese_name = "宫隐性数对"; break;
-                                case 'Row_Col_Hidden_Pair': chinese_name = "行列隐性数对"; break;
-                                case 'Box_Hidden_Triple': chinese_name = "宫隐性三数组"; break;
-                                case 'Row_Col_Hidden_Triple': chinese_name = "行列隐性三数组"; break;
-                                case 'Box_Hidden_Quad': chinese_name = "宫隐性四数组"; break;
-                                case 'Row_Col_Hidden_Quad': chinese_name = "行列隐性四数组"; break;
-                                case 'Missing_One': chinese_name = "欠一排除"; break;
+                                case 'Box_Block':
+                                    chinese_name = "宫区块";
+                                    score_key = "宫区块";
+                                    break;
+                                case 'Row_Col_Block':
+                                    chinese_name = "行列区块";
+                                    score_key = "行列区块";
+                                    break;
+                                case 'Box_Naked_Pair':
+                                    chinese_name = "宫显性数对";
+                                    score_key = "宫显性数对";
+                                    break;
+                                case 'Row_Col_Naked_Pair':
+                                    chinese_name = "行列显性数对";
+                                    score_key = "行列显性数对";
+                                    break;
+                                case 'Box_Naked_Triple':
+                                    chinese_name = "宫显性三数组";
+                                    score_key = "宫显性三数组";
+                                    break;
+                                case 'Row_Col_Naked_Triple':
+                                    chinese_name = "行列显性三数组";
+                                    score_key = "行列显性三数组";
+                                    break;
+                                case 'Box_Naked_Quad':
+                                    chinese_name = "宫显性四数组";
+                                    score_key = "宫显性四数组";
+                                    break;
+                                case 'Row_Col_Naked_Quad':
+                                    chinese_name = "行列显性四数组";
+                                    score_key = "行列显性四数组";
+                                    break;
+                                case 'Box_Hidden_Pair':
+                                    chinese_name = "宫隐性数对";
+                                    score_key = "宫隐性数对";
+                                    break;
+                                case 'Row_Col_Hidden_Pair':
+                                    chinese_name = "行列隐性数对";
+                                    score_key = "行列隐性数对";
+                                    break;
+                                case 'Box_Hidden_Triple':
+                                    chinese_name = "宫隐性三数组";
+                                    score_key = "宫隐性三数组";
+                                    break;
+                                case 'Row_Col_Hidden_Triple':
+                                    chinese_name = "行列隐性三数组";
+                                    score_key = "行列隐性三数组";
+                                    break;
+                                case 'Box_Hidden_Quad':
+                                    chinese_name = "宫隐性四数组";
+                                    score_key = "宫隐性四数组";
+                                    break;
+                                case 'Row_Col_Hidden_Quad':
+                                    chinese_name = "行列隐性四数组";
+                                    score_key = "行列隐性四数组";
+                                    break;
+                                //
+                                // case 'Missing_One': chinese_name = "欠一排除"; break;
                                 default: chinese_name = null;
                             }
                             
                             if (chinese_name) {
                                 techniqueCounts[chinese_name]++;
-                                total_score += technique_scores[chinese_name] || 0;
+                                total_score += technique_scores[score_key] || 0;
                             }
                         // // 根据技巧名称增加计数器
                         // const techniqueName = technique.toString().match(/state\.techniqueSettings\?\.(\w+)/)?.[1];
@@ -932,7 +1000,7 @@ function check_Row_Col_Elimination(board, size, nat) {
     return has_conflict;
 }
 
-// 检查欠一行列排除（合并函数，专用于缺一门数独）
+// 欠一行列排除（合并函数，专用于缺一门数独）
 function check_Row_Col_Missing_One_Subset_Elimination(board, size, subset_size = 2) {
     // 仅缺一门数独模式有效
     if (state.current_mode !== 'missing') return false;
