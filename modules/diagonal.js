@@ -142,7 +142,7 @@ export function check_diagonal_uniqueness() {
             return isNaN(val) ? Array.from({length: size}, (_, n) => n + 1) : val;
         })
     );
-    const { solutionCount, solution } = solve(board, size, isValid); // 调用主求解函数
+    const { solutionCount, solution } = solve(board, size, isValid_diagonal); // 调用主求解函数
     state.solutionCount = solutionCount;
     if (state.solutionCount === -1) {
         show_result("当前技巧无法解出");
@@ -176,4 +176,35 @@ export function check_diagonal_uniqueness() {
     } else {
         show_result(`当前数独有${state.solutionCount}个解！`);
     }
+}
+
+// 对角线数独专用有效性检测
+export function isValid_diagonal(board, size, row, col, num) {
+    // 行、列检查
+    for (let i = 0; i < size; i++) {
+        if (board[row][i] === num || board[i][col] === num) return false;
+    }
+    // 宫检查
+    const boxSize = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
+    const startRow = Math.floor(row / boxSize[0]) * boxSize[0];
+    const startCol = Math.floor(col / boxSize[1]) * boxSize[1];
+    for (let r = startRow; r < startRow + boxSize[0]; r++) {
+        for (let c = startCol; c < startCol + boxSize[1]; c++) {
+            if (board[r][c] === num) return false;
+        }
+    }
+    // 主对角线检查
+    if (row === col) {
+        for (let i = 0; i < size; i++) {
+            if (i !== row && board[i][i] === num) return false;
+        }
+    }
+    // 副对角线检查
+    if (row + col === size - 1) {
+        for (let i = 0; i < size; i++) {
+            let j = size - 1 - i;
+            if (i !== row && board[i][j] === num) return false;
+        }
+    }
+    return true;
 }

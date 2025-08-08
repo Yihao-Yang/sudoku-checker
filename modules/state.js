@@ -24,6 +24,7 @@ export function set_current_mode(mode) {
         'candidates',
         'missing',
         'consecutive',
+        'diagonal',
         'multi_diagonal'
     ].includes(mode)) {
         state.current_mode = mode;

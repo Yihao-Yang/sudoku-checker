@@ -1,6 +1,7 @@
 import { log_process, show_result } from "../modules/core.js";
 import { solve_By_Elimination } from "./Technique.js";
 import { state } from "../modules/state.js";
+import { get_all_mark_lines, get_cells_on_line } from "../modules/multi_diagonal.js";
 
 /**
  * 从同行同列同宫中移除指定数字的候选数
@@ -9,22 +10,63 @@ export function eliminate_Candidates(board, size, i, j, num) {
     // 处理行和列
     for (let k = 0; k < size; k++) {
         if (Array.isArray(board[i][k])) {
-            board[i][k] = board[i][k].filter(n => n !== num);
+            board[i][k] = board[i][k].filter(candidate_num => candidate_num !== num);
         }
         if (Array.isArray(board[k][j])) {
-            board[k][j] = board[k][j].filter(n => n !== num);
+            board[k][j] = board[k][j].filter(candidate_num => candidate_num !== num);
         }
     }
-    
+
     // 处理宫
-    const boxSize = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
-    const startRow = Math.floor(i / boxSize[0]) * boxSize[0];
-    const startCol = Math.floor(j / boxSize[1]) * boxSize[1];
-    
-    for (let r = startRow; r < startRow + boxSize[0]; r++) {
-        for (let c = startCol; c < startCol + boxSize[1]; c++) {
-            if (Array.isArray(board[r][c])) {
-                board[r][c] = board[r][c].filter(n => n !== num);
+    const box_size = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
+    const start_row = Math.floor(i / box_size[0]) * box_size[0];
+    const start_col = Math.floor(j / box_size[1]) * box_size[1];
+
+    for (let row_idx = start_row; row_idx < start_row + box_size[0]; row_idx++) {
+        for (let col_idx = start_col; col_idx < start_col + box_size[1]; col_idx++) {
+            if (Array.isArray(board[row_idx][col_idx])) {
+                board[row_idx][col_idx] = board[row_idx][col_idx].filter(candidate_num => candidate_num !== num);
+            }
+        }
+    }
+
+    // 斜线相关候选数排除
+    if (typeof state !== 'undefined') {
+        // diagonal模式：主副对角线
+        if (state.current_mode === 'diagonal') {
+            // 主对角线
+            if (i === j) {
+                for (let idx = 0; idx < size; idx++) {
+                    if (Array.isArray(board[idx][idx])) {
+                        board[idx][idx] = board[idx][idx].filter(candidate_num => candidate_num !== num);
+                    }
+                }
+            }
+            // 副对角线
+            if (i + j === size - 1) {
+                for (let idx = 0; idx < size; idx++) {
+                    const row_diag = idx;
+                    const col_diag = size - 1 - idx;
+                    if (Array.isArray(board[row_diag][col_diag])) {
+                        board[row_diag][col_diag] = board[row_diag][col_diag].filter(candidate_num => candidate_num !== num);
+                    }
+                }
+            }
+        }
+        // multi_diagonal模式：所有已画斜线，参照isValid_multi_diagonal逻辑
+        if (state.current_mode === 'multi_diagonal') {
+            const mark_lines = get_all_mark_lines();
+            for (const [start, end] of mark_lines) {
+                const cells = get_cells_on_line(size, start, end);
+                // 找到当前格子是否在这条线上
+                if (cells.some(([r, c]) => r === i && c === j)) {
+                    // 对该线上的所有格子都移除num候选数
+                    for (const [r, c] of cells) {
+                        if (Array.isArray(board[r][c])) {
+                            board[r][c] = board[r][c].filter(candidate_num => candidate_num !== num);
+                        }
+                    }
+                }
             }
         }
     }
@@ -77,30 +119,6 @@ export function isValid(board, size, row, col, num) {
     }
     return true;
 }
-
-// // 修改 isValid 函数以处理黑格
-// export function isValid(board, size, row, col, num) {
-//     // 如果是黑格，直接返回false（不应该被填充）
-//     if (board[row][col] === -1) return false;
-
-//     for (let i = 0; i < size; i++) {
-//         // 跳过黑格
-//         if (board[row][i] !== -1 && board[row][i] === num) return false;
-//         if (board[i][col] !== -1 && board[i][col] === num) return false;
-//     }
-
-//     const boxSize = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
-//     const startRow = Math.floor(row / boxSize[0]) * boxSize[0];
-//     const startCol = Math.floor(col / boxSize[1]) * boxSize[1];
-
-//     for (let r = startRow; r < startRow + boxSize[0]; r++) {
-//         for (let c = startCol; c < startCol + boxSize[1]; c++) {
-//             // 跳过黑格
-//             if (board[r][c] !== -1 && board[r][c] === num) return false;
-//         }
-//     }
-//     return true;
-// }
 
 let board = null;
 let size = 0;

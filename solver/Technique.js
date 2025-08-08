@@ -1,6 +1,7 @@
 import { state } from '../modules/state.js';
 import { show_result, log_process } from '../modules/core.js';
 import { eliminate_Candidates, isEqual, getCombinations, getRowLetter } from './solver_tool.js';
+import { get_all_mark_lines, get_cells_on_line } from "../modules/multi_diagonal.js";
 
 
 export function solve_By_Elimination(board, size) {
@@ -1727,117 +1728,6 @@ function check_Cell_Elimination(board, size, nat = 1) {
     return hasConflict;
 }
 
-// // 检查宫区块排除
-// function check_Box_Block_Elimination(board, size) {
-//     // 宫的大小定义（兼容6宫格）
-//     const boxSize = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
-//     let hasConflict = false;
-    
-//     // 遍历每个宫
-//     for (let boxRow = 0; boxRow < size / boxSize[0]; boxRow++) {
-//         for (let boxCol = 0; boxCol < size / boxSize[1]; boxCol++) {
-//             // 统计每个数字在该宫出现的候选格位置
-//             const numPositions = {};
-//             // 计算宫的起始行列
-//             const startRow = boxRow * boxSize[0];
-//             const startCol = boxCol * boxSize[1];
-            
-//             // 先检查宫中是否已有确定数字
-//             const existingNums = new Set();
-//             for (let r = startRow; r < startRow + boxSize[0]; r++) {
-//                 for (let c = startCol; c < startCol + boxSize[1]; c++) {
-//                     if (typeof board[r][c] === 'number') {
-//                         existingNums.add(board[r][c]);
-//                     }
-//                 }
-//             }
-
-//             for (let num = 1; num <= size; num++) {
-//                 numPositions[num] = [];
-//                 // 如果数字已存在，跳过统计
-//                 if (existingNums.has(num)) continue;
-                
-//                 for (let r = startRow; r < startRow + boxSize[0]; r++) {
-//                     for (let c = startCol; c < startCol + boxSize[1]; c++) {
-//                         const cell = board[r][c];
-//                         if (Array.isArray(cell) && cell.includes(num)) {
-//                             numPositions[num].push([r, c]);
-//                         }
-//                     }
-//                 }
-
-//                 // 区块排除法逻辑
-//                 if (numPositions[num].length > 1) {
-//                     // 检查是否全部在同一行
-//                     const allSameRow = numPositions[num].every(([r, _]) => r === numPositions[num][0][0]);
-//                     // 检查是否全部在同一列
-//                     const allSameCol = numPositions[num].every(([_, c]) => c === numPositions[num][0][1]);
-
-//                     if (allSameRow) {
-//                         const targetRow = numPositions[num][0][0];
-//                         let excludedCells = [];
-                        
-//                         // 删除该行其他宫中该数字的候选
-//                         for (let col = 0; col < size; col++) {
-//                             if (col < startCol || col >= startCol + boxSize[1]) {
-//                                 const cell = board[targetRow][col];
-//                                 if (Array.isArray(cell) && cell.includes(num)) {
-//                                     board[targetRow][col] = cell.filter(n => n !== num);
-//                                     excludedCells.push(`${getRowLetter(targetRow+1)}${col+1}`);
-//                                 }
-//                             }
-//                         }
-
-//                         if (excludedCells.length > 0) {
-//                             const blockCells = numPositions[num].map(pos => `${getRowLetter(pos[0]+1)}${pos[1]+1}`).join('、');
-//                             if (!state.silentMode) log_process(`[宫区块排除] ${blockCells}构成${num}区块，排除${excludedCells.join('、')}的${num}`);
-//                             return;
-//                         }
-//                     }
-
-//                     if (allSameCol) {
-//                         const targetCol = numPositions[num][0][1];
-//                         let excludedCells = [];
-//                         // 删除该列其他宫中该数字的候选
-//                         for (let row = 0; row < size; row++) {
-//                             if (row < startRow || row >= startRow + boxSize[0]) {
-//                                 const cell = board[row][targetCol];
-//                                 if (Array.isArray(cell) && cell.includes(num)) {
-//                                     board[row][targetCol] = cell.filter(n => n !== num);
-//                                     excludedCells.push(`${getRowLetter(row+1)}${targetCol+1}`);
-//                                 }
-//                             }
-//                         }
-//                         if (excludedCells.length > 0) {
-//                             const blockCells = numPositions[num].map(pos => `${getRowLetter(pos[0]+1)}${pos[1]+1}`).join('、');
-//                             if (!state.silentMode) log_process(`[宫区块排除] ${blockCells}构成${num}区块，排除${excludedCells.join('、')}的${num}`);
-//                             return;
-//                         }
-//                     }
-//                 }
-
-//                 // 原有单一候选数逻辑
-//                 if (numPositions[num].length === 1) {
-//                     // const [row, col] = numPositions[num][0];
-//                     // const cell = board[row][col];
-//                     // if (Array.isArray(cell) && cell.includes(num)) {
-//                     //     board[row][col] = num;
-//                     //     if (!state.silentMode) log_process(`[宫排除] ${getRowLetter(row+1)}${col+1}=${num}`);
-//                     //     eliminate_Candidates(board, size, row, col, num);
-//                     // }
-//                 } else if (numPositions[num].length === 0) {
-//                     hasConflict = true;
-//                     const boxNum = boxRow * (size / boxSize[1]) + boxCol + 1;
-//                     if (!state.silentMode) log_process(`[冲突] ${boxNum}宫中数字${num}无可填入位置，无解`);
-//                     // if (!state.silentMode) log_process(`[冲突] ${boxRow*3+boxCol+1}宫中数字${num}无可填入位置，无解`);
-//                     return true;
-//                 }
-//             }
-//         }
-//     }
-//     return hasConflict;
-// }
-
 // 检查宫区块排除
 function check_Box_Block_Elimination(board, size) {
     // 宫的大小定义（兼容6宫格）
@@ -1989,6 +1879,191 @@ function check_Box_Block_Elimination(board, size) {
                         // 检查是否全部在同一列
                         const all_same_col = num_positions[num].every(([_, c]) => c === num_positions[num][0][1]);
 
+                        // 对角线模式：检查是否在同一条对角线上
+                        let all_same_diagonal = false;
+                        if (state.current_mode === 'diagonal') {
+                            const is_main_diagonal = num_positions[num].every(([r, c]) => r === c);
+                            const is_anti_diagonal = num_positions[num].every(([r, c]) => r + c === size - 1);
+                            all_same_diagonal = is_main_diagonal || is_anti_diagonal;
+                        }
+
+                        // 新增：对角线数独的特殊区块逻辑
+                        if (state.current_mode === 'diagonal' && !all_same_diagonal) {
+                            // 检查数字是否既有在对角线上又有不在对角线上
+                            const has_diagonal = num_positions[num].some(([r, c]) => r === c || r + c === size - 1);
+                            const has_non_diagonal = num_positions[num].some(([r, c]) => r !== c && r + c !== size - 1);
+
+                            if (has_diagonal && has_non_diagonal) {
+                                // 检查不在对角线上的数字是否在同一行
+                                const non_diagonal_positions = num_positions[num].filter(([r, c]) => r !== c && r + c !== size - 1);
+                                const all_same_row_non_diagonal = non_diagonal_positions.every(([r, _]) => r === non_diagonal_positions[0][0]);
+                                const all_same_col_non_diagonal = non_diagonal_positions.every(([_, c]) => c === non_diagonal_positions[0][1]);
+
+
+                                if (all_same_row_non_diagonal) {
+                                    const target_row = non_diagonal_positions[0][0];
+                                    // 检查在对角线上的数字是否在同一条对角线上
+                                    const diagonal_positions = num_positions[num].filter(([r, c]) => r === c || r + c === size - 1);
+                                    const is_main_diagonal = diagonal_positions.every(([r, c]) => r === c);
+                                    const is_anti_diagonal = diagonal_positions.every(([r, c]) => r + c === size - 1);
+
+                                    if (is_main_diagonal || is_anti_diagonal) {
+                                        // 找到该行和该对角线重叠的格子
+                                        const overlapping_cells = [];
+                                        for (let c = 0; c < size; c++) {
+                                            const r = target_row;
+                                            if (is_main_diagonal && r === c) {
+                                                overlapping_cells.push([r, c]);
+                                            } else if (is_anti_diagonal && r + c === size - 1) {
+                                                overlapping_cells.push([r, c]);
+                                            }
+                                        }
+
+                                        // 检查这些格子是否不在本宫中
+                                        let excluded_cells = [];
+                                        for (const [r, c] of overlapping_cells) {
+                                            const is_in_box = (r >= start_row && r < start_row + box_size[0] && c >= start_col && c < start_col + box_size[1]);
+                                            if (!is_in_box) {
+                                                const cell = board[r][c];
+                                                if (Array.isArray(cell) && cell.includes(num)) {
+                                                    board[r][c] = cell.filter(n => n !== num);
+                                                    excluded_cells.push(`${getRowLetter(r+1)}${c+1}`);
+                                                }
+                                            }
+                                        }
+
+                                        if (excluded_cells.length > 0) {
+                                            const block_cells = num_positions[num].map(pos => `${getRowLetter(pos[0]+1)}${pos[1]+1}`).join('、');
+                                            if (!state.silentMode) {
+                                                log_process(`[特殊对角线宫区块排除] ${block_cells}构成${num}区块，排除${excluded_cells.join('、')}的${num}`);
+                                            }
+                                            return;
+                                        }
+                                    }
+                                }
+
+                                if (all_same_col_non_diagonal) {
+                                    const target_col = non_diagonal_positions[0][1];
+                                    // 检查在对角线上的数字是否在同一条对角线上
+                                    const diagonal_positions = num_positions[num].filter(([r, c]) => r === c || r + c === size - 1);
+                                    const is_main_diagonal = diagonal_positions.every(([r, c]) => r === c);
+                                    const is_anti_diagonal = diagonal_positions.every(([r, c]) => r + c === size - 1);
+
+                                    if (is_main_diagonal || is_anti_diagonal) {
+                                        // 找到该列和该对角线重叠的格子
+                                        const overlapping_cells = [];
+                                        for (let r = 0; r < size; r++) {
+                                            const c = target_col;
+                                            if (is_main_diagonal && r === c) {
+                                                overlapping_cells.push([r, c]);
+                                            } else if (is_anti_diagonal && r + c === size - 1) {
+                                                overlapping_cells.push([r, c]);
+                                            }
+                                        }
+
+                                        // 检查这些格子是否不在本宫中
+                                        let excluded_cells = [];
+                                        for (const [r, c] of overlapping_cells) {
+                                            const is_in_box = (r >= start_row && r < start_row + box_size[0] && c >= start_col && c < start_col + box_size[1]);
+                                            if (!is_in_box) {
+                                                const cell = board[r][c];
+                                                if (Array.isArray(cell) && cell.includes(num)) {
+                                                    board[r][c] = cell.filter(n => n !== num);
+                                                    excluded_cells.push(`${getRowLetter(r+1)}${c+1}`);
+                                                }
+                                            }
+                                        }
+
+                                        if (excluded_cells.length > 0) {
+                                            const block_cells = num_positions[num].map(pos => `${getRowLetter(pos[0]+1)}${pos[1]+1}`).join('、');
+                                            if (!state.silentMode) {
+                                                log_process(`[特殊对角线宫区块排除] ${block_cells}构成${num}区块，排除${excluded_cells.join('、')}的${num}`);
+                                            }
+                                            return;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // 多斜线模式：检查是否在同一条手动画的斜线上
+                        let all_same_multi_diagonal = false;
+                        let line_cells = [];
+                        if (state.current_mode === 'multi_diagonal') {
+                            const mark_lines = get_all_mark_lines(); // 获取所有手动画的斜线
+                            for (const [start, end] of mark_lines) {
+                                const cells = get_cells_on_line(size, start, end); // 获取斜线上的所有格子
+                                // 检查当前数字的所有候选格是否都在同一条斜线上
+                                if (num_positions[num].every(([r, c]) => cells.some(([cr, cc]) => cr === r && cc === c))) {
+                                    all_same_multi_diagonal = true;
+                                    line_cells = cells;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // 新增：斜线数独的特殊区块逻辑
+                        if (state.current_mode === 'multi_diagonal') {
+                            // 检查数字是否既有在斜线上又有不在斜线上
+                            const mark_lines = get_all_mark_lines();
+                            for (const [start, end] of mark_lines) {
+                                const line_cells = get_cells_on_line(size, start, end);
+                                const is_on_line = pos => line_cells.some(([r, c]) => r === pos[0] && c === pos[1]);
+                                const has_line = num_positions[num].some(is_on_line);
+                                const has_non_line = num_positions[num].some(pos => !is_on_line(pos));
+                                if (has_line && has_non_line) {
+                                    // 检查不在斜线上的数字是否在同一行或同一列
+                                    const non_line_positions = num_positions[num].filter(pos => !is_on_line(pos));
+                                    const all_same_row_non_line = non_line_positions.every(([r, _]) => r === non_line_positions[0][0]);
+                                    const all_same_col_non_line = non_line_positions.every(([_, c]) => c === non_line_positions[0][1]);
+                                    if (all_same_row_non_line || all_same_col_non_line) {
+                                        // 检查在斜线上的数字是否都在同一条斜线上
+                                        const line_positions = num_positions[num].filter(is_on_line);
+                                        const all_on_this_line = line_positions.length > 0 && line_positions.every(is_on_line);
+                                        if (all_on_this_line) {
+                                            // 找到该行/列和该斜线重叠的格子
+                                            let overlapping_cells = [];
+                                            if (all_same_row_non_line) {
+                                                const r = non_line_positions[0][0];
+                                                for (let c = 0; c < size; c++) {
+                                                    if (is_on_line([r, c])) {
+                                                        overlapping_cells.push([r, c]);
+                                                    }
+                                                }
+                                            } else if (all_same_col_non_line) {
+                                                const c = non_line_positions[0][1];
+                                                for (let r = 0; r < size; r++) {
+                                                    if (is_on_line([r, c])) {
+                                                        overlapping_cells.push([r, c]);
+                                                    }
+                                                }
+                                            }
+                                            // 检查这些格子是否不在本宫中
+                                            let excluded_cells = [];
+                                            for (const [r, c] of overlapping_cells) {
+                                                const is_in_box = (r >= start_row && r < start_row + box_size[0] && c >= start_col && c < start_col + box_size[1]);
+                                                if (!is_in_box) {
+                                                    const cell = board[r][c];
+                                                    if (Array.isArray(cell) && cell.includes(num)) {
+                                                        board[r][c] = cell.filter(n => n !== num);
+                                                        excluded_cells.push(`${getRowLetter(r+1)}${c+1}`);
+                                                    }
+                                                }
+                                            }
+                                            if (excluded_cells.length > 0) {
+                                                const block_cells = num_positions[num].map(pos => `${getRowLetter(pos[0]+1)}${pos[1]+1}`).join('、');
+                                                if (!state.silentMode) {
+                                                    log_process(`[特殊斜线宫区块排除] ${block_cells}构成${num}区块，排除${excluded_cells.join('、')}的${num}`);
+                                                }
+                                                return;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // 宫区块行排除逻辑
                         if (all_same_row) {
                             const target_row = num_positions[num][0][0];
                             let excluded_cells = [];
@@ -2011,6 +2086,7 @@ function check_Box_Block_Elimination(board, size) {
                             }
                         }
 
+                        // 宫区块列排除逻辑
                         if (all_same_col) {
                             const target_col = num_positions[num][0][1];
                             let excluded_cells = [];
@@ -2030,6 +2106,59 @@ function check_Box_Block_Elimination(board, size) {
                                 return;
                             }
                         }
+
+                        // 宫区块对角线排除逻辑
+                        if (all_same_diagonal) {
+                            let excluded_cells = [];
+                            // 判断当前数字是在主对角线还是副对角线
+                            const is_main_diagonal = num_positions[num].every(([r, c]) => r === c);
+                            const is_anti_diagonal = num_positions[num].every(([r, c]) => r + c === size - 1);
+                            for (let r = 0; r < size; r++) {
+                                for (let c = 0; c < size; c++) {
+                                    // 只排除当前数字所在的那条对角线
+                                    let is_in_diagonal = false;
+                                    if (is_main_diagonal) {
+                                        is_in_diagonal = (r === c);
+                                    } else if (is_anti_diagonal) {
+                                        is_in_diagonal = (r + c === size - 1);
+                                    }
+                                    const is_in_box = (r >= start_row && r < start_row + box_size[0] && c >= start_col && c < start_col + box_size[1]);
+                                    if (is_in_diagonal && !is_in_box) {
+                                        const cell = board[r][c];
+                                        if (Array.isArray(cell) && cell.includes(num)) {
+                                            board[r][c] = cell.filter(n => n !== num);
+                                            excluded_cells.push(`${getRowLetter(r+1)}${c+1}`);
+                                        }
+                                    }
+                                }
+                            }
+                            if (excluded_cells.length > 0) {
+                                const block_cells = num_positions[num].map(pos => `${getRowLetter(pos[0]+1)}${pos[1]+1}`).join('、');
+                                if (!state.silentMode) log_process(`[对角线宫区块排除] ${block_cells}构成${num}区块，排除对角线上${excluded_cells.join('、')}的${num}`);
+                                return;
+                            }
+                        }
+
+                        // 宫区块斜线排除逻辑
+                        if (all_same_multi_diagonal && line_cells.length > 0) {
+                            let excluded_cells = [];
+                            for (const [r, c] of line_cells) {
+                                // 检查是否在当前宫中
+                                const is_in_box = (r >= start_row && r < start_row + box_size[0] && c >= start_col && c < start_col + box_size[1]);
+                                if (!is_in_box) {
+                                    const cell = board[r][c];
+                                    if (Array.isArray(cell) && cell.includes(num)) {
+                                        board[r][c] = cell.filter(n => n !== num);
+                                        excluded_cells.push(`${getRowLetter(r+1)}${c+1}`);
+                                    }
+                                }
+                            }
+                            if (excluded_cells.length > 0) {
+                                const block_cells = num_positions[num].map(pos => `${getRowLetter(pos[0]+1)}${pos[1]+1}`).join('、');
+                                if (!state.silentMode) log_process(`[斜线宫区块排除] ${block_cells}构成${num}区块，排除斜线上${excluded_cells.join('、')}的${num}`);
+                                return;
+                            }
+                        }
                     }
 
                     // 原有单一候选数逻辑
@@ -2045,340 +2174,6 @@ function check_Box_Block_Elimination(board, size) {
     }
     return has_conflict;
 }
-
-
-
-// // 行区块排除
-// function check_Row_Block_Elimination(board, size) {
-//     // 宫的大小定义（兼容6宫格）
-//     const box_size = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
-//     let has_conflict = false;
-    
-//     // 如果是缺一门数独模式，执行特殊排除逻辑
-//     if (state.current_mode === 'missing') {
-//         for (let row = 0; row < size; row++) {
-//             // 统计每个数字在该行出现的候选格位置
-//             const num_positions = {};
-//             const missing_nums = [];
-//             const existing_nums = new Set();
-
-//             // 1. 先收集行中已存在的数字
-//             for (let col = 0; col < size; col++) {
-//                 if (typeof board[row][col] === 'number' && board[row][col] !== -1) {
-//                     existing_nums.add(board[row][col]);
-//                 }
-//             }
-
-//             // 2. 统计数字在行中的候选格位置（跳过黑格和已存在的数字）
-//             for (let num = 1; num <= size; num++) {
-//                 if (existing_nums.has(num)) continue;
-//                 num_positions[num] = [];
-                
-//                 for (let col = 0; col < size; col++) {
-//                     if (board[row][col] === -1) continue;
-//                     if (Array.isArray(board[row][col]) && board[row][col].includes(num)) {
-//                         num_positions[num].push(col);
-//                     }
-//                 }
-                
-//                 // 记录没有可填位置的数字
-//                 if (num_positions[num].length === 0) {
-//                     missing_nums.push(num);
-//                 }
-//             }
-
-//             // 3. 检查是否有欠一数对组标记
-//             const subset_info = state.row_missing_subsets[`row_${row}`];
-
-//             // 4. 如果满足条件（有缺失数字或已有数对组标记）
-//             if (missing_nums.length === 1 || subset_info) {
-//                 // 对其他数字执行行区块排除
-//                 for (let num = 1; num <= size; num++) {
-//                     if (missing_nums.includes(num)) continue;
-//                     // 如果有欠一数对组标记，跳过标记中的数字
-//                     if (subset_info && subset_info.nums.includes(num)) continue;
-//                     if (!num_positions[num]) continue;
-                    
-//                     // 行区块排除逻辑
-//                     if (num_positions[num].length > 1) {
-//                         // 检查这些候选格是否都在同一个宫内
-//                         const first_box_col = Math.floor(num_positions[num][0] / box_size[1]);
-//                         const all_same_box = num_positions[num].every(col => 
-//                             Math.floor(col / box_size[1]) === first_box_col
-//                         );
-
-//                         if (all_same_box) {
-//                             const box_col = first_box_col;
-//                             const start_col = box_col * box_size[1];
-//                             const box_row = Math.floor(row / box_size[0]);
-//                             const start_row = box_row * box_size[0];
-//                             let excluded_cells = [];
-
-//                             // 从该宫的其他行中排除该数字
-//                             for (let r = start_row; r < start_row + box_size[0]; r++) {
-//                                 if (r === row) continue; // 跳过当前行
-//                                 for (let c = start_col; c < start_col + box_size[1]; c++) {
-//                                     const cell = board[r][c];
-//                                     if (Array.isArray(cell) && cell.includes(num)) {
-//                                         board[r][c] = cell.filter(n => n !== num);
-//                                         excluded_cells.push(`${getRowLetter(r+1)}${c+1}`);
-//                                     }
-//                                 }
-//                             }
-
-//                             if (excluded_cells.length > 0) {
-//                                 const block_cells = num_positions[num].map(col => 
-//                                     `${getRowLetter(row+1)}${col+1}`).join('、');
-//                                 if (!state.silentMode) {
-//                                     log_process(`[行区块排除] ${block_cells}构成${num}区块，排除${excluded_cells.join('、')}的${num}`);
-//                                 }
-//                                 return;
-//                             }
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-//         return has_conflict;
-//     } else {
-//         // 正常数独模式下的原有逻辑
-//         for (let row = 0; row < size; row++) {
-//             // 统计每个数字在该行出现的候选格位置
-//             const num_positions = {};
-//             // 先检查行中是否已有确定数字
-//             const existing_nums = new Set();
-//             for (let col = 0; col < size; col++) {
-//                 if (typeof board[row][col] === 'number') {
-//                     existing_nums.add(board[row][col]);
-//                 }
-//             }
-
-//             for (let num = 1; num <= size; num++) {
-//                 num_positions[num] = [];
-//                 // 如果数字已存在，跳过统计
-//                 if (existing_nums.has(num)) continue;
-
-//                 for (let col = 0; col < size; col++) {
-//                     const cell = board[row][col];
-//                     if (Array.isArray(cell) && cell.includes(num)) {
-//                         num_positions[num].push(col);
-//                     }
-//                 }
-
-//                 // 行区块排除逻辑
-//                 if (num_positions[num].length > 1) {
-//                     // 检查这些候选格是否都在同一个宫内
-//                     const first_box_col = Math.floor(num_positions[num][0] / box_size[1]);
-//                     const all_same_box = num_positions[num].every(col => 
-//                         Math.floor(col / box_size[1]) === first_box_col
-//                     );
-
-//                     if (all_same_box) {
-//                         const box_col = first_box_col;
-//                         const start_col = box_col * box_size[1];
-//                         const box_row = Math.floor(row / box_size[0]);
-//                         const start_row = box_row * box_size[0];
-//                         let excluded_cells = [];
-
-//                         // 从该宫的其他行中排除该数字
-//                         for (let r = start_row; r < start_row + box_size[0]; r++) {
-//                             if (r === row) continue;
-//                             for (let c = start_col; c < start_col + box_size[1]; c++) {
-//                                 const cell = board[r][c];
-//                                 if (Array.isArray(cell) && cell.includes(num)) {
-//                                     board[r][c] = cell.filter(n => n !== num);
-//                                     excluded_cells.push(`${getRowLetter(r+1)}${c+1}`);
-//                                 }
-//                             }
-//                         }
-
-//                         if (excluded_cells.length > 0) {
-//                             const block_cells = num_positions[num].map(col => 
-//                                 `${getRowLetter(row+1)}${col+1}`).join('、');
-//                             if (!state.silentMode) {
-//                                 log_process(`[行区块排除] ${block_cells}构成${num}区块，排除${excluded_cells.join('、')}的${num}`);
-//                             }
-//                             return;
-//                         }
-//                     }
-//                 }
-
-//                 if (num_positions[num].length === 0) {
-//                     has_conflict = true;
-//                     if (!state.silentMode) log_process(`[冲突] ${getRowLetter(row+1)}行数字${num}无可填入位置，无解`);
-//                     return true;
-//                 }
-//             }
-//         }
-//     }
-//     return has_conflict;
-// }
-
-// // 列区块排除
-// function check_Col_Block_Elimination(board, size) {
-//     // 宫的大小定义（兼容6宫格）
-//     const box_size = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
-//     let has_conflict = false;
-    
-//     // 如果是缺一门数独模式，执行特殊排除逻辑
-//     if (state.current_mode === 'missing') {
-//         for (let col = 0; col < size; col++) {
-//             // 统计每个数字在该列出现的候选格位置
-//             const num_positions = {};
-//             const missing_nums = [];
-//             const existing_nums = new Set();
-
-//             // 1. 先收集列中已存在的数字
-//             for (let row = 0; row < size; row++) {
-//                 if (typeof board[row][col] === 'number' && board[row][col] !== -1) {
-//                     existing_nums.add(board[row][col]);
-//                 }
-//             }
-
-//             // 2. 统计数字在列中的候选格位置（跳过黑格和已存在的数字）
-//             for (let num = 1; num <= size; num++) {
-//                 if (existing_nums.has(num)) continue;
-//                 num_positions[num] = [];
-                
-//                 for (let row = 0; row < size; row++) {
-//                     if (board[row][col] === -1) continue;
-//                     if (Array.isArray(board[row][col]) && board[row][col].includes(num)) {
-//                         num_positions[num].push(row);
-//                     }
-//                 }
-                
-//                 // 记录没有可填位置的数字
-//                 if (num_positions[num].length === 0) {
-//                     missing_nums.push(num);
-//                 }
-//             }
-
-//             // 3. 检查是否有欠一数对组标记
-//             const subset_info = state.col_missing_subsets[`col_${col}`];
-
-//             // 4. 如果满足条件（有缺失数字或已有数对组标记）
-//             if (missing_nums.length === 1 || subset_info) {
-//                 // 对其他数字执行列区块排除
-//                 for (let num = 1; num <= size; num++) {
-//                     if (missing_nums.includes(num)) continue;
-//                     // 如果有欠一数对组标记，跳过标记中的数字
-//                     if (subset_info && subset_info.nums.includes(num)) continue;
-//                     if (!num_positions[num]) continue;
-                    
-//                     // 列区块排除逻辑
-//                     if (num_positions[num].length > 1) {
-//                         // 检查这些候选格是否都在同一个宫内
-//                         const first_box_row = Math.floor(num_positions[num][0] / box_size[0]);
-//                         const all_same_box = num_positions[num].every(row =>
-//                             Math.floor(row / box_size[0]) === first_box_row
-//                         );
-                        
-//                         if (all_same_box) {
-//                             const box_row = first_box_row;
-//                             const start_row = box_row * box_size[0];
-//                             const box_col = Math.floor(col / box_size[1]);
-//                             const start_col = box_col * box_size[1];
-//                             let excluded_cells = [];
-                            
-//                             // 从该宫的其他列中排除该数字
-//                             for (let c = start_col; c < start_col + box_size[1]; c++) {
-//                                 if (c === col) continue;
-//                                 for (let r = start_row; r < start_row + box_size[0]; r++) {
-//                                     const cell = board[r][c];
-//                                     if (Array.isArray(cell) && cell.includes(num)) {
-//                                         board[r][c] = cell.filter(n => n !== num);
-//                                         excluded_cells.push(`${getRowLetter(r+1)}${c+1}`);
-//                                     }
-//                                 }
-//                             }
-                            
-//                             if (excluded_cells.length > 0) {
-//                                 const block_cells = num_positions[num].map(row => 
-//                                     `${getRowLetter(row+1)}${col+1}`).join('、');
-//                                 if (!state.silentMode) {
-//                                     log_process(`[列区块排除] ${block_cells}构成${num}区块，排除${excluded_cells.join('、')}的${num}`);
-//                                 }
-//                                 return;
-//                             }
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-//         return has_conflict;
-//     } else {
-//         // 正常数独模式下的原有逻辑
-//         for (let col = 0; col < size; col++) {
-//             // 统计每个数字在该列出现的候选格位置
-//             const num_positions = {};
-//             // 先检查列中是否已有确定数字
-//             const existing_nums = new Set();
-//             for (let row = 0; row < size; row++) {
-//                 if (typeof board[row][col] === 'number') {
-//                     existing_nums.add(board[row][col]);
-//                 }
-//             }
-
-//             for (let num = 1; num <= size; num++) {
-//                 num_positions[num] = [];
-//                 // 如果数字已存在，跳过统计
-//                 if (existing_nums.has(num)) continue;
-
-//                 for (let row = 0; row < size; row++) {
-//                     const cell = board[row][col];
-//                     if (Array.isArray(cell) && cell.includes(num)) {
-//                         num_positions[num].push(row);
-//                     }
-//                 }
-
-//                 // 列区块排除逻辑
-//                 if (num_positions[num].length > 1) {
-//                     // 检查这些候选格是否都在同一个宫内
-//                     const first_box_row = Math.floor(num_positions[num][0] / box_size[0]);
-//                     const all_same_box = num_positions[num].every(row =>
-//                         Math.floor(row / box_size[0]) === first_box_row
-//                     );
-                    
-//                     if (all_same_box) {
-//                         const box_row = first_box_row;
-//                         const start_row = box_row * box_size[0];
-//                         const box_col = Math.floor(col / box_size[1]);
-//                         const start_col = box_col * box_size[1];
-//                         let excluded_cells = [];
-                        
-//                         // 从该宫的其他列中排除该数字
-//                         for (let c = start_col; c < start_col + box_size[1]; c++) {
-//                             if (c === col) continue;
-//                             for (let r = start_row; r < start_row + box_size[0]; r++) {
-//                                 const cell = board[r][c];
-//                                 if (Array.isArray(cell) && cell.includes(num)) {
-//                                     board[r][c] = cell.filter(n => n !== num);
-//                                     excluded_cells.push(`${getRowLetter(r+1)}${c+1}`);
-//                                 }
-//                             }
-//                         }
-                        
-//                         if (excluded_cells.length > 0) {
-//                             const block_cells = num_positions[num].map(row => 
-//                                 `${getRowLetter(row+1)}${col+1}`).join('、');
-//                             if (!state.silentMode) {
-//                                 log_process(`[列区块排除] ${block_cells}构成${num}区块，排除${excluded_cells.join('、')}的${num}`);
-//                             }
-//                             return;
-//                         }
-//                     }
-//                 }
-
-//                 if (num_positions[num].length === 0) {
-//                     has_conflict = true;
-//                     if (!state.silentMode) log_process(`[冲突] ${col+1}列数字${num}无可填入位置，无解`);
-//                     return true;
-//                 }
-//             }
-//         }
-//     }
-//     return has_conflict;
-// }
 
 // 检查行列区块排除（合并函数）
 function check_Row_Col_Block_Elimination(board, size) {
@@ -2614,6 +2409,108 @@ function check_Row_Col_Block_Elimination(board, size) {
                             }
                             return;
                         }
+
+                    }
+
+                    // 对角线数独的特殊区块逻辑（行区块）
+                    if (state.current_mode === 'diagonal') {
+                        // 检查数字是否既有在对角线上又有不在对角线上
+                        const has_diagonal = num_positions[num].some(col => row === col || row + col === size - 1);
+                        const has_non_diagonal = num_positions[num].some(col => row !== col && row + col !== size - 1);
+
+                        if (has_diagonal && has_non_diagonal) {
+                            // 检查不在对角线上的数字是否在同一列
+                            const non_diagonal_positions = num_positions[num].filter(col => row !== col && row + col !== size - 1);
+                            const all_same_col_non_diagonal = non_diagonal_positions.every(col => col === non_diagonal_positions[0]);
+                            if (all_same_col_non_diagonal) {
+                                const target_col = non_diagonal_positions[0];
+                                // 检查在对角线上的数字是否在同一条对角线上
+                                const diagonal_positions = num_positions[num].filter(col => row === col || row + col === size - 1);
+                                const is_main_diagonal = diagonal_positions.every(col => row === col);
+                                const is_anti_diagonal = diagonal_positions.every(col => row + col === size - 1);
+
+                                if (is_main_diagonal || is_anti_diagonal) {
+                                    // 找到该列和该对角线重叠的格子
+                                    let overlapping_cells = [];
+                                    for (let r = 0; r < size; r++) {
+                                        const c = target_col;
+                                        if (is_main_diagonal && r === c) {
+                                            overlapping_cells.push([r, c]);
+                                        } else if (is_anti_diagonal && r + c === size - 1) {
+                                            overlapping_cells.push([r, c]);
+                                        }
+                                    }
+                                    // 检查这些格子是否不在本行
+                                    let excluded_cells = [];
+                                    for (const [r, c] of overlapping_cells) {
+                                        if (r !== row) {
+                                            const cell = board[r][c];
+                                            if (Array.isArray(cell) && cell.includes(num)) {
+                                                board[r][c] = cell.filter(n => n !== num);
+                                                excluded_cells.push(`${getRowLetter(r+1)}${c+1}`);
+                                            }
+                                        }
+                                    }
+                                    if (excluded_cells.length > 0) {
+                                        const block_cells = num_positions[num].map(col => `${getRowLetter(row+1)}${col+1}`).join('、');
+                                        if (!state.silentMode) {
+                                            log_process(`[特殊对角线行区块排除] ${block_cells}构成${num}区块，排除${excluded_cells.join('、')}的${num}`);
+                                        }
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 斜线数独的特殊区块逻辑（行区块）
+                    if (state.current_mode === 'multi_diagonal') {
+                        const mark_lines = get_all_mark_lines();
+                        for (const [start, end] of mark_lines) {
+                            const line_cells = get_cells_on_line(size, start, end);
+                            const is_on_line = pos => line_cells.some(([r, c]) => r === row && c === pos);
+                            const has_line = num_positions[num].some(is_on_line);
+                            const has_non_line = num_positions[num].some(col => !is_on_line(col));
+                            if (has_line && has_non_line) {
+                                // 检查不在斜线上的数字是否在同一列
+                                const non_line_positions = num_positions[num].filter(col => !is_on_line(col));
+                                const all_same_col_non_line = non_line_positions.every(col => col === non_line_positions[0]);
+                                if (all_same_col_non_line) {
+                                    const target_col = non_line_positions[0];
+                                    // 检查在斜线上的数字是否都在同一条斜线上
+                                    const line_positions = num_positions[num].filter(is_on_line);
+                                    const all_on_this_line = line_positions.length > 0 && line_positions.every(is_on_line);
+                                    if (all_on_this_line) {
+                                        // 找到该列和该斜线重叠的格子
+                                        let overlapping_cells = [];
+                                        for (let r = 0; r < size; r++) {
+                                            const c = target_col;
+                                            if (line_cells.some(([lr, lc]) => lr === r && lc === c)) {
+                                                overlapping_cells.push([r, c]);
+                                            }
+                                        }
+                                        // 检查这些格子是否不在本行
+                                        let excluded_cells = [];
+                                        for (const [r, c] of overlapping_cells) {
+                                            if (r !== row) {
+                                                const cell = board[r][c];
+                                                if (Array.isArray(cell) && cell.includes(num)) {
+                                                    board[r][c] = cell.filter(n => n !== num);
+                                                    excluded_cells.push(`${getRowLetter(r+1)}${c+1}`);
+                                                }
+                                            }
+                                        }
+                                        if (excluded_cells.length > 0) {
+                                            const block_cells = num_positions[num].map(col => `${getRowLetter(row+1)}${col+1}`).join('、');
+                                            if (!state.silentMode) {
+                                                log_process(`[特殊斜线行区块排除] ${block_cells}构成${num}区块，排除${excluded_cells.join('、')}的${num}`);
+                                            }
+                                            return;
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -2682,6 +2579,107 @@ function check_Row_Col_Block_Elimination(board, size) {
                                 log_process(`[列区块排除] ${block_cells}构成${num}区块，排除${excluded_cells.join('、')}的${num}`);
                             }
                             return;
+                        }
+                    }
+
+                    // 对角线数独的特殊区块逻辑（列区块）
+                    if (state.current_mode === 'diagonal') {
+                        // 检查数字是否既有在对角线上又有不在对角线上
+                        const has_diagonal = num_positions[num].some(row => row === col || row + col === size - 1);
+                        const has_non_diagonal = num_positions[num].some(row => row !== col && row + col !== size - 1);
+
+                        if (has_diagonal && has_non_diagonal) {
+                            // 检查不在对角线上的数字是否在同一行
+                            const non_diagonal_positions = num_positions[num].filter(row => row !== col && row + col !== size - 1);
+                            const all_same_row_non_diagonal = non_diagonal_positions.every(row => row === non_diagonal_positions[0]);
+                            if (all_same_row_non_diagonal) {
+                                const target_row = non_diagonal_positions[0];
+                                // 检查在对角线上的数字是否在同一条对角线上
+                                const diagonal_positions = num_positions[num].filter(row => row === col || row + col === size - 1);
+                                const is_main_diagonal = diagonal_positions.every(row => row === col);
+                                const is_anti_diagonal = diagonal_positions.every(row => row + col === size - 1);
+
+                                if (is_main_diagonal || is_anti_diagonal) {
+                                    // 找到该行和该对角线重叠的格子
+                                    let overlapping_cells = [];
+                                    for (let c = 0; c < size; c++) {
+                                        const r = target_row;
+                                        if (is_main_diagonal && r === c) {
+                                            overlapping_cells.push([r, c]);
+                                        } else if (is_anti_diagonal && r + c === size - 1) {
+                                            overlapping_cells.push([r, c]);
+                                        }
+                                    }
+                                    // 检查这些格子是否不在本列
+                                    let excluded_cells = [];
+                                    for (const [r, c] of overlapping_cells) {
+                                        if (c !== col) {
+                                            const cell = board[r][c];
+                                            if (Array.isArray(cell) && cell.includes(num)) {
+                                                board[r][c] = cell.filter(n => n !== num);
+                                                excluded_cells.push(`${getRowLetter(r+1)}${c+1}`);
+                                            }
+                                        }
+                                    }
+                                    if (excluded_cells.length > 0) {
+                                        const block_cells = num_positions[num].map(row => `${getRowLetter(row+1)}${col+1}`).join('、');
+                                        if (!state.silentMode) {
+                                            log_process(`[特殊对角线列区块排除] ${block_cells}构成${num}区块，排除${excluded_cells.join('、')}的${num}`);
+                                        }
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 斜线数独的特殊区块逻辑（列区块）
+                    if (state.current_mode === 'multi_diagonal') {
+                        const mark_lines = get_all_mark_lines();
+                        for (const [start, end] of mark_lines) {
+                            const line_cells = get_cells_on_line(size, start, end);
+                            const is_on_line = pos => line_cells.some(([r, c]) => r === pos && c === col);
+                            const has_line = num_positions[num].some(is_on_line);
+                            const has_non_line = num_positions[num].some(row => !is_on_line(row));
+                            if (has_line && has_non_line) {
+                                // 检查不在斜线上的数字是否在同一行
+                                const non_line_positions = num_positions[num].filter(row => !is_on_line(row));
+                                const all_same_row_non_line = non_line_positions.every(row => row === non_line_positions[0]);
+                                if (all_same_row_non_line) {
+                                    const target_row = non_line_positions[0];
+                                    // 检查在斜线上的数字是否都在同一条斜线上
+                                    const line_positions = num_positions[num].filter(is_on_line);
+                                    const all_on_this_line = line_positions.length > 0 && line_positions.every(is_on_line);
+                                    if (all_on_this_line) {
+                                        // 找到该行和该斜线重叠的格子
+                                        let overlapping_cells = [];
+                                        for (let c = 0; c < size; c++) {
+                                            const r = target_row;
+                                            if (line_cells.some(([lr, lc]) => lr === r && lc === c)) {
+                                                overlapping_cells.push([r, c]);
+                                            }
+                                        }
+                                        // 检查这些格子是否不在本列
+                                        let excluded_cells = [];
+                                        for (const [r, c] of overlapping_cells) {
+                                            if (c !== col) {
+                                                const cell = board[r][c];
+                                                if (Array.isArray(cell) && cell.includes(num)) {
+                                                    board[r][c] = cell.filter(n => n !== num);
+                                                    excluded_cells.push(`${getRowLetter(r+1)}${c+1}`);
+                                                }
+                                            }
+                                        }
+                                        if (excluded_cells.length > 0) {
+                                            const block_cells = num_positions[num].map(row => `${getRowLetter(row+1)}${col+1}`).join('、');
+                                            if (!state.silentMode) {
+                                                log_process(`[特殊斜线列区块排除] ${block_cells}构成${num}区块，排除${excluded_cells.join('、')}的${num}`);
+                                            }
+                                            return;
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

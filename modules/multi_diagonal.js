@@ -148,7 +148,7 @@ export function check_multi_diagonal_uniqueness() {
     );
 
 
-    const { solutionCount, solution } = solve(board, size, isValid); // 调用主求解函数
+    const { solutionCount, solution } = solve(board, size, isValid_multi_diagonal); // 调用主求解函数
     state.solutionCount = solutionCount;
 
 
@@ -314,4 +314,83 @@ export function add_multi_diagonal_mark() {
             svg.setAttribute('height', grid.clientHeight);
         });
     }
+}
+
+// 获取所有标记线经过的格子（假设有此辅助函数）
+export function get_cells_on_line(size, start, end) {
+    const cells = [];
+    const [r1, c1] = start;
+    const [r2, c2] = end;
+    const dr = r2 - r1;
+    const dc = c2 - c1;
+    const steps = Math.max(Math.abs(dr), Math.abs(dc));
+    for (let k = 0; k <= steps; k++) {
+        const row = Math.round(r1 + (dr * k) / steps);
+        const col = Math.round(c1 + (dc * k) / steps);
+        cells.push([row, col]);
+    }
+    return cells;
+}
+// 获取所有已画标记线的端点坐标
+export function get_all_mark_lines() {
+    const container = document.querySelector('.sudoku-container');
+    if (!container) return [];
+    const grid = container.querySelector('.sudoku-grid');
+    if (!grid) return [];
+    const svg = grid.querySelector('.mark-svg');
+    if (!svg) return [];
+    const lines = Array.from(svg.querySelectorAll('line'));
+    const size = state.current_grid_size;
+    const result = [];
+    for (const line of lines) {
+        // 获取百分比坐标
+        const x1 = parseFloat(line.getAttribute('x1'));
+        const y1 = parseFloat(line.getAttribute('y1'));
+        const x2 = parseFloat(line.getAttribute('x2'));
+        const y2 = parseFloat(line.getAttribute('y2'));
+        // 转换为格子坐标
+        const col1 = Math.round((x1 / 100) * size - 0.5);
+        const row1 = Math.round((y1 / 100) * size - 0.5);
+        const col2 = Math.round((x2 / 100) * size - 0.5);
+        const row2 = Math.round((y2 / 100) * size - 0.5);
+        // 检查坐标有效性
+        if (
+            row1 >= 0 && row1 < size && col1 >= 0 && col1 < size &&
+            row2 >= 0 && row2 < size && col2 >= 0 && col2 < size
+        ) {
+            result.push([[row1, col1], [row2, col2]]);
+        }
+    }
+    return result;
+}
+
+// 多斜线数独专用有效性检测（含标记线）
+export function isValid_multi_diagonal(board, size, row, col, num) {
+    // 标准数独规则
+    for (let i = 0; i < size; i++) {
+        if (board[row][i] === num || board[i][col] === num) return false;
+    }
+    const boxSize = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
+    const startRow = Math.floor(row / boxSize[0]) * boxSize[0];
+    const startCol = Math.floor(col / boxSize[1]) * boxSize[1];
+    for (let r = startRow; r < startRow + boxSize[0]; r++) {
+        for (let c = startCol; c < startCol + boxSize[1]; c++) {
+            if (board[r][c] === num) return false;
+        }
+    }
+    // 检查所有已画标记线
+    const markLines = get_all_mark_lines(); // 需你实现或已有
+    for (const [start, end] of markLines) {
+        const cells = get_cells_on_line(size, start, end);
+        // 如果当前格子在这条线上
+        if (cells.some(([r, c]) => r === row && c === col)) {
+            // 检查线上其他格子是否有重复数字
+            for (const [r, c] of cells) {
+                if ((r !== row || c !== col) && board[r][c] === num) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
 }
