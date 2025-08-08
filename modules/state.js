@@ -17,7 +17,15 @@ export const state = {
 
 // 设置当前模式(会自动取消其他模式)
 export function set_current_mode(mode) {
-    if (['classic', 'skyscraper', 'vx', 'candidates', 'missing', 'consecutive'].includes(mode)) {
+    if ([
+        'classic',
+        'skyscraper',
+        'vx',
+        'candidates',
+        'missing',
+        'consecutive',
+        'multi_diagonal'
+    ].includes(mode)) {
         state.current_mode = mode;
     } else {
         state.current_mode = null;

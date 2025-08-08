@@ -1,6 +1,8 @@
 import { create_skyscraper_sudoku } from './skyscraper.js';
 import { create_vx_sudoku } from './vx.js';
 import { create_candidates_sudoku } from './candidates.js';
+import { create_diagonal_sudoku } from './diagonal.js';
+import { create_multi_diagonal_sudoku } from './multi_diagonal.js';
 import { create_consecutive_sudoku } from './consecutive.js';
 import { create_missing_sudoku } from './missing.js';
 import { state, set_current_mode } from './state.js';
@@ -218,6 +220,7 @@ export function create_sudoku_grid(size) {
 
         // 加粗边框
         bold_border(cell, row, col, size);
+        // draw_box_lines(cell, size);
 
         grid.appendChild(cell);
     }
@@ -233,18 +236,24 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('乘积', () => show_result('这是四宫乘积的功能！(待实现)'));
         add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(4));
         add_Extra_Button('候选数', () => create_candidates_sudoku(4));
+        add_Extra_Button('对角线', () => create_diagonal_sudoku(4));
+        add_Extra_Button('斜线', () => create_multi_diagonal_sudoku(4));
         add_Extra_Button('连续', () => create_consecutive_sudoku(4));
         add_Extra_Button('缺一门', () => create_missing_sudoku(4));
     } else if (size === 6) {
         add_Extra_Button('乘积', () => show_result('这是六宫乘积的功能！(待实现)'));
         add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(6));
         add_Extra_Button('候选数', () => create_candidates_sudoku(6));
+        add_Extra_Button('对角线', () => create_diagonal_sudoku(6));
+        add_Extra_Button('斜线', () => create_multi_diagonal_sudoku(6));
         add_Extra_Button('连续', () => create_consecutive_sudoku(6));
         add_Extra_Button('缺一门', () => create_missing_sudoku(6));
     } else if (size === 9) {
         add_Extra_Button('乘积', () => show_result('这是九宫乘积的功能！(待实现)'));
         add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(9));
         add_Extra_Button('候选数', () => create_candidates_sudoku(9));
+        add_Extra_Button('对角线', () => create_diagonal_sudoku(9));
+        add_Extra_Button('斜线', () => create_multi_diagonal_sudoku(9));
         add_Extra_Button('VX', () => create_vx_sudoku(9));
         add_Extra_Button('连续', () => create_consecutive_sudoku(9));
         add_Extra_Button('缺一门', () => create_missing_sudoku(9));
@@ -501,31 +510,6 @@ export function check_uniqueness() {
             return isNaN(val) ? Array.from({length: size}, (_, n) => n + 1) : val;
         })
     );
-
-    // for (let i = 0; i < size; i++) {
-    //     for (let j = 0; j < size; j++) {
-    //         const cell = board[i][j];
-    //         if (cell === 0) {
-    //             board[i][j] = Array.from({length: size}, (_, n) => n + 1);
-    //         }
-    //         else if (typeof cell === 'number' && cell !== 0) {
-    //             const num = cell;
-    //             board[i][j] = 0; // 临时清空
-    //             if (!isValid(board, size, i, j, num)) {
-    //                 show_result(`[冲突] ${getRowLetter(i+1)}${j+1}=${num}与已有数字冲突，无解！`);
-    //                 return { changed: false, hasEmptyCandidate: true }; // 直接返回冲突状态
-    //             }
-    //             board[i][j] = num; // 恢复原值
-    //             eliminate_Candidates(board, size, i, j, num); // 移除相关候选数
-    //         }
-    //     }
-    // }
-
-    // let solutionCount = 0;
-    // let solution = null;
-
-
-
 
 
     const { solutionCount, solution } = solve(board, size, isValid); // 调用主求解函数

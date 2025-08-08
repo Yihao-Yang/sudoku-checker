@@ -93,6 +93,7 @@ export function create_base_grid(size, isSkyscraper = false) {
     return { container, grid };
 }
 
+
 /**
  * 创建基础单元格和输入框
  */
@@ -335,23 +336,60 @@ export function create_candidates_grid(cell, size) {
 }
 
 export function bold_border(cell, row, col, size) {
-    // 加粗最外层边框（统一逻辑）
-    if (row === 0) cell.classList.add('bold-top');
-    if (col === 0) cell.classList.add('bold-left');
-    if (col === size - 1) cell.classList.add('bold-right');
-    if (row === size - 1) cell.classList.add('bold-bottom');
-
-    // 加粗宫格线（根据尺寸判断）
-    if (size === 4) {
-        if (row === 2) cell.classList.add('bold-top');
-        if (col === 2) cell.classList.add('bold-left');
-    } else if (size === 6) {
-        if (row === 2 || row === 4) cell.classList.add('bold-top');
-        if (col === 3) cell.classList.add('bold-left');
-    } else if (size === 9) {
-        if (row === 3 || row === 6) cell.classList.add('bold-top');
-        if (col === 3 || col === 6) cell.classList.add('bold-left');
+    // 计算宫格大小
+    let boxRows, boxCols;
+    if (size === 6) {
+        boxRows = 2; boxCols = 3;
+    } else {
+        boxRows = Math.sqrt(size);
+        boxCols = Math.sqrt(size);
     }
+
+    // 四个方向的边框
+    let borders = {
+        top: '',
+        left: '',
+        right: '',
+        bottom: ''
+    };
+
+    // 顶部边框
+    if (row === 0) {
+        borders.top = '4px solid #000';
+    } else if (row % boxRows === 0) {
+        borders.top = '2px solid #000';
+    } else {
+        borders.top = '0.75px solid #000';
+    }
+    // 左侧边框
+    if (col === 0) {
+        borders.left = '4px solid #000';
+    } else if (col % boxCols === 0) {
+        borders.left = '2px solid #000';
+    } else {
+        borders.left = '0.75px solid #000';
+    }
+    // 右侧边框
+    if (col === size - 1) {
+        borders.right = '4px solid #000';
+    } else if ((col + 1) % boxCols === 0) {
+        borders.right = '2px solid #000';
+    } else {
+        borders.right = '0.75px solid #000';
+    }
+    // 底部边框
+    if (row === size - 1) {
+        borders.bottom = '4px solid #000';
+    } else if ((row + 1) % boxRows === 0) {
+        borders.bottom = '2px solid #000';
+    } else {
+        borders.bottom = '0.75px solid #000';
+    }
+
+    cell.style.borderTop = borders.top;
+    cell.style.borderLeft = borders.left;
+    cell.style.borderRight = borders.right;
+    cell.style.borderBottom = borders.bottom;
 }
 
 // 添加额外按钮
@@ -890,7 +928,7 @@ export function save_sudoku_as_image() {
     tempContainer.style.position = 'absolute';
     tempContainer.style.left = '-9999px';
     tempContainer.style.backgroundColor = null;//'#f4f7fb'; // 匹配页面背景色
-    tempContainer.style.padding = '0px 3px 3px 0px';
+    tempContainer.style.padding = '0px';
     tempContainer.style.borderRadius = '8px';
     
     // 克隆数独容器和结果显示
@@ -924,10 +962,12 @@ export function save_sudoku_as_image() {
 
     html2canvas(tempContainer, {
         backgroundColor: null,
-        scale: 3,
+        scale: 10,
         logging: false,
         useCORS: true,
-        allowTaint: true
+        allowTaint: true,
+        // 禁用抗锯齿
+        imageSmoothingEnabled: false
     }).then(canvas => {
         // 移除临时容器
         document.body.removeChild(tempContainer);

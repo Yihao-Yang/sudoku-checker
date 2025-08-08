@@ -131,20 +131,22 @@ button:focus,
 }
 
 .sudoku-cell {
-    position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 60px;
-    height: 60px;
-    background-color: #fff;
-    border: 1px solid #ddd;
-    font-size: 24px;
-    font-weight: bold;
-    color: #333;
-    /* cursor: pointer; */
-    cursor: default;
-    line-height: 1; /* 添加固定行高 */
+position: relative;
+display: flex;
+justify-content: center;
+align-items: center;
+width: 60px;
+height: 60px;
+background-color: #fff;
+border-width: 0;
+
+font-size: 24px;
+font-weight: bold;
+color: #333;
+/* cursor: pointer; */
+cursor: default;
+line-height: 1; /* 添加固定行高 */
+box-sizing: border-box;
 }
 
 .sudoku-cell input {
@@ -280,29 +282,7 @@ button:focus,
     display: none;
 }
 
-.bold-top {
-    border-top: 2px solid #000 !important;
-    margin-top: -0.5px;
-    /* box-sizing: border-box; */
-}
 
-.bold-left {
-    border-left: 2px solid #000 !important;
-    margin-left: -0.5px;
-    /* box-sizing: border-box; */
-}
-
-.bold-right {
-    border-right: 2px solid #000 !important;
-    margin-right: -0.5px;
-    /* box-sizing: border-box; */
-}
-
-.bold-bottom {
-    border-bottom: 2px solid #000 !important;
-    margin-bottom: -0.5px;
-    /* box-sizing: border-box; */
-}
 /* 当显示候选数时隐藏主输入 */
 .sudoku-cell.showing-candidates .main-input {
     display: none;
