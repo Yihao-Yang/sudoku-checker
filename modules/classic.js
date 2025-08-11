@@ -293,14 +293,17 @@ export function create_technique_panel() {
             id: 'elimination',
             items: [
                 { id: 'Box_Elimination', name: '宫排除', default: true },
-                { id: 'Row_Col_Elimination', name: '行列排除', default: true }
+                { id: 'Box_One_Cut', name: '一刀流宫排除', default: true },
+                { id: 'Row_Col_Elimination', name: '行列排除', default: true },
+                { id: 'Diagonal_Elimination', name: '对角线排除', default: true }
             ]
         },
         {
             id: 'block',
         items: [
             { id: 'Box_Block', name: '宫区块', default: true },
-            { id: 'Row_Col_Block', name: '行列区块', default: true }
+            { id: 'Row_Col_Block', name: '行列区块', default: true },
+            { id: 'Diagonal_Block', name: '对角线区块', default: true }
         ]
         },
         {
@@ -355,6 +358,7 @@ export function create_technique_panel() {
     if (!state.techniqueSettings) {
         state.techniqueSettings = {
             Box_Elimination: true,
+            Box_One_Cut: true,
             Row_Col_Elimination: true,
             Box_Block: true,
             Row_Col_Block: true,
@@ -369,7 +373,9 @@ export function create_technique_panel() {
             All_Quad: false,
             Cell_Elimination: true,
             Brute_Force: false,
-            Missing_One: state.current_mode === 'missing'
+            Missing_One: state.current_mode === 'missing',
+            Diagonal_Elimination: state.current_mode === 'diagonal',
+            Diagonal_Block: state.current_mode === 'diagonal'
         };
         techniqueGroups.forEach(group => {
             group.items.forEach(tech => {

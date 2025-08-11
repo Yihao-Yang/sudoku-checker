@@ -1,6 +1,7 @@
 import { state, set_current_mode } from './state.js';
 import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation } from './core.js';
 import { solve, isValid } from '../solver/solver_tool.js';
+import { create_technique_panel } from './classic.js';
 
 // 对角线数独主入口
 export function create_diagonal_sudoku(size) {
@@ -8,6 +9,30 @@ export function create_diagonal_sudoku(size) {
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
+
+    // 修改技巧开关
+    state.techniqueSettings = {
+        Box_Elimination: true,
+        Row_Col_Elimination: true,
+        Box_Block: true,        // 
+        Row_Col_Block: true,    // 
+        Box_Naked_Pair: true,   // 
+        Row_Col_Naked_Pair: true, // 
+        Box_Hidden_Pair: true,  // 
+        Row_Col_Hidden_Pair: true, // 
+        Box_Naked_Triple: true, // 
+        Row_Col_Naked_Triple: true, // 
+        Box_Hidden_Triple: true, // 
+        Row_Col_Hidden_Triple: true, // 
+        All_Quad: false,         // 
+        Cell_Elimination: true,  // 
+        Brute_Force: false,
+        Diagonal_Elimination: true,       // 
+        Diagonal_Block: true
+    };
+
+    // 刷新技巧面板
+    create_technique_panel();
 
     // 创建基础数独盘面
     const { container, grid } = create_base_grid(size);

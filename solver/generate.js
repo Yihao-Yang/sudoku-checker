@@ -5,6 +5,113 @@ import { isValid_multi_diagonal } from '../modules/multi_diagonal.js';
 import { isValid_diagonal } from '../modules/diagonal.js';
 
 
+/**
+ * 自动生成标准数独题目
+ * @param {number} size - 数独大小 (4,6,9)
+ * @param {string} difficulty - 难度 ('easy', 'medium', 'hard')
+ */
+export function generate_puzzle(size) {
+    // 清除之前的结果
+    clear_all_inputs();
+    log_process('', true);
+
+    let puzzle, solution, result, holesDug, symmetry;
+
+    // 允许用户自定义分值下限
+    let score_lower_limit = 0;
+    if (typeof window !== 'undefined') {
+        const input = window.prompt(
+            `请输入你想要的题目分值下限（六宫简单0，普通20，困难40：九宫简单0，普通100，困难200）：`,
+            '0'
+        );
+        score_lower_limit = Number(input) || 0;
+    }
+
+    // 根据分值下限自动设置难度
+    let difficulty = 'easy';
+    if (size === 6) {
+        if (score_lower_limit >= 40) difficulty = 'hard';
+        else if (score_lower_limit >= 20) difficulty = 'medium';
+        else difficulty = 'easy';
+    } else if (size === 9) {
+        if (score_lower_limit >= 200) difficulty = 'hard';
+        else if (score_lower_limit >= 100) difficulty = 'medium';
+        else difficulty = 'easy';
+    }
+
+    while (true) {
+        // 1. 生成终盘
+        solution = generate_solution(size);
+
+        // 2. 随机选择对称模式并挖洞
+        symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
+        puzzle = dig_holes(solution, size, 0, symmetry);
+
+        // 计算实际挖洞数
+        holesDug = 0;
+        for (let i = 0; i < size; i++) {
+            for (let j = 0; j < size; j++) {
+                if (puzzle[i][j] === 0) holesDug++;
+            }
+        }
+
+        // 4. 验证题目唯一性并显示技巧统计
+        const testBoard = puzzle.map(row => 
+            row.map(cell => cell === 0 ? 
+                [...Array(size)].map((_, n) => n + 1) : cell
+            )
+        );
+        let is_valid_func;
+        if (state.current_mode === 'multi_diagonal') {
+            is_valid_func = isValid_multi_diagonal;
+        } else if (state.current_mode === 'diagonal') {
+            is_valid_func = isValid_diagonal;
+        } else {
+            is_valid_func = isValid;
+        }
+        result = solve(testBoard, size, is_valid_func, true);
+
+        // 分值判断（包含用户输入的下限）
+        if (result.total_score < score_lower_limit) {
+            log_process(`题目分值为${result.total_score}，低于下限${score_lower_limit}，重新生成...`);
+            continue;
+        }
+        break;
+    }
+
+    log_process(`生成${size}宫格${difficulty}难度数独，提示数: ${size*size-holesDug}，对称模式: ${symmetry}`);
+    // log_process(`生成${size}宫格数独，提示数: ${size*size-holesDug}，对称模式: ${symmetry}`);
+
+    // 3. 填充到网格
+    const container = document.querySelector('.sudoku-container');
+    for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
+            const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+            input.value = puzzle[i][j] || '';
+        }
+    }
+
+    backup_original_board();
+    show_result(`已生成${size}宫格数独题目`);
+
+    if (result.techniqueCounts) {
+        log_process("\n=== 技巧使用统计 ===");
+        for (const [technique, count] of Object.entries(result.techniqueCounts)) {
+            if (count > 0) {
+                log_process(`${technique}: ${count}次`);
+            }
+        }
+        if (result.total_score !== undefined) {
+            log_process(`总分值: ${result.total_score}`);
+        }
+    }
+
+    return {
+        puzzle: puzzle,
+        solution: solution
+    };
+}
+
 // 生成数独终盘（直接使用回溯法生成）
 export function generate_solution(size) {
     
@@ -140,6 +247,7 @@ function dig_holes(solution, size, _, symmetry = 'none') {
     return puzzle;
 }
 
+// 获取对称位置
 export function get_symmetric_positions(row, col, size, symmetry) {
     const positions = [];
     const center = (size - 1) / 2;
@@ -188,113 +296,6 @@ export function shuffle(array) {
 const SYMMETRY_TYPES = ['horizontal', 'vertical', 'central', 'diagonal', 'anti-diagonal'];
 
 
-
-/**
- * 自动生成标准数独题目
- * @param {number} size - 数独大小 (4,6,9)
- * @param {string} difficulty - 难度 ('easy', 'medium', 'hard')
- */
-export function generate_puzzle(size) {
-    // 清除之前的结果
-    clear_all_inputs();
-    log_process('', true);
-
-    let puzzle, solution, result, holesDug, symmetry;
-
-    // 允许用户自定义分值下限
-    let score_lower_limit = 0;
-    if (typeof window !== 'undefined') {
-        const input = window.prompt(
-            `请输入你想要的题目分值下限（六宫简单0，普通20，困难40：九宫简单0，普通100，困难200）：`,
-            '0'
-        );
-        score_lower_limit = Number(input) || 0;
-    }
-
-    // 根据分值下限自动设置难度
-    let difficulty = 'easy';
-    if (size === 6) {
-        if (score_lower_limit >= 40) difficulty = 'hard';
-        else if (score_lower_limit >= 20) difficulty = 'medium';
-        else difficulty = 'easy';
-    } else if (size === 9) {
-        if (score_lower_limit >= 200) difficulty = 'hard';
-        else if (score_lower_limit >= 100) difficulty = 'medium';
-        else difficulty = 'easy';
-    }
-
-    while (true) {
-        // 1. 生成终盘
-        solution = generate_solution(size);
-
-        // 2. 随机选择对称模式并挖洞
-        symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
-        puzzle = dig_holes(solution, size, 0, symmetry);
-
-        // 计算实际挖洞数
-        holesDug = 0;
-        for (let i = 0; i < size; i++) {
-            for (let j = 0; j < size; j++) {
-                if (puzzle[i][j] === 0) holesDug++;
-            }
-        }
-
-        // 4. 验证题目唯一性并显示技巧统计
-        const testBoard = puzzle.map(row => 
-            row.map(cell => cell === 0 ? 
-                [...Array(size)].map((_, n) => n + 1) : cell
-            )
-        );
-        let is_valid_func;
-        if (state.current_mode === 'multi_diagonal') {
-            is_valid_func = isValid_multi_diagonal;
-        } else if (state.current_mode === 'diagonal') {
-            is_valid_func = isValid_diagonal;
-        } else {
-            is_valid_func = isValid;
-        }
-        result = solve(testBoard, size, is_valid_func, true);
-
-        // 分值判断（包含用户输入的下限）
-        if (result.total_score < score_lower_limit) {
-            log_process(`题目分值为${result.total_score}，低于下限${score_lower_limit}，重新生成...`);
-            continue;
-        }
-        break;
-    }
-
-    log_process(`生成${size}宫格${difficulty}难度数独，提示数: ${size*size-holesDug}，对称模式: ${symmetry}`);
-    // log_process(`生成${size}宫格数独，提示数: ${size*size-holesDug}，对称模式: ${symmetry}`);
-
-    // 3. 填充到网格
-    const container = document.querySelector('.sudoku-container');
-    for (let i = 0; i < size; i++) {
-        for (let j = 0; j < size; j++) {
-            const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
-            input.value = puzzle[i][j] || '';
-        }
-    }
-
-    backup_original_board();
-    show_result(`已生成${size}宫格数独题目`);
-
-    if (result.techniqueCounts) {
-        log_process("\n=== 技巧使用统计 ===");
-        for (const [technique, count] of Object.entries(result.techniqueCounts)) {
-            if (count > 0) {
-                log_process(`${technique}: ${count}次`);
-            }
-        }
-        if (result.total_score !== undefined) {
-            log_process(`总分值: ${result.total_score}`);
-        }
-    }
-
-    return {
-        puzzle: puzzle,
-        solution: solution
-    };
-}
 
 /**
  * 将生成的题目填充到网格

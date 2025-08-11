@@ -15,7 +15,9 @@ export function solve_By_Elimination(board, size) {
     const techniqueCounts = {
         "唯余法": 0,
         "宫排除": 0,
+        "一刀流宫排除": 0,
         "行列排除": 0,
+        "对角线排除": 0,
         "宫区块": 0,
         "行列区块": 0,
         "宫显性数对": 0,
@@ -36,27 +38,37 @@ export function solve_By_Elimination(board, size) {
     let total_score = 0;
     // 技巧分值表
     const technique_scores = {
-        // 唯余法分值细分，行列排除法分值细分
+        // 唯余法分值细分，行列排除法分值细分，对角线排除法分值细分
         "唯余法_1": 0,
         "唯余法_2": 1,
         "唯余法_3": 5,
-        "唯余法_4": 50,
+        "唯余法_4": 30,
         "唯余法_5": 50,
         "唯余法_6": 80,
-        "唯余法_7": 80,
+        "唯余法_7": 90,
         "唯余法_8": 100,
-        "唯余法_9": 100,
+        "唯余法_9": 110,
         "行列排除_1": 0,
         "行列排除_2": 1,
         "行列排除_3": 5,
-        "行列排除_4": 50,
+        "行列排除_4": 30,
         "行列排除_5": 50,
         "行列排除_6": 80,
-        "行列排除_7": 80,
+        "行列排除_7": 90,
         "行列排除_8": 100,
-        "行列排除_9": 100,
+        "行列排除_9": 110,
+        "对角线排除_1": 0,
+        "对角线排除_2": 1,
+        "对角线排除_3": 5,
+        "对角线排除_4": 30,
+        "对角线排除_5": 50,
+        "对角线排除_6": 80,
+        "对角线排除_7": 90,
+        "对角线排除_8": 100,
+        "对角线排除_9": 110,
         // 其他技巧分值
         "宫排除": 2,
+        "一刀流宫排除": 1,
         "宫区块": 10,
         "宫隐性数对": 30,
         "行列区块": 40,
@@ -88,16 +100,18 @@ export function solve_By_Elimination(board, size) {
         [() => state.techniqueSettings?.Cell_Elimination && check_Cell_Elimination(board, size, 2)],
         // 第三优先级：宫排除法
         [() => state.techniqueSettings?.Box_Elimination && check_Box_Elimination(board, size)],
+        [() => state.techniqueSettings?.Box_One_Cut && check_Box_Elimination_One_Cut(board, size)],
         // 第四优先级：余3数的唯余法
         [() => state.techniqueSettings?.Cell_Elimination && check_Cell_Elimination(board, size, 3)],
         // 第五优先级：行列排除法
+        // 第五优先级：对角线排除法（按nat排序）
         [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 1)],
+        [() => state.current_mode === 'diagonal' && state.techniqueSettings?.Diagonal_Elimination && check_Diagonal_Elimination(board, size, 1)],
         [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 2)],
+        [() => state.current_mode === 'diagonal' && state.techniqueSettings?.Diagonal_Elimination && check_Diagonal_Elimination(board, size, 2)],
         [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 3)],
-        // [
-        //     () => state.techniqueSettings?.Row_Elimination && check_Row_Elimination(board, size, size),
-        //     () => state.techniqueSettings?.Col_Elimination && check_Col_Elimination(board, size, size)
-        // ],
+        [() => state.current_mode === 'diagonal' && state.techniqueSettings?.Diagonal_Elimination && check_Diagonal_Elimination(board, size, 3)],
+
 
         
         
@@ -105,27 +119,31 @@ export function solve_By_Elimination(board, size) {
 
         // 第六优先级：宫区块
         [() => state.techniqueSettings?.Box_Block && check_Box_Block_Elimination(board, size)],
-        // 第七优先级：行列区块（同一级）
+        // 第七优先级：行列区块，对角线区块
         [() => state.techniqueSettings?.Row_Col_Block && check_Row_Col_Block_Elimination(board, size)],
-        // [
-        //     () => state.techniqueSettings?.Row_Block && check_Row_Block_Elimination(board, size),
-        //     () => state.techniqueSettings?.Col_Block && check_Col_Block_Elimination(board, size)
-        // ],
-        // 第八优先级：余4，5数的唯余法，行列排除法
+        [() => state.current_mode === 'diagonal' && state.techniqueSettings?.Diagonal_Block && check_Diagonal_Block_Elimination(board, size)],
+
+        // 第八优先级：余4，5数的所有排除法
         [() => state.techniqueSettings?.Cell_Elimination && check_Cell_Elimination(board, size, 4)],
-        [() => state.techniqueSettings?.Cell_Elimination && check_Cell_Elimination(board, size, 5)],
         [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 4)],
+        [() => state.current_mode === 'diagonal' && state.techniqueSettings?.Diagonal_Elimination && check_Diagonal_Elimination(board, size, 4)],
+        [() => state.techniqueSettings?.Cell_Elimination && check_Cell_Elimination(board, size, 5)],
         [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 5)],
-        // 第九优先级：余6，7数的唯余法，行列排除法
+        [() => state.current_mode === 'diagonal' && state.techniqueSettings?.Diagonal_Elimination && check_Diagonal_Elimination(board, size, 5)],
+        // 第九优先级：余6，7数的所有排除法
         [() => state.techniqueSettings?.Cell_Elimination && check_Cell_Elimination(board, size, 6)],
-        [() => state.techniqueSettings?.Cell_Elimination && check_Cell_Elimination(board, size, 7)],
         [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 6)],
+        [() => state.current_mode === 'diagonal' && state.techniqueSettings?.Diagonal_Elimination && check_Diagonal_Elimination(board, size, 6)],
+        [() => state.techniqueSettings?.Cell_Elimination && check_Cell_Elimination(board, size, 7)],
         [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 7)],
-        // 第十优先级：余8，9数的唯余法，行列排除法
+        [() => state.current_mode === 'diagonal' && state.techniqueSettings?.Diagonal_Elimination && check_Diagonal_Elimination(board, size, 7)],
+        // 第十优先级：余8，9数的所有排除法
         [() => state.techniqueSettings?.Cell_Elimination && check_Cell_Elimination(board, size, 8)],
-        [() => state.techniqueSettings?.Cell_Elimination && check_Cell_Elimination(board, size, 9)],
         [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 8)],
+        [() => state.current_mode === 'diagonal' && state.techniqueSettings?.Diagonal_Elimination && check_Diagonal_Elimination(board, size, 8)],
+        [() => state.techniqueSettings?.Cell_Elimination && check_Cell_Elimination(board, size, 9)],
         [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 9)],
+        [() => state.current_mode === 'diagonal' && state.techniqueSettings?.Diagonal_Elimination && check_Diagonal_Elimination(board, size, 9)],
 
 
 
@@ -224,6 +242,10 @@ export function solve_By_Elimination(board, size) {
                                     chinese_name = "行列排除";
                                     score_key = nat ? `行列排除_${nat}` : "行列排除_1";
                                     break;
+                                case 'Diagonal_Elimination':
+                                    chinese_name = "对角线排除";
+                                    score_key = nat ? `对角线排除_${nat}` : "对角线排除_1";
+                                    break;
                                 case 'Missing_One':
                                     // 判断当前调用的是哪个函数和nat参数
                                     if (technique.toString().includes('check_Box_Missing_One_Subset_Elimination')) {
@@ -255,6 +277,10 @@ export function solve_By_Elimination(board, size) {
                                 case 'Box_Elimination':
                                     chinese_name = "宫排除";
                                     score_key = "宫排除";
+                                    break;
+                                case 'Box_One_Cut':
+                                    chinese_name = "一刀流宫排除";
+                                    score_key = "一刀流宫排除";
                                     break;
                                 // case 'Row_Col_Elimination': chinese_name = "行列排除"; break;
                                 case 'Box_Block':
@@ -322,41 +348,9 @@ export function solve_By_Elimination(board, size) {
                                 techniqueCounts[chinese_name]++;
                                 total_score += technique_scores[score_key] || 0;
                             }
-                        // // 根据技巧名称增加计数器
-                        // const techniqueName = technique.toString().match(/state\.techniqueSettings\?\.(\w+)/)?.[1];
-                        // if (techniqueName) {
-                        //     let chineseName;
-                        //     // 映射英文名到中文名
-                        //     switch(techniqueName) {
-                        //         case 'Cell_Elimination': chineseName = "唯余法"; break;
-                        //         case 'Box_Elimination': chineseName = "宫排除"; break;
-                        //         case 'Row_Col_Elimination': chineseName = "行列排除"; break;
-                        //         case 'Box_Block': chineseName = "宫区块"; break;
-                        //         case 'Row_Col_Block': chineseName = "行列区块"; break;
-                        //         case 'Box_Naked_Pair': chineseName = "宫显性数对"; break;
-                        //         case 'Row_Col_Naked_Pair': chineseName = "行列显性数对"; break;
-                        //         case 'Box_Naked_Triple': chineseName = "宫显性三数组"; break;
-                        //         case 'Row_Col_Naked_Triple': chineseName = "行列显性三数组"; break;
-                        //         case 'Box_Naked_Quad': chineseName = "宫显性四数组"; break;
-                        //         case 'Row_Col_Naked_Quad': chineseName = "行列显性四数组"; break;
-                        //         case 'Box_Hidden_Pair': chineseName = "宫隐性数对"; break;
-                        //         case 'Row_Col_Hidden_Pair': chineseName = "行列隐性数对"; break;
-                        //         case 'Box_Hidden_Triple': chineseName = "宫隐性三数组"; break;
-                        //         case 'Row_Col_Hidden_Triple': chineseName = "行列隐性三数组"; break;
-                        //         case 'Box_Hidden_Quad': chineseName = "宫隐性四数组"; break;
-                        //         case 'Row_Col_Hidden_Quad': chineseName = "行列隐性四数组"; break;
-                        //         case 'Missing_One': chineseName = "欠一排除"; break; // 缺一门专用
-                        //         default: chineseName = null;
-                        //     }
-                            
-                        //     if (chineseName) {
-                        //         techniqueCounts[chineseName]++;
-                        //     }
+
                         }
-                        // const techniqueName = technique.toString().match(/state\.techniqueSettings\?\.(\w+)/)?.[1];
-                        // if (techniqueName && techniqueCounts.hasOwnProperty(techniqueName)) {
-                        //     techniqueCounts[techniqueName]++;
-                        // }
+
                     }
                 }
 
@@ -371,192 +365,6 @@ export function solve_By_Elimination(board, size) {
 
     return { changed, hasEmptyCandidate: false, techniqueCounts, total_score };
 }
-// // 宫排除
-// function check_Box_Elimination(board, size) {
-//     // 宫的大小定义（兼容6宫格）
-//     const boxSize = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
-//     let hasConflict = false;
-    
-//     // 如果是缺一门数独模式，执行特殊排除逻辑
-//     if (state.current_mode === 'missing') {
-//     for (let boxRow = 0; boxRow < size / boxSize[0]; boxRow++) {
-//       for (let boxCol = 0; boxCol < size / boxSize[1]; boxCol++) {
-//         const startRow = boxRow * boxSize[0];
-//         const startCol = boxCol * boxSize[1];
-//         const numPositions = {};
-//         // let missingNum = null;
-//         // let missingCount = 0;
-//         const missingNums = [];
-//         const existingNums = new Set();
-
-//         // 先收集宫中已存在的数字
-//         for (let r = startRow; r < startRow + boxSize[0]; r++) {
-//           for (let c = startCol; c < startCol + boxSize[1]; c++) {
-//             if (typeof board[r][c] === 'number' && board[r][c] !== -1) {
-//               existingNums.add(board[r][c]);
-//             }
-//           }
-//         }
-
-//         // 统计数字在宫中的候选格位置（跳过黑格和已存在的数字）
-//         for (let num = 1; num <= size; num++) {
-//           if (existingNums.has(num)) continue; // 跳过已存在的数字
-//           numPositions[num] = [];
-//           for (let r = startRow; r < startRow + boxSize[0]; r++) {
-//             for (let c = startCol; c < startCol + boxSize[1]; c++) {
-//               if (board[r][c] === -1) continue; // 跳过黑格
-//               if (Array.isArray(board[r][c]) && board[r][c].includes(num)) {
-//                 numPositions[num].push([r, c]);
-//               }
-//             }
-//           }
-//           // 记录没有可填位置的数字
-//           if (numPositions[num].length === 0) {
-//             // missingNum = num;
-//             // missingCount++;
-//             missingNums.push(num);
-//           }
-//         }
-        
-
-//         // 如果满足条件（有缺失数字）
-//         if (missingNums.length === 1) {
-//             // 对其他数字执行宫排除
-//             for (let num = 1; num <= size; num++) {
-//                 // log_process(`当前检查数字 ${num}`);
-//                 if (missingNums.includes(num)) continue;
-//                 if (!numPositions[num]) continue;
-//                 if (numPositions[num].length === 1) {
-//                     const [row, col] = numPositions[num][0];
-//                     board[row][col] = num;
-//                     if (!state.silentMode) log_process(`[宫排除] ${getRowLetter(row+1)}${col+1}=${num}`);
-//                     eliminate_Candidates(board, size, row, col, num);
-//                     return;
-//                 }
-//             }
-//         }
-
-//             // // 检查是否有两个数字只有一个可填位置且位置相同
-//             //     const singlePositionNums = [];
-//             //     const skipNums = new Set(); // 新增：用于记录需要跳过的数字
-//             //     for (let num = 1; num <= size; num++) {
-//             //         if (missingNums.includes(num)) continue;
-//             //         if (numPositions[num] && numPositions[num].length === 1) {
-//             //             singlePositionNums.push(num);
-//             //         }
-//             //     }
-
-//             //     // 检查这些数字是否都指向同一个格子
-//             //     const positionMap = new Map();
-//             //     for (const num of singlePositionNums) {
-//             //         const posKey = numPositions[num][0].join(',');
-//             //         if (!positionMap.has(posKey)) {
-//             //             positionMap.set(posKey, []);
-//             //         }
-//             //         positionMap.get(posKey).push(num);
-//             //     }
-
-//             //     // 处理共享同一格子的多个数字
-//             //     for (const [posKey, nums] of positionMap.entries()) {
-//             //         const [row, col] = posKey.split(',').map(Number);
-                    
-//             //         // 如果多个数字只能填同一格，则将该格限制为这些数字
-//             //         if (nums.length > 1) {
-//             //             const currentCandidates = board[row][col];
-//             //             const newCandidates = currentCandidates.filter(n => nums.includes(n));
-                        
-//             //             if (newCandidates.length < currentCandidates.length) {
-//             //                 board[row][col] = newCandidates;
-//             //                 if (!state.silentMode) log_process(`[宫排除] ${getRowLetter(row+1)}${col+1}限制为候选数${nums.join(',')}`);
-//             //                 nums.forEach(n => skipNums.add(n)); // 新增：将这些数字加入跳过集合
-//             //                 if (!state.silentMode) log_process(`[跳过数字] 已标记跳过数字: ${nums.join(',')}`);
-      
-//             //                 return;
-//             //             }
-//             //         }
-//             //     }
-//             //     // 对其他数字执行宫排除
-//             //     for (let num = 1; num <= size; num++) {
-//             //         log_process(`当前检查数字 ${num}`);
-//             //         if (missingNums.includes(num)) continue;
-//             //         // if (missingNums.includes(num) || board.flat().some(cell => cell === num)) continue;
-  
-//             //         if (skipNums.has(num)) continue;
-//             //         // log_process(`当前检查数字 ${num}`);
-//             //         if (!numPositions[num]) continue;
-//             //         if (numPositions[num].length === 1) {
-//             //             const [row, col] = numPositions[num][0];
-//             //             board[row][col] = num;
-//             //             if (!state.silentMode) log_process(`[宫排除] ${getRowLetter(row+1)}${col+1}=${num}`);
-//             //             eliminate_Candidates(board, size, row, col, num);
-//             //             return;
-//             //         }
-//             //     }
-
-
-//       }
-//     }
-//     return hasConflict;
-  
-
-//     }
-//     else {
-//         // 遍历每个宫
-//         for (let boxRow = 0; boxRow < size / boxSize[0]; boxRow++) {
-//             for (let boxCol = 0; boxCol < size / boxSize[1]; boxCol++) {
-//                 // 统计每个数字在该宫出现的候选格位置
-//                 const numPositions = {};
-
-//                 // 计算宫的起始行列
-//                 const startRow = boxRow * boxSize[0];
-//                 const startCol = boxCol * boxSize[1];
-
-//                 // 先检查宫中是否已有确定数字
-//                 const existingNums = new Set();
-//                 for (let r = startRow; r < startRow + boxSize[0]; r++) {
-//                     for (let c = startCol; c < startCol + boxSize[1]; c++) {
-//                         if (typeof board[r][c] === 'number') {
-//                             existingNums.add(board[r][c]);
-//                         }
-//                     }
-//                 }
-
-//                 for (let num = 1; num <= size; num++) {
-//                     numPositions[num] = [];
-//                     // 如果数字已存在，跳过统计
-//                     if (existingNums.has(num)) continue;
-
-//                     for (let r = startRow; r < startRow + boxSize[0]; r++) {
-//                         for (let c = startCol; c < startCol + boxSize[1]; c++) {
-//                             const cell = board[r][c];
-//                             if (Array.isArray(cell) && cell.includes(num)) {
-//                                 numPositions[num].push([r, c]);
-//                             }
-//                         }
-//                     }
-
-//                     if (numPositions[num].length === 1) {
-//                         const [row, col] = numPositions[num][0];
-//                         const cell = board[row][col];
-//                         if (Array.isArray(cell) && cell.includes(num)) {
-//                             board[row][col] = num;
-//                             if (!state.silentMode) log_process(`[宫排除] ${getRowLetter(row+1)}${col+1}=${num}`);
-//                             eliminate_Candidates(board, size, row, col, num);
-//                             return;
-//                         }
-//                     } else if (numPositions[num].length === 0) {
-//                         hasConflict = true; // 直接标记冲突
-//                         const boxNum = boxRow * (size / boxSize[1]) + boxCol + 1;
-//                         if (!state.silentMode) log_process(`[冲突] ${boxNum}宫中数字${num}无可填入位置，无解`);
-//                         // if (!state.silentMode) log_process(`[冲突] ${boxRow*3+boxCol+1}宫中数字${num}无可填入位置，无解`);
-//                         return true;
-//                     }
-//                 }
-//             }
-//         }
-//     }
-    
-// }
 
 // 宫排除
 function check_Box_Elimination(board, size) {
@@ -682,9 +490,91 @@ function check_Box_Elimination(board, size) {
     return has_conflict;
 }
 
+// 一刀流宫排除
+function check_Box_Elimination_One_Cut(board, size) {
+    // 宫的大小定义（兼容6宫格）
+    const box_size = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
+    let has_conflict = false;
+
+    // 先遍历每个数字
+    for (let num = 1; num <= size; num++) {
+        // 统计整个数独中数字num出现的次数（放在宫循环外面）
+        let num_count_total = 0;
+        for (let r = 0; r < size; r++) {
+            for (let c = 0; c < size; c++) {
+                if (board[r][c] === num) num_count_total++;
+            }
+        }
+        // 再遍历每个宫
+        let box_index = 0;
+        for (let box_row = 0; box_row < size / box_size[0]; box_row++) {
+            for (let box_col = 0; box_col < size / box_size[1]; box_col++) {
+                // 统计每个数字在该宫出现的候选格位置
+                const num_positions = {};
+
+                // 计算宫的起始行列
+                const start_row = box_row * box_size[0];
+                const start_col = box_col * box_size[1];
+
+                // 先检查宫中是否已有确定数字
+                const existing_nums = new Set();
+                for (let r = start_row; r < start_row + box_size[0]; r++) {
+                    for (let c = start_col; c < start_col + box_size[1]; c++) {
+                        if (typeof board[r][c] === 'number') {
+                            existing_nums.add(board[r][c]);
+                        }
+                    }
+                }
+
+                // 如果整个数独中num已填满，则跳过
+                if (num_count_total === size) {
+                    continue;
+                }
+
+                num_positions[num] = [];
+                // 如果数字已存在，跳过统计
+                if (existing_nums.has(num)) {
+                    continue;
+                }
+
+                for (let r = start_row; r < start_row + box_size[0]; r++) {
+                    for (let c = start_col; c < start_col + box_size[1]; c++) {
+                        const cell = board[r][c];
+                        if (Array.isArray(cell) && cell.includes(num)) {
+                            num_positions[num].push([r, c]);
+                        }
+                    }
+                }
+
+                if (num_positions[num].length === 1) {
+                    const [row, col] = num_positions[num][0];
+                    const cell = board[row][col];
+                    if (Array.isArray(cell) && cell.includes(num)) {
+                        board[row][col] = num;
+                        if (!state.silentMode) log_process(`[宫排除] ${getRowLetter(row+1)}${col+1}=${num}`);
+                        eliminate_Candidates(board, size, row, col, num);
+                        return;
+                    }
+                } else if (num_positions[num].length === 0) {
+                    has_conflict = true; // 直接标记冲突
+                    const box_num = box_row * (size / box_size[1]) + box_col + 1;
+                    if (!state.silentMode) log_process(`[冲突] ${box_num}宫中数字${num}无可填入位置，无解`);
+                    return true;
+                }
+
+                
+                // 注意：只有num_count === size时才continue，否则停留在当前num
+            }
+        }
+        if (num_count_total != size) {
+            return;
+        }
+    }
+}
 
 // 欠一宫排除（专用于缺一门数独）
 function check_Box_Missing_One_Subset_Elimination(board, size, nat = 2) {
+    // log_process(`[欠一宫排除] 检查欠一宫，nat=${nat}`);
     // 仅缺一门数独模式有效
     if (state.current_mode !== 'missing') return false;
     
@@ -1214,443 +1104,87 @@ function check_Row_Col_Missing_One_Subset_Elimination(board, size, subset_size =
     return has_conflict;
 }
 
-// // // 行排除 
-// // function check_Row_Elimination(board, size, nat) {    
-// //     let has_conflict = false;
-    
-// //     // 如果是缺一门数独模式，执行特殊排除逻辑
-// //     if (state.current_mode === 'missing') {
-// //         for (let row = 0; row < size; row++) {
-// //             // 统计每个数字在该行出现的候选格位置
-// //             const num_positions = {};
-// //             const missing_nums = [];
-// //             const existing_nums = new Set();
+// 对角线排除（主对角线、副对角线，支持nat参数）
+function check_Diagonal_Elimination(board, size, nat = 1) {
+    // log_process(`[对角线排除] 检查对角线，nat=${nat}`);
+    let has_conflict = false;
 
-// //             // 1. 先收集行中已存在的数字
-// //             for (let col = 0; col < size; col++) {
-// //                 if (typeof board[row][col] === 'number' && board[row][col] !== -1) {
-// //                     existing_nums.add(board[row][col]);
-// //                 }
-// //             }
+    // 主对角线
+    const main_diag_positions = [];
+    for (let i = 0; i < size; i++) {
+        main_diag_positions.push([i, i]);
+    }
+    // 副对角线
+    const anti_diag_positions = [];
+    for (let i = 0; i < size; i++) {
+        anti_diag_positions.push([i, size - 1 - i]);
+    }
 
-// //             // 2. 统计数字在行中的候选格位置（跳过黑格和已存在的数字）
-// //             for (let num = 1; num <= size; num++) {
-// //                 if (existing_nums.has(num)) continue; // 跳过已存在的数字
-// //                 num_positions[num] = [];
-                
-// //                 for (let col = 0; col < size; col++) {
-// //                     if (board[row][col] === -1) continue; // 跳过黑格
-// //                     if (Array.isArray(board[row][col]) && board[row][col].includes(num)) {
-// //                         num_positions[num].push(col);
-// //                     }
-// //                 }
-                
-// //                 // 记录没有可填位置的数字
-// //                 if (num_positions[num].length === 0) {
-// //                     missing_nums.push(num);
-// //                 }
-// //             }
+    // 检查主对角线
+    {
+        const existing_nums = new Set();
+        for (const [r, c] of main_diag_positions) {
+            if (typeof board[r][c] === 'number' && board[r][c] !== -1) {
+                existing_nums.add(board[r][c]);
+            }
+        }
+        for (let num = 1; num <= size; num++) {
+            if (existing_nums.has(num)) continue;
+            let positions = [];
+            for (const [r, c] of main_diag_positions) {
+                if (board[r][c] === -1) continue;
+                if (Array.isArray(board[r][c]) && board[r][c].includes(num)) {
+                    positions.push([r, c]);
+                }
+            }
+            // 只有在已填 size-nat 个数字时才填
+            if (existing_nums.size >= size - nat && positions.length === 1) {
+                const [row, col] = positions[0];
+                board[row][col] = num;
+                if (!state.silentMode) log_process(`[对角线排除] 主对角线${getRowLetter(row+1)}${col+1}=${num}`);
+                eliminate_Candidates(board, size, row, col, num);
+                return;
+            } else if (positions.length === 0) {
+                has_conflict = true;
+                if (!state.silentMode) log_process(`[冲突] 主对角线上数字${num}无可填入位置，无解`);
+                return true;
+            }
+        }
+    }
 
-// //             // 3. 检查是否有欠一数对组标记
-// //             const subset_info = state.row_missing_subsets[`row_${row}`];
+    // 检查副对角线
+    {
+        const existing_nums = new Set();
+        for (const [r, c] of anti_diag_positions) {
+            if (typeof board[r][c] === 'number' && board[r][c] !== -1) {
+                existing_nums.add(board[r][c]);
+            }
+        }
+        for (let num = 1; num <= size; num++) {
+            if (existing_nums.has(num)) continue;
+            let positions = [];
+            for (const [r, c] of anti_diag_positions) {
+                if (board[r][c] === -1) continue;
+                if (Array.isArray(board[r][c]) && board[r][c].includes(num)) {
+                    positions.push([r, c]);
+                }
+            }
+            if (existing_nums.size >= size - nat && positions.length === 1) {
+                const [row, col] = positions[0];
+                board[row][col] = num;
+                if (!state.silentMode) log_process(`[对角线排除] 副对角线${getRowLetter(row+1)}${col+1}=${num}`);
+                eliminate_Candidates(board, size, row, col, num);
+                return;
+            } else if (positions.length === 0) {
+                has_conflict = true;
+                if (!state.silentMode) log_process(`[冲突] 副对角线上数字${num}无可填入位置，无解`);
+                return true;
+            }
+        }
+    }
 
-// //             // 4. 如果满足条件（有缺失数字或已有数对组标记）
-// //             if (missing_nums.length === 1 || subset_info) {
-// //                 // 对其他数字执行行排除
-// //                 for (let num = 1; num <= size; num++) {
-// //                     if (missing_nums.includes(num)) continue;
-// //                     // 如果有欠一数对组标记，跳过标记中的数字
-// //                     if (subset_info && subset_info.nums.includes(num)) continue;
-// //                     if (!num_positions[num]) continue;
-                    
-// //                     if (existing_nums.size >= size - nat && num_positions[num].length === 1) {
-// //                         const col = num_positions[num][0];
-// //                         const cell = board[row][col];
-// //                         if (Array.isArray(cell) && cell.includes(num)) {
-// //                             board[row][col] = num;
-// //                             if (!state.silentMode) log_process(`[行排除] ${getRowLetter(row+1)}${col+1}=${num}`);
-// //                             eliminate_Candidates(board, size, row, col, num);
-// //                             return;
-// //                         }
-// //                     } else if (num_positions[num].length === 0) {
-// //                         has_conflict = true;
-// //                         if (!state.silentMode) log_process(`[冲突] ${getRowLetter(row+1)}行数字${num}无可填入位置，无解`);
-// //                         return true;
-// //                     }
-// //                 }
-// //             }
-// //         }
-// //         return has_conflict;
-// //     } else {
-// //         // 正常数独模式下的原有逻辑
-// //         for (let row = 0; row < size; row++) {
-// //             // 统计每个数字在该行出现的候选格位置
-// //             const num_positions = {};
-// //             // 先检查行中是否已有确定数字
-// //             const existing_nums = new Set();
-// //             for (let col = 0; col < size; col++) {
-// //                 if (typeof board[row][col] === 'number') {
-// //                     existing_nums.add(board[row][col]);
-// //                 }
-// //             }
-
-// //             for (let num = 1; num <= size; num++) {
-// //                 num_positions[num] = [];
-// //                 // 如果数字已存在，跳过统计
-// //                 if (existing_nums.has(num)) continue;
-
-// //                 for (let col = 0; col < size; col++) {
-// //                     const cell = board[row][col];
-// //                     if (Array.isArray(cell) && cell.includes(num)) {
-// //                         num_positions[num].push(col);
-// //                     }
-// //                 }
-
-// //                 if (existing_nums.size >= size - nat && num_positions[num].length === 1) {
-// //                     const col = num_positions[num][0];
-// //                     const cell = board[row][col];
-// //                     if (Array.isArray(cell) && cell.includes(num)) {
-// //                         board[row][col] = num;
-// //                         if (!state.silentMode) log_process(`[行排除] ${getRowLetter(row+1)}${col+1}=${num}`);
-// //                         eliminate_Candidates(board, size, row, col, num);
-// //                         return;
-// //                     }
-// //                 } else if (num_positions[num].length === 0) {
-// //                     has_conflict = true;
-// //                     if (!state.silentMode) log_process(`[冲突] ${getRowLetter(row+1)}行数字${num}无可填入位置，无解`);
-// //                     return true;
-// //                 }
-// //             }
-// //         }
-// //     }
-// //     return has_conflict;
-// // }
-
-// // 欠一行排除（专用于缺一门数独）
-// function check_Row_Missing_One_Subset_Elimination(board, size, nat = 2) {
-//     // 仅缺一门数独模式有效
-//     if (state.current_mode !== 'missing') return false;
-    
-//     let has_conflict = false;
-    
-//     // 遍历每一行
-//     for (let row = 0; row < size; row++) {
-//         const num_positions = {};
-//         const missing_nums = [];
-//         const existing_nums = new Set();
-
-//         // 1. 先收集行中已存在的数字
-//         for (let col = 0; col < size; col++) {
-//             if (typeof board[row][col] === 'number' && board[row][col] !== -1) {
-//                 existing_nums.add(board[row][col]);
-//             }
-//         }
-
-//         // 2. 统计数字在行中的候选格位置（跳过黑格和已存在的数字）
-//         for (let num = 1; num <= size; num++) {
-//             if (existing_nums.has(num)) continue;
-//             num_positions[num] = [];
-            
-//             for (let col = 0; col < size; col++) {
-//                 if (board[row][col] === -1) continue; // 跳过黑格
-//                 if (Array.isArray(board[row][col]) && board[row][col].includes(num)) {
-//                     num_positions[num].push(col);
-//                 }
-//             }
-            
-//             // 记录没有可填位置的数字
-//             if (num_positions[num].length === 0) {
-//                 missing_nums.push(num);
-//             }
-//         }
-
-//         // 3. 检查是否有欠一数对组标记
-//         const subset_info = state.row_missing_subsets[`row_${row}`];
-
-//         // 4. 通用逻辑：检测 (nat) 个数字只能填在 (nat-1) 个格子的情况
-//         if (nat >= 2 && nat <= 4) {
-//             // 生成所有可能的数字组合（过滤掉已存在和缺失的数字）
-//             const all_nums = Array.from({length: size}, (_, i) => i + 1)
-//                 .filter(num => !existing_nums.has(num) && !missing_nums.includes(num));
-//             const num_combinations = getCombinations(all_nums, nat);
-
-//             for (const nums of num_combinations) {
-//                 // 统计这些数字出现的格子
-//                 const positions = new Set();
-//                 for (const num of nums) {
-//                     if (num_positions[num]) {
-//                         for (const col of num_positions[num]) {
-//                             positions.add(col);
-//                         }
-//                     }
-//                 }
-
-//                 // 检查是否满足条件：数字只能填在 (nat-1) 个格子中
-//                 if (positions.size === nat - 1) {
-//                     const pos_array = Array.from(positions).map(col => col);
-                    
-//                     // 检查这些格子是否都包含至少两个目标数字
-//                     let is_valid = true;
-//                     for (const col of pos_array) {
-//                         const cell = board[row][col];
-//                         const count = nums.filter(n => cell.includes(n)).length;
-//                         if (count < 2) {
-//                             is_valid = false;
-//                             break;
-//                         }
-//                     }
-
-//                     if (is_valid) {
-//                         let modified = false;
-//                         // 从这些格子中删除其他数字
-//                         for (const col of pos_array) {
-//                             const original_length = board[row][col].length;
-//                             board[row][col] = board[row][col].filter(n => nums.includes(n));
-//                             if (board[row][col].length < original_length) {
-//                                 modified = true;
-//                             }
-//                         }
-
-//                         if (modified) {
-//                             const cells = pos_array.map(col => `${getRowLetter(row+1)}${col+1}`).join('、');
-//                             const subset_name = nat === 2 ? '数对' : nat === 3 ? '三数组' : '四数组';
-//                             if (!state.silentMode) {
-//                                 log_process(`[欠一行排除] ${cells}构成隐性${subset_name}${nums.join('')}，删除其他候选数`);
-//                             }
-
-//                             // 记录欠一数对组信息
-//                             state.row_missing_subsets[`row_${row}`] = {
-//                                 nums: nums,
-//                                 positions: pos_array.map(col => `${row},${col}`)
-//                             };
-//                             return; // 每次只处理一个发现
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-//     }
-//     return has_conflict;
-// }
-
-// // // 列排除
-// // function check_Col_Elimination(board, size, nat) {
-// //     let has_conflict = false;
-    
-// //     // 如果是缺一门数独模式，执行特殊排除逻辑
-// //     if (state.current_mode === 'missing') {
-// //         for (let col = 0; col < size; col++) {
-// //             // 统计每个数字在该列出现的候选格位置
-// //             const num_positions = {};
-// //             const missing_nums = [];
-// //             const existing_nums = new Set();
-
-// //             // 1. 先收集列中已存在的数字
-// //             for (let row = 0; row < size; row++) {
-// //                 if (typeof board[row][col] === 'number' && board[row][col] !== -1) {
-// //                     existing_nums.add(board[row][col]);
-// //                 }
-// //             }
-
-// //             // 2. 统计数字在列中的候选格位置（跳过黑格和已存在的数字）
-// //             for (let num = 1; num <= size; num++) {
-// //                 if (existing_nums.has(num)) continue; // 跳过已存在的数字
-// //                 num_positions[num] = [];
-                
-// //                 for (let row = 0; row < size; row++) {
-// //                     if (board[row][col] === -1) continue; // 跳过黑格
-// //                     if (Array.isArray(board[row][col]) && board[row][col].includes(num)) {
-// //                         num_positions[num].push(row);
-// //                     }
-// //                 }
-                
-// //                 // 记录没有可填位置的数字
-// //                 if (num_positions[num].length === 0) {
-// //                     missing_nums.push(num);
-// //                 }
-// //             }
-
-// //             // 3. 检查是否有欠一数对组标记
-// //             const subset_info = state.col_missing_subsets[`col_${col}`];
-
-// //             // 4. 如果满足条件（有缺失数字或已有数对组标记）
-// //             if (missing_nums.length === 1 || subset_info) {
-// //                 // 对其他数字执行列排除
-// //                 for (let num = 1; num <= size; num++) {
-// //                     if (missing_nums.includes(num)) continue;
-// //                     // 如果有欠一数对组标记，跳过标记中的数字
-// //                     if (subset_info && subset_info.nums.includes(num)) continue;
-// //                     if (!num_positions[num]) continue;
-                    
-// //                     if (existing_nums.size >= size - nat && num_positions[num].length === 1) {
-// //                         const row = num_positions[num][0];
-// //                         const cell = board[row][col];
-// //                         if (Array.isArray(cell) && cell.includes(num)) {
-// //                             board[row][col] = num;
-// //                             if (!state.silentMode) log_process(`[列排除] ${getRowLetter(row+1)}${col+1}=${num}`);
-// //                             eliminate_Candidates(board, size, row, col, num);
-// //                             return;
-// //                         }
-// //                     } else if (num_positions[num].length === 0) {
-// //                         has_conflict = true;
-// //                         if (!state.silentMode) log_process(`[冲突] ${col+1}列数字${num}无可填入位置，无解`);
-// //                         return true;
-// //                     }
-// //                 }
-// //             }
-// //         }
-// //         return has_conflict;
-// //     } else {
-// //         // 正常数独模式下的原有逻辑
-// //         for (let col = 0; col < size; col++) {
-// //             // 统计每个数字在该列出现的候选格位置
-// //             const num_positions = {};
-// //             // 先检查列中是否已有确定数字
-// //             const existing_nums = new Set();
-// //             for (let row = 0; row < size; row++) {
-// //                 if (typeof board[row][col] === 'number') {
-// //                     existing_nums.add(board[row][col]);
-// //                 }
-// //             }
-
-// //             for (let num = 1; num <= size; num++) {
-// //                 num_positions[num] = [];
-// //                 // 如果数字已存在，跳过统计
-// //                 if (existing_nums.has(num)) continue;
-
-// //                 for (let row = 0; row < size; row++) {
-// //                     const cell = board[row][col];
-// //                     if (Array.isArray(cell) && cell.includes(num)) {
-// //                         num_positions[num].push(row);
-// //                     }
-// //                 }
-
-// //                 if (existing_nums.size >= size - nat && num_positions[num].length === 1) {
-// //                     const row = num_positions[num][0];
-// //                     const cell = board[row][col];
-// //                     if (Array.isArray(cell) && cell.includes(num)) {
-// //                         board[row][col] = num;
-// //                         if (!state.silentMode) log_process(`[列排除] ${getRowLetter(row+1)}${col+1}=${num}`);
-// //                         eliminate_Candidates(board, size, row, col, num);
-// //                         return;
-// //                     }
-// //                 } else if (num_positions[num].length === 0) {
-// //                     has_conflict = true;
-// //                     if (!state.silentMode) log_process(`[冲突] ${col+1}列数字${num}无可填入位置，无解`);
-// //                     return true;
-// //                 }
-// //             }
-// //         }
-// //     }
-// //     return has_conflict;
-// // }
-
-// // 欠一列排除（专用于缺一门数独）
-// function check_Col_Missing_One_Subset_Elimination(board, size, nat = 2) {
-//     // 仅缺一门数独模式有效
-//     if (state.current_mode !== 'missing') return false;
-    
-//     let has_conflict = false;
-    
-//     // 遍历每一列
-//     for (let col = 0; col < size; col++) {
-//         const num_positions = {};
-//         const missing_nums = [];
-//         const existing_nums = new Set();
-
-//         // 1. 先收集列中已存在的数字
-//         for (let row = 0; row < size; row++) {
-//             if (typeof board[row][col] === 'number' && board[row][col] !== -1) {
-//                 existing_nums.add(board[row][col]);
-//             }
-//         }
-
-//         // 2. 统计数字在列中的候选格位置（跳过黑格和已存在的数字）
-//         for (let num = 1; num <= size; num++) {
-//             if (existing_nums.has(num)) continue;
-//             num_positions[num] = [];
-            
-//             for (let row = 0; row < size; row++) {
-//                 if (board[row][col] === -1) continue; // 跳过黑格
-//                 if (Array.isArray(board[row][col]) && board[row][col].includes(num)) {
-//                     num_positions[num].push(row);
-//                 }
-//             }
-            
-//             // 记录没有可填位置的数字
-//             if (num_positions[num].length === 0) {
-//                 missing_nums.push(num);
-//             }
-//         }
-
-//         // 3. 检查是否有欠一数对组标记
-//         const subset_info = state.col_missing_subsets[`col_${col}`];
-
-//         // 4. 通用逻辑：检测 (nat) 个数字只能填在 (nat-1) 个格子的情况
-//         if (nat >= 2 && nat <= 4) {
-//             // 生成所有可能的数字组合（过滤掉已存在和缺失的数字）
-//             const all_nums = Array.from({length: size}, (_, i) => i + 1)
-//                 .filter(num => !existing_nums.has(num) && !missing_nums.includes(num));
-//             const num_combinations = getCombinations(all_nums, nat);
-
-//             for (const nums of num_combinations) {
-//                 // 统计这些数字出现的格子
-//                 const positions = new Set();
-//                 for (const num of nums) {
-//                     if (num_positions[num]) {
-//                         for (const row of num_positions[num]) {
-//                             positions.add(row);
-//                         }
-//                     }
-//                 }
-
-//                 // 检查是否满足条件：数字只能填在 (nat-1) 个格子中
-//                 if (positions.size === nat - 1) {
-//                     const pos_array = Array.from(positions).map(row => row);
-                    
-//                     // 检查这些格子是否都包含至少两个目标数字
-//                     let is_valid = true;
-//                     for (const row of pos_array) {
-//                         const cell = board[row][col];
-//                         const count = nums.filter(n => cell.includes(n)).length;
-//                         if (count < 2) {
-//                             is_valid = false;
-//                             break;
-//                         }
-//                     }
-
-//                     if (is_valid) {
-//                         let modified = false;
-//                         // 从这些格子中删除其他数字
-//                         for (const row of pos_array) {
-//                             const original_length = board[row][col].length;
-//                             board[row][col] = board[row][col].filter(n => nums.includes(n));
-//                             if (board[row][col].length < original_length) {
-//                                 modified = true;
-//                             }
-//                         }
-
-//                         if (modified) {
-//                             const cells = pos_array.map(row => `${getRowLetter(row+1)}${col+1}`).join('、');
-//                             const subset_name = nat === 2 ? '数对' : nat === 3 ? '三数组' : '四数组';
-//                             if (!state.silentMode) {
-//                                 log_process(`[欠一列排除] ${cells}构成隐性${subset_name}${nums.join('')}，删除其他候选数`);
-//                             }
-
-//                             // 记录欠一数对组信息
-//                             state.col_missing_subsets[`col_${col}`] = {
-//                                 nums: nums,
-//                                 positions: pos_array.map(row => `${row},${col}`)
-//                             };
-//                             return; // 每次只处理一个发现
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-//     }
-//     return has_conflict;
-// }
+    return has_conflict;
+}
 
 // 检查格唯一候选数（唯一余数法）
 function check_Cell_Elimination(board, size, nat = 1) {
@@ -2695,6 +2229,103 @@ function check_Row_Col_Block_Elimination(board, size) {
     return has_conflict;
 }
 
+// 对角线区块排除（主对角线、副对角线）
+function check_Diagonal_Block_Elimination(board, size) {
+    const box_size = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
+    // 主对角线
+    const main_diag_positions = [];
+    for (let i = 0; i < size; i++) {
+        main_diag_positions.push([i, i]);
+    }
+    // 副对角线
+    const anti_diag_positions = [];
+    for (let i = 0; i < size; i++) {
+        anti_diag_positions.push([i, size - 1 - i]);
+    }
+
+    // 检查主对角线
+    for (let num = 1; num <= size; num++) {
+        const positions = main_diag_positions.filter(([r, c]) => {
+            const cell = board[r][c];
+            return Array.isArray(cell) && cell.includes(num);
+        });
+        if (positions.length > 1) {
+            // 判断是否都在同一个宫
+            const boxRow = Math.floor(positions[0][0] / box_size[0]);
+            const boxCol = Math.floor(positions[0][1] / box_size[1]);
+            const all_in_same_box = positions.every(([r, c]) =>
+                Math.floor(r / box_size[0]) === boxRow &&
+                Math.floor(c / box_size[1]) === boxCol
+            );
+            if (all_in_same_box) {
+                // 删除该宫内其他格的num候选
+                const startRow = boxRow * box_size[0];
+                const startCol = boxCol * box_size[1];
+                let excluded_cells = [];
+                for (let r = startRow; r < startRow + box_size[0]; r++) {
+                    for (let c = startCol; c < startCol + box_size[1]; c++) {
+                        // 跳过对角线上的候选格
+                        if (!positions.some(([pr, pc]) => pr === r && pc === c)) {
+                            const cell = board[r][c];
+                            if (Array.isArray(cell) && cell.includes(num)) {
+                                board[r][c] = cell.filter(n => n !== num);
+                                excluded_cells.push(`${getRowLetter(r+1)}${c+1}`);
+                            }
+                        }
+                    }
+                }
+                if (excluded_cells.length > 0) {
+                    const block_cells = positions.map(([r, c]) => `${getRowLetter(r+1)}${c+1}`).join('、');
+                    if (!state.silentMode) log_process(`[对角线区块排除] ${block_cells}构成${num}区块，排除${excluded_cells.join('、')}的${num}`);
+                    return;
+                }
+                
+            }
+        }
+    }
+
+    // 检查副对角线
+    for (let num = 1; num <= size; num++) {
+        const positions = anti_diag_positions.filter(([r, c]) => {
+            const cell = board[r][c];
+            return Array.isArray(cell) && cell.includes(num);
+        });
+        if (positions.length > 1) {
+            // 判断是否都在同一个宫
+            const boxRow = Math.floor(positions[0][0] / box_size[0]);
+            const boxCol = Math.floor(positions[0][1] / box_size[1]);
+            const all_in_same_box = positions.every(([r, c]) =>
+                Math.floor(r / box_size[0]) === boxRow &&
+                Math.floor(c / box_size[1]) === boxCol
+            );
+            if (all_in_same_box) {
+                // 删除该宫内其他格的num候选
+                const startRow = boxRow * box_size[0];
+                const startCol = boxCol * box_size[1];
+                let excluded_cells = [];
+                for (let r = startRow; r < startRow + box_size[0]; r++) {
+                    for (let c = startCol; c < startCol + box_size[1]; c++) {
+                        // 跳过对角线上的候选格
+                        if (!positions.some(([pr, pc]) => pr === r && pc === c)) {
+                            const cell = board[r][c];
+                            if (Array.isArray(cell) && cell.includes(num)) {
+                                board[r][c] = cell.filter(n => n !== num);
+                                excluded_cells.push(`${getRowLetter(r+1)}${c+1}`);
+                            }
+                        }
+                    }
+                }
+                if (excluded_cells.length > 0) {
+                    const block_cells = positions.map(([r, c]) => `${getRowLetter(r+1)}${c+1}`).join('、');
+                    if (!state.silentMode) log_process(`[对角线区块排除] ${block_cells}构成${num}区块，排除${excluded_cells.join('、')}的${num}`);
+                    return;
+                }
+                
+            }
+        }
+    }
+}
+
 // 检查宫显性数组（可指定子集大小：2=数对，3=三数组，4=四数组）
 function check_Box_Naked_Subset_Elimination(board, size, subsetSize = 2) {
     // 宫的大小定义（兼容6宫格）
@@ -2764,124 +2395,6 @@ function check_Box_Naked_Subset_Elimination(board, size, subsetSize = 2) {
     
     return hasConflict;
 }
-
-// // 检查行显性数组（可指定子集大小：2=数对，3=三数组，4=四数组）
-// function check_Row_Naked_Subset_Elimination(board, size, subsetSize = 2) {
-//     let hasConflict = false;
-    
-//     for (let row = 0; row < size; row++) {
-//         // 收集行内的所有候选格及其候选数
-//         const candidates = [];
-//         for (let col = 0; col < size; col++) {
-//             const cell = board[row][col];
-//             if (Array.isArray(cell)) {
-//                 if (cell.length === 0) {
-//                     hasConflict = true;
-//                     if (!state.silentMode) log_process(`[冲突] ${getRowLetter(row+1)}${col+1}无候选数，无解`);
-//                     return true;
-//                 }
-//                 candidates.push({
-//                     pos: [row, col],
-//                     nums: [...cell]
-//                 });
-//             }
-//         }
-        
-//         // 检查指定大小的组合
-//         const combinations = getCombinations(candidates, subsetSize);
-        
-//         for (const combo of combinations) {
-//             // 合并所有候选数
-//             const unionNums = [...new Set(combo.flatMap(c => c.nums))];
-            
-//             // 如果合并后的候选数数量等于子集大小，则形成显性数组
-//             if (unionNums.length === subsetSize) {
-//                 const affectedCells = [];
-                
-//                 // 从行的其他格子中排除这些候选数
-//                 for (const cell of candidates) {
-//                     if (!combo.some(c => c.pos[1] === cell.pos[1])) {
-//                         const originalLength = cell.nums.length;
-//                         cell.nums = cell.nums.filter(n => !unionNums.includes(n));
-//                         board[cell.pos[0]][cell.pos[1]] = cell.nums;
-                        
-//                         if (cell.nums.length < originalLength) {
-//                             affectedCells.push(`${getRowLetter(cell.pos[0]+1)}${cell.pos[1]+1}`);
-//                         }
-//                     }
-//                 }
-                
-//                 if (affectedCells.length > 0) {
-//                     const subsetName = subsetSize === 2 ? '数对' : subsetSize === 3 ? '三数组' : '四数组';
-//                     const subsetCells = combo.map(c => `${getRowLetter(c.pos[0]+1)}${c.pos[1]+1}`).join('、');
-//                     if (!state.silentMode) log_process(`[行显性${subsetName}] ${subsetCells}构成${subsetName}${unionNums.join('')}，排除${affectedCells.join('、')}的${unionNums.join('、')}`);
-//                     return;
-//                 }
-//             }
-//         }
-//     }
-    
-//     return hasConflict;
-// }
-
-// // 检查列显性数组（可指定子集大小：2=数对，3=三数组，4=四数组）
-// function check_Col_Naked_Subset_Elimination(board, size, subsetSize = 2) {
-//     let hasConflict = false;
-    
-//     for (let col = 0; col < size; col++) {
-//         // 收集列内的所有候选格及其候选数
-//         const candidates = [];
-//         for (let row = 0; row < size; row++) {
-//             const cell = board[row][col];
-//             if (Array.isArray(cell)) {
-//                 if (cell.length === 0) {
-//                     hasConflict = true;
-//                     if (!state.silentMode) log_process(`[冲突] ${getRowLetter(row+1)}${col+1}无候选数，无解`);
-//                     return true;
-//                 }
-//                 candidates.push({
-//                     pos: [row, col],
-//                     nums: [...cell]
-//                 });
-//             }
-//         }
-        
-//         // 检查指定大小的组合
-//         const combinations = getCombinations(candidates, subsetSize);
-        
-//         for (const combo of combinations) {
-//             // 合并所有候选数
-//             const unionNums = [...new Set(combo.flatMap(c => c.nums))];
-            
-//             // 如果合并后的候选数数量等于子集大小，则形成显性数组
-//             if (unionNums.length === subsetSize) {
-//                 const affectedCells = [];
-                
-//                 // 从列的其他格子中排除这些候选数
-//                 for (const cell of candidates) {
-//                     if (!combo.some(c => c.pos[0] === cell.pos[0])) {
-//                         const originalLength = cell.nums.length;
-//                         cell.nums = cell.nums.filter(n => !unionNums.includes(n));
-//                         board[cell.pos[0]][cell.pos[1]] = cell.nums;
-                        
-//                         if (cell.nums.length < originalLength) {
-//                             affectedCells.push(`${getRowLetter(cell.pos[0]+1)}${cell.pos[1]+1}`);
-//                         }
-//                     }
-//                 }
-                
-//                 if (affectedCells.length > 0) {
-//                     const subsetName = subsetSize === 2 ? '数对' : subsetSize === 3 ? '三数组' : '四数组';
-//                     const subsetCells = combo.map(c => `${getRowLetter(c.pos[0]+1)}${c.pos[1]+1}`).join('、');
-//                     if (!state.silentMode) log_process(`[列显性${subsetName}] ${subsetCells}构成${subsetName}${unionNums.join('')}，排除${affectedCells.join('、')}的${unionNums.join('、')}`);
-//                     return;
-//                 }
-//             }
-//         }
-//     }
-    
-//     return hasConflict;
-// }
 
 // 检查行列显性数组（合并函数，可指定子集大小：2=数对，3=三数组，4=四数组）
 function check_Row_Col_Naked_Subset_Elimination(board, size, subset_size = 2) {
@@ -2980,83 +2493,6 @@ function check_Row_Col_Naked_Subset_Elimination(board, size, subset_size = 2) {
     }
     return has_conflict;
 }
-
-// // 检查宫隐性数组（可指定子集大小：2=数对，3=三数组，4=四数组）
-// function check_Box_Hidden_Subset_Elimination(board, size, subsetSize = 2) {
-//     const boxSize = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
-//     let hasConflict = false;
-    
-//     // 遍历每个宫
-//     for (let boxRow = 0; boxRow < size / boxSize[0]; boxRow++) {
-//         for (let boxCol = 0; boxCol < size / boxSize[1]; boxCol++) {
-//             const startRow = boxRow * boxSize[0];
-//             const startCol = boxCol * boxSize[1];
-            
-//             // 收集宫内的所有候选格
-//             const candidateCells = [];
-//             for (let r = startRow; r < startRow + boxSize[0]; r++) {
-//                 for (let c = startCol; c < startCol + boxSize[1]; c++) {
-//                     if (Array.isArray(board[r][c])) {
-//                         if (board[r][c].length === 0) {
-//                             hasConflict = true;
-//                             if (!state.silentMode) log_process(`[冲突] ${getRowLetter(r+1)}${c+1}无候选数，无解`);
-//                             return true;
-//                         }
-//                         candidateCells.push([r, c]);
-//                     }
-//                 }
-//             }
-            
-//             // 检查1-size的所有数字组合（根据subsetSize决定组合大小）
-//             const nums = Array.from({length: size}, (_, i) => i + 1);
-//             const numCombinations = getCombinations(nums, subsetSize);
-            
-//             for (const numGroup of numCombinations) {
-//                 // 统计这些数字在哪些候选格中出现
-//                 const positions = [];
-//                 for (const [r, c] of candidateCells) {
-//                     if (numGroup.some(n => board[r][c].includes(n))) {
-//                         positions.push([r, c]);
-//                     }
-//                 }
-                
-//                 // 如果这些数字出现的候选格正好等于子集大小
-//                 if (positions.length === subsetSize) {
-//                     // 检查这些格子是否都包含这些数字
-//                     let isSubset = true;
-//                     for (const [r, c] of positions) {
-//                         if (!numGroup.every(n => board[r][c].includes(n))) {
-//                             isSubset = false;
-//                             break;
-//                         }
-//                     }
-                    
-//                     if (isSubset) {
-//                         let modified = false;
-//                         // 从这些格子中删除其他数字
-//                         for (const [r, c] of positions) {
-//                             const originalLength = board[r][c].length;
-//                             board[r][c] = board[r][c].filter(n => numGroup.includes(n));
-//                             if (board[r][c].length < originalLength) {
-//                                 modified = true;
-//                             }
-//                         }
-                        
-//                         if (modified) {
-//                             const subsetName = 
-//                                 subsetSize === 2 ? '数对' : 
-//                                 subsetSize === 3 ? '三数组' : '四数组';
-//                             const cells = positions.map(([r, c]) => `${getRowLetter(r+1)}${c+1}`).join('、');
-//                             if (!state.silentMode) log_process(`[宫隐性${subsetName}] ${cells}构成隐性${subsetName}${numGroup.join('')}，删除其他候选数`);
-//                             return;
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-//     }
-//     return hasConflict;
-// }
 
 // 检查宫隐性数组（可指定子集大小：2=数对，3=三数组，4=四数组）
 function check_Box_Hidden_Subset_Elimination(board, size, subset_size = 2) {
@@ -3250,424 +2686,6 @@ function check_Box_Hidden_Subset_Elimination(board, size, subset_size = 2) {
     }
     return has_conflict;
 }
-
-// // 检查行隐性数组（可指定子集大小：2=数对，3=三数组，4=四数组）
-// function check_Row_Hidden_Subset_Elimination(board, size, subset_size = 2) {
-//     // 仅缺一门数独模式有效
-//     if (state.current_mode !== 'missing') return false;
-    
-//     let has_conflict = false;
-    
-//     // 遍历每一行
-//     for (let row = 0; row < size; row++) {
-//         const num_positions = {};
-//         const missing_nums = [];
-//         const existing_nums = new Set();
-
-//         // 1. 先收集行中已存在的数字
-//         for (let col = 0; col < size; col++) {
-//             if (typeof board[row][col] === 'number' && board[row][col] !== -1) {
-//                 existing_nums.add(board[row][col]);
-//             }
-//         }
-
-//         // 2. 统计数字在行中的候选格位置（跳过黑格和已存在的数字）
-//         for (let num = 1; num <= size; num++) {
-//             if (existing_nums.has(num)) continue;
-//             num_positions[num] = [];
-            
-//             for (let col = 0; col < size; col++) {
-//                 if (board[row][col] === -1) continue; // 跳过黑格
-//                 if (Array.isArray(board[row][col]) && board[row][col].includes(num)) {
-//                     num_positions[num].push(col);
-//                 }
-//             }
-            
-//             // 记录没有可填位置的数字
-//             if (num_positions[num].length === 0) {
-//                 missing_nums.push(num);
-//             }
-//         }
-
-//         // 3. 检查是否有欠一数对组标记
-//         const subset_info = state.row_missing_subsets[`row_${row}`];
-
-//         // 4. 通用逻辑：检测 (subset_size) 个数字只能填在 (subset_size-1) 个格子的情况
-//         if (subset_size >= 2 && subset_size <= 4) {
-//             // 生成所有可能的数字组合（过滤掉已存在和缺失的数字）
-//             const all_nums = Array.from({length: size}, (_, i) => i + 1)
-//                 .filter(num => !existing_nums.has(num) && !missing_nums.includes(num));
-//             const num_combinations = getCombinations(all_nums, subset_size);
-
-//             for (const num_group of num_combinations) {
-//                 // 如果有欠一数对组标记，跳过已标记的数字组合
-//                 if (subset_info && subset_info.nums.some(n => num_group.includes(n))) continue;
-
-//                 // 统计这些数字在哪些候选格中出现
-//                 const positions = new Set();
-//                 for (const num of num_group) {
-//                     if (num_positions[num]) {
-//                         for (const col of num_positions[num]) {
-//                             positions.add(col);
-//                         }
-//                     }
-//                 }
-
-//                 // 检查是否满足条件：数字只能填在 (subset_size-1) 个格子中
-//                 if (positions.size === subset_size - 1) {
-//                     const pos_array = Array.from(positions).map(col => col);
-                    
-//                     // 检查这些格子是否都包含至少两个目标数字
-//                     let is_valid = true;
-//                     for (const col of pos_array) {
-//                         const cell = board[row][col];
-//                         const count = num_group.filter(n => cell.includes(n)).length;
-//                         if (count < 2) {
-//                             is_valid = false;
-//                             break;
-//                         }
-//                     }
-
-//                     if (is_valid) {
-//                         let modified = false;
-//                         // 从这些格子中删除其他数字
-//                         for (const col of pos_array) {
-//                             const original_length = board[row][col].length;
-//                             board[row][col] = board[row][col].filter(n => num_group.includes(n));
-//                             if (board[row][col].length < original_length) {
-//                                 modified = true;
-//                             }
-//                         }
-
-//                         if (modified) {
-//                             const subset_name = 
-//                                 subset_size === 2 ? '数对' : 
-//                                 subset_size === 3 ? '三数组' : '四数组';
-//                             const cells = pos_array.map(col => 
-//                                 `${getRowLetter(row+1)}${col+1}`).join('、');
-//                             if (!state.silentMode) {
-//                                 log_process(`[行隐性${subset_name}] ${cells}构成隐性${subset_name}${num_group.join('')}，删除其他候选数`);
-//                             }
-
-//                             // 记录欠一数对组信息
-//                             state.row_missing_subsets[`row_${row}`] = {
-//                                 nums: num_group,
-//                                 positions: pos_array.map(col => `${row},${col}`)
-//                             };
-//                             return; // 每次只处理一个发现
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-//     }
-//     return has_conflict;
-// }
-
-// // 检查列隐性数组（可指定子集大小：2=数对，3=三数组，4=四数组）
-// function check_Col_Hidden_Subset_Elimination(board, size, subset_size = 2) {
-//     // 仅缺一门数独模式有效
-//     if (state.current_mode !== 'missing') return false;
-    
-//     let has_conflict = false;
-    
-//     // 遍历每一列
-//     for (let col = 0; col < size; col++) {
-//         const num_positions = {};
-//         const missing_nums = [];
-//         const existing_nums = new Set();
-
-//         // 1. 先收集列中已存在的数字
-//         for (let row = 0; row < size; row++) {
-//             if (typeof board[row][col] === 'number' && board[row][col] !== -1) {
-//                 existing_nums.add(board[row][col]);
-//             }
-//         }
-
-//         // 2. 统计数字在列中的候选格位置（跳过黑格和已存在的数字）
-//         for (let num = 1; num <= size; num++) {
-//             if (existing_nums.has(num)) continue;
-//             num_positions[num] = [];
-            
-//             for (let row = 0; row < size; row++) {
-//                 if (board[row][col] === -1) continue; // 跳过黑格
-//                 if (Array.isArray(board[row][col]) && board[row][col].includes(num)) {
-//                     num_positions[num].push(row);
-//                 }
-//             }
-            
-//             // 记录没有可填位置的数字
-//             if (num_positions[num].length === 0) {
-//                 missing_nums.push(num);
-//             }
-//         }
-
-//         // 3. 检查是否有欠一数对组标记
-//         const subset_info = state.col_missing_subsets[`col_${col}`];
-
-//         // 4. 通用逻辑：检测 (subset_size) 个数字只能填在 (subset_size-1) 个格子的情况
-//         if (subset_size >= 2 && subset_size <= 4) {
-//             // 生成所有可能的数字组合（过滤掉已存在和缺失的数字）
-//             const all_nums = Array.from({length: size}, (_, i) => i + 1)
-//                 .filter(num => !existing_nums.has(num) && !missing_nums.includes(num));
-//             const num_combinations = getCombinations(all_nums, subset_size);
-
-//             for (const num_group of num_combinations) {
-//                 // 如果有欠一数对组标记，跳过已标记的数字组合
-//                 if (subset_info && subset_info.nums.some(n => num_group.includes(n))) continue;
-
-//                 // 统计这些数字在哪些候选格中出现
-//                 const positions = new Set();
-//                 for (const num of num_group) {
-//                     if (num_positions[num]) {
-//                         for (const row of num_positions[num]) {
-//                             positions.add(row);
-//                         }
-//                     }
-//                 }
-
-//                 // 检查是否满足条件：数字只能填在 (subset_size-1) 个格子中
-//                 if (positions.size === subset_size - 1) {
-//                     const pos_array = Array.from(positions).map(row => row);
-                    
-//                     // 检查这些格子是否都包含至少两个目标数字
-//                     let is_valid = true;
-//                     for (const row of pos_array) {
-//                         const cell = board[row][col];
-//                         const count = num_group.filter(n => cell.includes(n)).length;
-//                         if (count < 2) {
-//                             is_valid = false;
-//                             break;
-//                         }
-//                     }
-
-//                     if (is_valid) {
-//                         let modified = false;
-//                         // 从这些格子中删除其他数字
-//                         for (const row of pos_array) {
-//                             const original_length = board[row][col].length;
-//                             board[row][col] = board[row][col].filter(n => num_group.includes(n));
-//                             if (board[row][col].length < original_length) {
-//                                 modified = true;
-//                             }
-//                         }
-
-//                         if (modified) {
-//                             const subset_name = 
-//                                 subset_size === 2 ? '数对' : 
-//                                 subset_size === 3 ? '三数组' : '四数组';
-//                             const cells = pos_array.map(row => 
-//                                 `${getRowLetter(row+1)}${col+1}`).join('、');
-//                             if (!state.silentMode) {
-//                                 log_process(`[列隐性${subset_name}] ${cells}构成隐性${subset_name}${num_group.join('')}，删除其他候选数`);
-//                             }
-
-//                             // 记录欠一数对组信息
-//                             state.col_missing_subsets[`col_${col}`] = {
-//                                 nums: num_group,
-//                                 positions: pos_array.map(row => `${row},${col}`)
-//                             };
-//                             return; // 每次只处理一个发现
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-//     }
-//     return has_conflict;
-// }
-
-// // 检查行列隐性数组（合并函数，可指定子集大小：2=数对，3=三数组，4=四数组）
-// function check_Row_Col_Hidden_Subset_Elimination(board, size, subset_size = 2) {
-//     let has_conflict = false;
-//     log_process(`调用行列隐性数组`);
-    
-//     // 行隐性数组逻辑
-//     for (let row = 0; row < size; row++) {
-//         const num_positions = {};
-//         const missing_nums = [];
-//         const existing_nums = new Set();
-
-//         // 1. 收集行中已存在的数字
-//         for (let col = 0; col < size; col++) {
-//             if (typeof board[row][col] === 'number' && board[row][col] !== -1) {
-//                 existing_nums.add(board[row][col]);
-//             }
-//         }
-
-//         // 2. 统计数字在行中的候选格位置（跳过黑格和已存在的数字）
-//         for (let num = 1; num <= size; num++) {
-//             if (existing_nums.has(num)) continue;
-//             num_positions[num] = [];
-            
-//             for (let col = 0; col < size; col++) {
-//                 if (board[row][col] === -1) continue;
-//                 if (Array.isArray(board[row][col]) && board[row][col].includes(num)) {
-//                     num_positions[num].push(col);
-//                 }
-//             }
-            
-//             // 记录没有可填位置的数字
-//             if (num_positions[num].length === 0) {
-//                 missing_nums.push(num);
-//             }
-//         }
-
-//         // 3. 检查是否有欠一数对组标记
-//         const subset_info = state.row_missing_subsets[`row_${row}`];
-
-//         // 4. 检测隐性数组
-//         if (subset_size >= 2 && subset_size <= 4) {
-//             const all_nums = Array.from({length: size}, (_, i) => i + 1)
-//                 .filter(num => !existing_nums.has(num) && !missing_nums.includes(num));
-//             const num_combinations = getCombinations(all_nums, subset_size);
-
-//             for (const num_group of num_combinations) {
-//                 // 跳过已标记的数字组合
-//                 if (subset_info && subset_info.nums.some(n => num_group.includes(n))) continue;
-
-//                 const positions = new Set();
-//                 for (const num of num_group) {
-//                     if (num_positions[num]) {
-//                         for (const col of num_positions[num]) {
-//                             positions.add(col);
-//                         }
-//                     }
-//                 }
-
-//                 // 检查是否满足条件
-//                 if (positions.size === subset_size - 1) {
-//                     const pos_array = Array.from(positions);
-//                     let is_valid = true;
-//                     for (const col of pos_array) {
-//                         const cell = board[row][col];
-//                         const count = num_group.filter(n => cell.includes(n)).length;
-//                         if (count < 2) {
-//                             is_valid = false;
-//                             break;
-//                         }
-//                     }
-
-//                     if (is_valid) {
-//                         let modified = false;
-//                         for (const col of pos_array) {
-//                             const original_length = board[row][col].length;
-//                             board[row][col] = board[row][col].filter(n => num_group.includes(n));
-//                             if (board[row][col].length < original_length) {
-//                                 modified = true;
-//                             }
-//                         }
-
-//                         if (modified) {
-//                             const subset_name = subset_size === 2 ? '数对' : subset_size === 3 ? '三数组' : '四数组';
-//                             const cells = pos_array.map(col => `${getRowLetter(row+1)}${col+1}`).join('、');
-//                             if (!state.silentMode) {
-//                                 log_process(`[行隐性${subset_name}] ${cells}构成隐性${subset_name}${num_group.join('')}，删除其他候选数`);
-//                             }
-//                             state.row_missing_subsets[`row_${row}`] = {
-//                                 nums: num_group,
-//                                 positions: pos_array.map(col => `${row},${col}`)
-//                             };
-//                             return;
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-//     }
-
-//     // 列隐性数组逻辑
-//     for (let col = 0; col < size; col++) {
-//         const num_positions = {};
-//         const missing_nums = [];
-//         const existing_nums = new Set();
-
-//         // 1. 收集列中已存在的数字
-//         for (let row = 0; row < size; row++) {
-//             if (typeof board[row][col] === 'number' && board[row][col] !== -1) {
-//                 existing_nums.add(board[row][col]);
-//             }
-//         }
-
-//         // 2. 统计数字在列中的候选格位置
-//         for (let num = 1; num <= size; num++) {
-//             if (existing_nums.has(num)) continue;
-//             num_positions[num] = [];
-            
-//             for (let row = 0; row < size; row++) {
-//                 if (board[row][col] === -1) continue;
-//                 if (Array.isArray(board[row][col]) && board[row][col].includes(num)) {
-//                     num_positions[num].push(row);
-//                 }
-//             }
-            
-//             if (num_positions[num].length === 0) {
-//                 missing_nums.push(num);
-//             }
-//         }
-
-//         // 3. 检查欠一数对组标记
-//         const subset_info = state.col_missing_subsets[`col_${col}`];
-
-//         // 4. 检测隐性数组
-//         if (subset_size >= 2 && subset_size <= 4) {
-//             const all_nums = Array.from({length: size}, (_, i) => i + 1)
-//                 .filter(num => !existing_nums.has(num) && !missing_nums.includes(num));
-//             const num_combinations = getCombinations(all_nums, subset_size);
-
-//             for (const num_group of num_combinations) {
-//                 if (subset_info && subset_info.nums.some(n => num_group.includes(n))) continue;
-
-//                 const positions = new Set();
-//                 for (const num of num_group) {
-//                     if (num_positions[num]) {
-//                         for (const row of num_positions[num]) {
-//                             positions.add(row);
-//                         }
-//                     }
-//                 }
-
-//                 if (positions.size === subset_size - 1) {
-//                     const pos_array = Array.from(positions);
-//                     let is_valid = true;
-//                     for (const row of pos_array) {
-//                         const cell = board[row][col];
-//                         const count = num_group.filter(n => cell.includes(n)).length;
-//                         if (count < 2) {
-//                             is_valid = false;
-//                             break;
-//                         }
-//                     }
-
-//                     if (is_valid) {
-//                         let modified = false;
-//                         for (const row of pos_array) {
-//                             const original_length = board[row][col].length;
-//                             board[row][col] = board[row][col].filter(n => num_group.includes(n));
-//                             if (board[row][col].length < original_length) {
-//                                 modified = true;
-//                             }
-//                         }
-
-//                         if (modified) {
-//                             const subset_name = subset_size === 2 ? '数对' : subset_size === 3 ? '三数组' : '四数组';
-//                             const cells = pos_array.map(row => `${getRowLetter(row+1)}${col+1}`).join('、');
-//                             if (!state.silentMode) {
-//                                 log_process(`[列隐性${subset_name}] ${cells}构成隐性${subset_name}${num_group.join('')}，删除其他候选数`);
-//                             }
-//                             state.col_missing_subsets[`col_${col}`] = {
-//                                 nums: num_group,
-//                                 positions: pos_array.map(row => `${row},${col}`)
-//                             };
-//                             return;
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-//     }
-//     return has_conflict;
-// }
 
 // 检查行列隐性数组（合并函数，可指定子集大小：2=数对，3=三数组，4=四数组）
 function check_Row_Col_Hidden_Subset_Elimination(board, size, subset_size = 2) {

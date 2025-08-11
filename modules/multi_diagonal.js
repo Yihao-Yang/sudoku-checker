@@ -1,6 +1,7 @@
 import { state, set_current_mode } from './state.js';
 import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation } from './core.js';
 import { solve, isValid } from '../solver/solver_tool.js';
+import { generate_puzzle, get_symmetric_positions } from '../solver/generate.js';
 
 // 斜线数独主入口
 export function create_multi_diagonal_sudoku(size) {
@@ -104,7 +105,35 @@ export function create_multi_diagonal_sudoku(size) {
     }
     add_Extra_Button('验证唯一解', check_multi_diagonal_uniqueness, '#2196F3');
     add_Extra_Button('隐藏答案', restore_original_board, '#2196F3');
-    add_Extra_Button('清除标记', clear_multi_diagonal_marks, '#F44336');
+    add_Extra_Button('清除标记', clear_multi_diagonal_marks, '#2196F3');
+    add_Extra_Button('自动出题', () => generate_multi_diagonal_puzzle(size), '#2196F3');
+}
+
+// 自动生成多斜线数独题目（含对称斜线标记）
+export function generate_multi_diagonal_puzzle(size) {
+// 随机生成斜线标记
+    const container = document.querySelector('.sudoku-container');
+    if (!container) return;
+    const grid = container.querySelector('.sudoku-grid');
+    if (!grid) return;
+
+    // 随机生成 2 到 4 条斜线标记
+    const numLines = Math.floor(Math.random() * 3) + 2; // 2, 3, or 4 lines
+    for (let i = 0; i < numLines; i++) {
+        // 随机选择起点和终点格子
+        const startRow = Math.floor(Math.random() * size);
+        const startCol = Math.floor(Math.random() * size);
+        const endRow = Math.floor(Math.random() * size);
+        const endCol = Math.floor(Math.random() * size);
+
+        // 确保起点和终点不同
+        if (startRow !== endRow || startCol !== endCol) {
+            draw_multi_diagonal_line(size, [startRow, startCol], [endRow, endCol]);
+        }
+    }
+
+    // 调用自动出题
+    generate_puzzle(size);
 
 }
 
@@ -261,16 +290,14 @@ export function add_multi_diagonal_mark() {
     }
 
     function drawFinalLine(x1, y1, x2, y2) {
-        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        line.setAttribute('x1', `${x1}%`);
-        line.setAttribute('y1', `${y1}%`);
-        line.setAttribute('x2', `${x2}%`);
-        line.setAttribute('y2', `${y2}%`);
-        line.setAttribute('stroke', '#888');
-        line.setAttribute('stroke-width', '4');
-        line.setAttribute('stroke-linecap', 'round');
-        line.setAttribute('opacity', '1');
-        svg.appendChild(line);
+        // 通过百分比坐标反推格子坐标
+        const size = Math.sqrt(grid.querySelectorAll('.sudoku-cell').length);
+        const col1 = Math.round((x1 / 100) * size - 0.5);
+        const row1 = Math.round((y1 / 100) * size - 0.5);
+        const col2 = Math.round((x2 / 100) * size - 0.5);
+        const row2 = Math.round((y2 / 100) * size - 0.5);
+        // 调用统一画线函数
+        draw_multi_diagonal_line(size, [row1, col1], [row2, col2]);
     }
 
     function onCellClick(e) {
@@ -315,6 +342,115 @@ export function add_multi_diagonal_mark() {
         });
     }
 }
+
+// /**
+//  * 在数独盘面上画一条斜线标记
+//  * @param {number} size - 数独盘面大小
+//  * @param {[number, number]} start - 起点坐标 [row, col]
+//  * @param {[number, number]} end - 终点坐标 [row, col]
+//  * @param {string} [color='#888'] - 线条颜色
+//  */
+// export function draw_multi_diagonal_line(size, start, end, color = '#888') {
+//     const container = document.querySelector('.sudoku-container');
+//     if (!container) return;
+//     const grid = container.querySelector('.sudoku-grid');
+//     if (!grid) return;
+//     let svg = grid.querySelector('.mark-svg');
+//     if (!svg) {
+//         svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+//         svg.classList.add('mark-svg');
+//         svg.style.position = 'absolute';
+//         svg.style.left = '0';
+//         svg.style.top = '0';
+//         svg.style.width = '100%';
+//         svg.style.height = '100%';
+//         svg.setAttribute('width', grid.clientWidth);
+//         svg.setAttribute('height', grid.clientHeight);
+//         svg.style.pointerEvents = 'none';
+//         grid.appendChild(svg);
+//     }
+//     // 百分比中心
+//     function percent_center(row, col) {
+//         return {
+//             x: (col + 0.5) * (100 / size),
+//             y: (row + 0.5) * (100 / size)
+//         };
+//     }
+//     const p1 = percent_center(start[0], start[1]);
+//     const p2 = percent_center(end[0], end[1]);
+//     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+//     line.setAttribute('x1', `${p1.x}%`);
+//     line.setAttribute('y1', `${p1.y}%`);
+//     line.setAttribute('x2', `${p2.x}%`);
+//     line.setAttribute('y2', `${p2.y}%`);
+//     line.setAttribute('stroke', color);
+//     line.setAttribute('stroke-width', '4');
+//     line.setAttribute('stroke-linecap', 'round');
+//     line.setAttribute('opacity', '1');
+//     svg.appendChild(line);
+// }
+
+// ...existing code...
+/**
+ * 在数独盘面上画一条斜线标记
+ * @param {number} size - 数独盘面大小
+ * @param {[number, number]|HTMLElement} start - 起点坐标 [row, col] 或格子DOM
+ * @param {[number, number]|HTMLElement} end - 终点坐标 [row, col] 或格子DOM
+ * @param {string} [color='#888'] - 线条颜色
+ */
+export function draw_multi_diagonal_line(size, start, end, color = '#888') {
+    const container = document.querySelector('.sudoku-container');
+    if (!container) return;
+    const grid = container.querySelector('.sudoku-grid');
+    if (!grid) return;
+    let svg = grid.querySelector('.mark-svg');
+    if (!svg) {
+        svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.classList.add('mark-svg');
+        svg.style.position = 'absolute';
+        svg.style.left = '0';
+        svg.style.top = '0';
+        svg.style.width = '100%';
+        svg.style.height = '100%';
+        svg.setAttribute('width', grid.clientWidth);
+        svg.setAttribute('height', grid.clientHeight);
+        svg.style.pointerEvents = 'none';
+        grid.appendChild(svg);
+    }
+    // 百分比中心
+    function percent_center(row, col) {
+        return {
+            x: (col + 0.5) * (100 / size),
+            y: (row + 0.5) * (100 / size)
+        };
+    }
+    // 支持DOM元素输入
+    function get_center(pos) {
+        if (Array.isArray(pos)) {
+            return percent_center(pos[0], pos[1]);
+        } else if (pos instanceof HTMLElement) {
+            const cells = Array.from(grid.querySelectorAll('.sudoku-cell'));
+            const idx = cells.indexOf(pos);
+            const row = Math.floor(idx / size);
+            const col = idx % size;
+            return percent_center(row, col);
+        }
+        return { x: 0, y: 0 };
+    }
+    const p1 = get_center(start);
+    const p2 = get_center(end);
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', `${p1.x}%`);
+    line.setAttribute('y1', `${p1.y}%`);
+    line.setAttribute('x2', `${p2.x}%`);
+    line.setAttribute('y2', `${p2.y}%`);
+    line.setAttribute('stroke', color);
+    line.setAttribute('stroke-width', '4');
+    line.setAttribute('stroke-linecap', 'round');
+    line.setAttribute('opacity', '1');
+    svg.appendChild(line);
+}
+// ...existing code...
 
 // 获取所有标记线经过的格子（假设有此辅助函数）
 export function get_cells_on_line(size, start, end) {
