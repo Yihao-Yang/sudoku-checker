@@ -140,22 +140,22 @@ export function check_missing_uniqueness() {
     );
     
     // 3. 使用改进的求解函数验证
-    const { solutionCount, solution } = missing_solve(
+    const { solution_count, solution } = missing_solve(
         board, 
         size,
         missing_cells
     );
-    state.solutionCount = solutionCount;
-    // const { solutionCount, solution } = solve(board, size);
+    state.solve_stats.solution_count = solution_count;
+    // const { solution_count, solution } = solve(board, size);
     
     // 4. 显示结果
 
 
-    if (state.solutionCount === -1) {
+    if (state.solve_stats.solution_count === -1) {
         show_result("当前技巧无法解出");
-    } else if (state.solutionCount === 0 || state.solutionCount === -2) {
+    } else if (state.solve_stats.solution_count === 0 || state.solve_stats.solution_count === -2) {
         show_result("当前缺一门数独无解。", 'error');
-    } else if (solutionCount === 1) {
+    } else if (solution_count === 1) {
         // show_result("当前缺一门数独有唯一解！", 'success');
         
         // // 可选：填充唯一解
@@ -192,10 +192,10 @@ export function check_missing_uniqueness() {
             }
         }
         show_result("当前数独恰好有唯一解！已自动填充答案。");
-    } else if (solutionCount > 50) {
+    } else if (solution_count > 50) {
         show_result("当前数独有多于50个解。");
     } else {
-        show_result(`当前缺一门数独有${solutionCount}个解！`, 'error');
+        show_result(`当前缺一门数独有${solution_count}个解！`, 'error');
     }
 }
 
@@ -373,9 +373,9 @@ export function generate_missing_puzzle(size) {
     //     )
     // );
     const result = missing_solve(testBoard, size, missingCells, true);
-    if (result.techniqueCounts) {
+    if (result.technique_counts) {
         log_process("\n=== 技巧使用统计 ===");
-        for (const [technique, count] of Object.entries(result.techniqueCounts)) {
+        for (const [technique, count] of Object.entries(result.technique_counts)) {
             if (count > 0) {
                 log_process(`${technique}: ${count}次`);
             }
@@ -541,7 +541,7 @@ function isValid_Missing(board, size, row, col, num) {
 function missing_solve(board, size, missingCells, silent = false) {
     // 首先验证当前盘面是否有效
     // if (!isValidMissingBoard(board, size, missingCells)) {
-    //     return { solutionCount: 0, solution: null };
+    //     return { solution_count: 0, solution: null };
     // }
 
     if (silent) {
@@ -554,7 +554,7 @@ function missing_solve(board, size, missingCells, silent = false) {
     
     // 如果盘面已经完整且有效，直接返回
     if (isBoardComplete(board, size, missingCells)) {
-        return { solutionCount: 1, solution: cloneBoard(board) };
+        return { solution_count: 1, solution: cloneBoard(board) };
     }
 
     // 转换为候选数板
@@ -574,10 +574,10 @@ function missing_solve(board, size, missingCells, silent = false) {
     const result = solve(candidateBoard, size, isValid_Missing, state.silentMode);
     
     // 处理结果
-    if (result.solutionCount === -2) {
-        return { solutionCount: -2, solution: null }; // 无解
-    } else if (result.solutionCount === -1) {
-        return { solutionCount: -1, solution: null, total_score: result.total_score }; // 技巧无法解出
+    if (result.solution_count === -2) {
+        return { solution_count: -2, solution: null }; // 无解
+    } else if (result.solution_count === -1) {
+        return { solution_count: -1, solution: null, total_score: result.total_score }; // 技巧无法解出
     } else {
         // 过滤掉黑格
         const filteredSolution = result.solution?.map((row, i) => 
@@ -586,9 +586,9 @@ function missing_solve(board, size, missingCells, silent = false) {
             )
         );
         return {
-            solutionCount: result.solutionCount,
+            solution_count: result.solution_count,
             solution: filteredSolution,
-            techniqueCounts: result.techniqueCounts,
+            technique_counts: result.technique_counts,
             total_score: result.total_score
         };
     }
@@ -805,7 +805,7 @@ function dig_missing_holes(puzzle, size, missingCells, symmetry = 'none') {
             const result = missing_solve(test_board, size, missingCells, true);
 
             // 仅考虑唯一解的情况
-            if (result.solutionCount === 1 && result.total_score !== undefined) {
+            if (result.solution_count === 1 && result.total_score !== undefined) {
                 // candidates.push({
                 //     positions: positions_to_dig.map(([r, c]) => [r, c]),
                 //     score: result.total_score
@@ -896,14 +896,14 @@ function dig_missing_holes(puzzle, size, missingCells, symmetry = 'none') {
                 
 //                 // 验证唯一解
 //                 const testBoard = puzzle.map(row => [...row]);
-//                 const { solutionCount } = missing_solve(
+//                 const { solution_count } = missing_solve(
 //                     testBoard, 
 //                     size,
 //                     missingCells,
 //                     true
 //                 );
                 
-//                 if (solutionCount === 1) {
+//                 if (solution_count === 1) {
 //                     holesDug++;
 //                     changed = true;
 //                     continue; // 成功挖洞，继续下一个位置
@@ -931,14 +931,14 @@ function dig_missing_holes(puzzle, size, missingCells, symmetry = 'none') {
             
 //             // 验证唯一解
 //             const testBoard = puzzle.map(row => [...row]);
-//             const { solutionCount } = missing_solve(
+//             const { solution_count } = missing_solve(
 //                 testBoard, 
 //                 size,
 //                 missingCells,
 //                 true
 //             );
             
-//             if (solutionCount === 1) {
+//             if (solution_count === 1) {
 //                 holesDug += positionsToDig.length;
 //                 changed = true;
 //             } else {

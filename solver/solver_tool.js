@@ -122,16 +122,16 @@ export function isValid(board, size, row, col, num) {
 
 let board = null;
 let size = 0;
-// let solutionCount = 0;
+// let solution_count = 0;
 let solution = null;
 // 主求解函数
 export function solve(currentBoard, currentSize, isValid = isValid, silent = false) {
     
     board = currentBoard;
     size = currentSize;
-    state.solutionCount = 0;
+    state.solve_stats.solution_count = 0;
     solution = null;
-    // state.solutionCount = 0;
+    // state.solve_stats.solution_count = 0;
 
     for (let i = 0; i < size; i++) {
         for (let j = 0; j < size; j++) {
@@ -145,7 +145,7 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
                 if (!isValid(board, size, i, j, num)) {
                     log_process(`[冲突] ${getRowLetter(i+1)}${j+1}=${num}与已有数字冲突，无解！`);
                     // return { changed: false, hasEmptyCandidate: true }; // 直接返回冲突状态
-                    return { solutionCount: -2 }; // 直接返回冲突状态
+                    return { solution_count: -2 }; // 直接返回冲突状态
                 }
                 board[i][j] = num; // 恢复原值
                 eliminate_Candidates(board, size, i, j, num); // 移除相关候选数
@@ -170,36 +170,29 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
         if (state.techniqueSettings.Brute_Force) {
             solve_By_BruteForce();
         } else {
-            if (state.solutionCount === -2) {
-                return {solutionCount: state.solutionCount};
+            if (state.solve_stats.solution_count === -2) {
+                return {solution_count: state.solve_stats.solution_count};
             }
             else {
-                state.solutionCount = -1;  // 设置特殊标记值
-                return {solutionCount: state.solutionCount};  // 提前返回防止后续覆盖
+                state.solve_stats.solution_count = -1;  // 设置特殊标记值
+                return {solution_count: state.solve_stats.solution_count};  // 提前返回防止后续覆盖
             }
         }
     }
-    // // 添加技巧使用统计
-    // if (logical_result.techniqueCounts) {
-    //     if (!state.silentMode) log_process("\n=== 技巧使用统计 ===");
-    //     for (const [technique, count] of Object.entries(logical_result.techniqueCounts)) {
-    //         if (count > 0) {
-    //             if (!state.silentMode) log_process(`${technique}: ${count}次`);
-    //         }
-    //     }
-    // }
 
     // 添加技巧使用统计
-    if (logical_result.techniqueCounts) {
+    if (logical_result.technique_counts) {
+        state.solve_stats.technique_counts = logical_result.technique_counts;
         if (!state.silentMode) log_process("\n=== 技巧使用统计 ===");
-        for (const [technique, count] of Object.entries(logical_result.techniqueCounts)) {
+        for (const [technique, count] of Object.entries(logical_result.technique_counts)) {
             if (count > 0) {
                 if (!state.silentMode) log_process(`${technique}: ${count}次`);
             }
         }
         // 输出总分值
-        if (!state.silentMode && logical_result.total_score !== undefined) {
-            log_process(`总分值: ${logical_result.total_score}`);
+        if (logical_result.total_score !== undefined) {
+            state.solve_stats.total_score = logical_result.total_score;
+            if (!state.silentMode) log_process(`总分值: ${logical_result.total_score}`);
         }
     }
 
@@ -209,35 +202,27 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
         state.silentMode = false;
     }
 
-    // // 返回求解结果
-    // return {
-    //     solutionCount: state.solutionCount,
-    //     solution,
-    //     techniqueCounts: logical_result.techniqueCounts
-    // };
-
-    // 返回求解结果
     return {
-        solutionCount: state.solutionCount,
+        solution_count: state.solve_stats.solution_count,
         solution,
-        techniqueCounts: logical_result.techniqueCounts,
-        total_score: logical_result.total_score
+        technique_counts: state.solve_stats.technique_counts,
+        total_score: state.solve_stats.total_score
     };
 }
 
 // 逻辑求解函数
 function solve_By_Logic() {
-    const { changed, hasEmptyCandidate, techniqueCounts, total_score } = solve_By_Elimination(board, size);
+    const { changed, hasEmptyCandidate, technique_counts, total_score } = solve_By_Elimination(board, size);
     if (!state.silentMode) log_process("1...判断当前数独是否有解");
     
     if (hasEmptyCandidate) {
-        state.solutionCount = -2;
+        state.solve_stats.solution_count = -2;
         if (!state.silentMode) log_process("2...当前数独无解");
         return { isSolved: false };
     }
     if (!state.silentMode) log_process("2...当前数独有解");
 
-    state.logicalSolution = board.map(row => [...row]);
+    // state.logicalSolution = board.map(row => [...row]);
 
     // 检查是否已完全解出
     let isSolved = true;
@@ -253,23 +238,24 @@ function solve_By_Logic() {
     if (!state.silentMode) log_process("3...判断当前数独能通过逻辑推理完全解出");
 
     if (isSolved) {
-        state.solutionCount = 1;
+        if (!state.silentMode) log_process("4...当前数独通过逻辑推理完全解出");
+        state.solve_stats.solution_count = 1;
         solution = board.map(row => [...row]);
-        return { isSolved: true, techniqueCounts, total_score };
+        return { isSolved: true, technique_counts, total_score };
     }
 
     if (!state.silentMode) log_process("4...当前候选数数独无法通过逻辑推理完全解出，尝试暴力求解...");
-    return { isSolved: false, techniqueCounts, total_score };
+    return { isSolved: false, technique_counts, total_score };
 }
 
 // 暴力求解函数
 function solve_By_BruteForce(r = 0, c = 0, isValid = isValid) {
     const backup = board.map(row => [...row]);
     
-    if (state.solutionCount >= 2) return;
+    if (state.solve_stats.solution_count >= 2) return;
     if (r === size) {
-        state.solutionCount++;
-        if (state.solutionCount === 1) {
+        state.solve_stats.solution_count++;
+        if (state.solve_stats.solution_count === 1) {
             solution = board.map(row => row.map(cell => 
                 Array.isArray(cell) ? cell[0] : cell
             ));
@@ -328,7 +314,7 @@ export function countSolutions(board, size) {
     
     // 使用主 solve 函数获取技巧统计
     const result = solve(candidateBoard, size);
-    state.lastTechniqueCounts = result.techniqueCounts || {};
+    state.solve_stats.technique_count = result.technique_counts || {};
     
     // 传统回溯计数
     const copy = board.map(row => [...row]);

@@ -266,7 +266,7 @@ export function create_technique_panel() {
     panel.id = 'techniquePanel';
     panel.style.position = 'absolute';  // 改为绝对定位
     // panel.style.position = 'fixed';
-    panel.style.left = 'calc(50% - 550px)';  // 放在数独容器右侧
+    panel.style.left = 'calc(50% - 750px)';  // 放在数独容器左侧
     // panel.style.left = '20px';
     panel.style.top = '290px';  // 与数独容器顶部对齐
     // panel.style.top = '100px';
@@ -337,7 +337,15 @@ export function create_technique_panel() {
         {
             id: 'cell',
             items: [
-                { id: 'Cell_Elimination', name: '唯余', default: true }
+                { id: 'Cell_Elimination_1', name: '余1唯余法', default: true },
+                { id: 'Cell_Elimination_2', name: '余2唯余法', default: true },
+                { id: 'Cell_Elimination_3', name: '余3唯余法', default: true },
+                { id: 'Cell_Elimination_4', name: '余4唯余法', default: true },
+                { id: 'Cell_Elimination_5', name: '余5唯余法', default: true },
+                { id: 'Cell_Elimination_6', name: '余6唯余法', default: true },
+                { id: 'Cell_Elimination_7', name: '余7唯余法', default: true },
+                { id: 'Cell_Elimination_8', name: '余8唯余法', default: true },
+                { id: 'Cell_Elimination_9', name: '余9唯余法', default: true }
             ]
         },
         {
@@ -518,16 +526,16 @@ export function check_uniqueness() {
     );
 
 
-    const { solutionCount, solution } = solve(board, size, isValid); // 调用主求解函数
-    state.solutionCount = solutionCount;
+    const { solution_count, solution } = solve(board, size, isValid); // 调用主求解函数
+    state.solve_stats.solution_count = solution_count;
 
 
     // 显示结果
-    if (state.solutionCount === -1) {
+    if (state.solve_stats.solution_count === -1) {
         show_result("当前技巧无法解出");
-    } else if (state.solutionCount === 0 || state.solutionCount === -2) {
+    } else if (state.solve_stats.solution_count === 0 || state.solve_stats.solution_count === -2) {
         show_result("当前数独无解！");
-    } else if (state.solutionCount === 1) {
+    } else if (state.solve_stats.solution_count === 1) {
         // 退出候选数模式
         state.is_candidates_mode = false;
         document.getElementById('toggleCandidatesMode').textContent = '切换候选数模式';
@@ -558,9 +566,9 @@ export function check_uniqueness() {
             }
         }
         show_result("当前数独恰好有唯一解！已自动填充答案。");
-    } else if (state.solutionCount > 1) {
+    } else if (state.solve_stats.solution_count > 1) {
         show_result("当前数独有多个解。");
     } else {
-        show_result(`当前数独有${state.solutionCount}个解！`);
+        show_result(`当前数独有${state.solve_stats.solution_count}个解！`);
     }
 }

@@ -230,7 +230,7 @@ export function check_skyscraper_uniqueness() {
 
     // 使用基础求解函数
     let solution = null;
-    let solutionCount = 0;
+    let solution_count = 0;
 
     // function solve(r = 0, c = 0, saveSolution = false) {
     //     // 预处理：根据已有数字减少候选数
@@ -282,14 +282,14 @@ export function check_skyscraper_uniqueness() {
     //         for (let i = 0; i < size; i++) {
     //             for (let j = 0; j < size; j++) {
     //                 if (Array.isArray(board[i][j]) && board[i][j].length === 0) {
-    //                     // solutionCount = 0; // 标记无解
+    //                     // solution_count = 0; // 标记无解
     //                     return; // 提前终止
     //                 }
     //             }
     //         }
     //     }
 
-    //     if (solutionCount >= 2) return;
+    //     if (solution_count >= 2) return;
     //     if (r === size) {
     //         // 最终检查所有摩天楼规则
     //         for (let i = 0; i < size; i++) {
@@ -304,8 +304,8 @@ export function check_skyscraper_uniqueness() {
     //             }
     //         }
 
-    //         solutionCount++;
-    //         if (saveSolution && solutionCount === 1) {
+    //         solution_count++;
+    //         if (saveSolution && solution_count === 1) {
     //             solution = board.map(row => [...row]);
     //         }
     //         return;
@@ -418,7 +418,7 @@ export function check_skyscraper_uniqueness() {
             }
 
             if (isSolved) {
-                solutionCount = 1;
+                solution_count = 1;
                 if (saveSolution) {
                     solution = board.map(row => [...row]);
                 }
@@ -427,7 +427,7 @@ export function check_skyscraper_uniqueness() {
         }
 
         // 暴力求解部分（原solve_By_BruteForce）
-        if (solutionCount >= 2) return;
+        if (solution_count >= 2) return;
         if (r === size) {
             // 最终检查所有摩天楼规则
             for (let i = 0; i < size; i++) {
@@ -442,8 +442,8 @@ export function check_skyscraper_uniqueness() {
                 }
             }
 
-            solutionCount++;
-            if (saveSolution && solutionCount === 1) {
+            solution_count++;
+            if (saveSolution && solution_count === 1) {
                 solution = board.map(row => [...row]);
             }
             return;
@@ -490,9 +490,9 @@ export function check_skyscraper_uniqueness() {
     solve(0, 0, true);
 
     // 处理结果
-    if (solutionCount === 0) {
+    if (solution_count === 0) {
         show_result("当前数独无解！");
-    } else if (solutionCount === 1) {
+    } else if (solution_count === 1) {
         // 填充内部数独解答
         fill_solution(container, solution, size, true);
 

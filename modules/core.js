@@ -3,7 +3,10 @@ import { create_vx_sudoku } from './vx.js';
 import { create_candidates_sudoku } from './candidates.js';
 import { state } from './state.js';
 import { solve_By_Elimination } from '../solver/Technique.js';
+import { check_uniqueness } from './classic.js';
 
+// 文件名计数器，记录分值和技巧组合出现次数
+const fileNameCounter = {};
 
 /**
  * 显示结果消息
@@ -231,14 +234,14 @@ export function change_Candidates_Mode(inputs, size, isCandidatesMode, isSkyscra
  */
 export function base_solve(board, size, isValidFunc, saveSolution = false) {
     let solution = null;
-    state.solutionCount = 0;
+    state.solve_stats.solution_count = 0;
 
 
     function solve(r = 0, c = 0) {
-        if (state.solutionCount >= 101) return;
+        if (state.solve_stats.solution_count >= 101) return;
         if (r === size) {
-            state.solutionCount++;
-            if (saveSolution && state.solutionCount === 1) {
+            state.solve_stats.solution_count++;
+            if (saveSolution && state.solve_stats.solution_count === 1) {
                 solution = board.map(row => [...row]);
             }
             return;
@@ -253,7 +256,7 @@ export function base_solve(board, size, isValidFunc, saveSolution = false) {
             board[r][c] = 0;
             if (!isValidFunc(r, c, num)) {
                 // Invalid starting board
-                return { solutionCount: 0, solution: null };
+                return { solution_count: 0, solution: null };
             }
             board[r][c] = num;
             solve(nextRow, nextCol);
@@ -269,7 +272,7 @@ export function base_solve(board, size, isValidFunc, saveSolution = false) {
     }
 
     solve(0, 0);
-    return { solutionCount: state.solutionCount, solution };
+    return { solution_count: state.solve_stats.solution_count, solution };
 }
 
 /**
@@ -680,47 +683,6 @@ export function backup_original_board() {
     );
 }
 
-// /**
-//  * 恢复原始题目状态
-//  */
-// export function restore_original_board() {
-//     const container = document.querySelector('.sudoku-container');
-//     const size = state.current_grid_size;
-    
-//     if (!state.originalBoard) return;
-    
-//     // 恢复原始状态
-//     for (let i = 0; i < size; i++) {
-//         for (let j = 0; j < size; j++) {
-//             const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
-//             const original = state.originalBoard[i][j];
-            
-//             input.value = original.value;
-//             input.style.display = original.displayStyle;
-//             input.className = 'main-input';
-//             original.classList.forEach(cls => input.classList.add(cls));
-            
-//             // 恢复候选数网格显示
-//             const candidatesGrid = input.parentElement.querySelector('.candidates-grid');
-//             if (candidatesGrid) {
-//                 candidatesGrid.style.display = original.isCandidateMode ? 'grid' : 'none';
-//             }
-//         }
-//     }
-    
-//     // 恢复候选数模式状态
-//     state.is_candidates_mode = state.originalBoard[0][0].isCandidateMode;
-//     state.isShowingSolution = false;
-//     document.getElementById('toggleCandidatesMode').textContent = 
-//         state.is_candidates_mode ? '退出候选数模式' : '切换候选数模式';
-    
-//     // 恢复按钮文本
-//     const checkBtn = document.getElementById('checkUniqueness');
-//     checkBtn.textContent = checkBtn.dataset.originalText || '验证唯一性';
-    
-//     show_result("已恢复原始题目状态");
-// }
-
 export function restore_original_board() {
     const container = document.querySelector('.sudoku-container');
     const size = state.current_grid_size;
@@ -762,109 +724,6 @@ export function restore_original_board() {
     document.getElementById('toggleCandidatesMode').textContent = 
         state.is_candidates_mode ? '退出候选数模式' : '切换候选数模式';
 }
-
-
-
-// /**
-//  * 显示逻辑解出的部分
-//  */
-// export function show_logical_solution() {
-//     if (!state.logicalSolution) {
-//         show_result("请先验证候选数唯一性以获取逻辑解");
-//         return;
-//     }
-
-//     const container = document.querySelector('.sudoku-container');
-//     const size = state.current_grid_size;
-
-//     // 备份当前题目状态
-//     backup_original_board();
-
-//     // 填充逻辑解出的部分
-//     for (let i = 0; i < size; i++) {
-//         for (let j = 0; j < size; j++) {
-//             const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
-//             const cell = input.parentElement;
-//             const candidatesGrid = cell.querySelector('.candidates-grid');
-            
-//             // 处理已确定的数字
-//             if (typeof state.logicalSolution[i][j] === 'number' && state.logicalSolution[i][j] !== 0) {
-//                 // 只填充空单元格或候选数单元格
-//                 if (input.value === "" || Array.isArray(state.originalBoard[i][j])) {
-//                     input.value = state.logicalSolution[i][j];
-//                     input.classList.add("solution-cell");
-                    
-//                     // 更新显示状态
-//                     input.style.display = 'block';
-//                     input.classList.remove('hide-input-text');
-//                     if (candidatesGrid) {
-//                         candidatesGrid.style.display = 'none';
-//                     }
-//                 }
-//             } 
-//             // 处理候选数数组
-//             else if (Array.isArray(state.logicalSolution[i][j])) {
-//                 // 只更新候选数显示
-//                 const candidates = state.logicalSolution[i][j];
-//                 const candidateCells = candidatesGrid.querySelectorAll('.candidates-cell');
-                
-//                 // 更新候选数显示
-//                 candidateCells.forEach(cell => {
-//                     const num = parseInt(cell.dataset.number);
-//                     cell.style.display = candidates.includes(num) ? 'flex' : 'none';
-//                 });
-                
-//                 // 更新输入框值和显示状态
-//                 input.value = candidates.join('');
-//                 input.classList.add('hide-input-text');
-//                 input.style.display = 'block';
-//                 candidatesGrid.style.display = 'grid';
-//             }
-//         }
-//     }
-
-//     show_result("已显示通过逻辑推理解出的部分数字和候选数！");
-// }
-
-// export function show_logical_solution() {
-//     if (!state.logicalSolution) {
-//         show_result("请先验证候选数唯一性以获取逻辑解");
-//         return;
-//     }
-
-//     // 先备份当前状态
-//     if (!state.originalBoard) {
-//         backup_original_board();
-//     }
-
-//     const container = document.querySelector('.sudoku-container');
-//     const size = state.current_grid_size;
-
-//     for (let i = 0; i < size; i++) {
-//         for (let j = 0; j < size; j++) {
-//             const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
-//             const cell = input.parentElement;
-//             const candidatesGrid = cell.querySelector('.candidates-grid');
-            
-//             // 只修改空单元格或候选数单元格
-//             if (input.value === "" || state.originalBoard[i][j].isCandidateMode) {
-//                 if (typeof state.logicalSolution[i][j] === 'number') {
-//                     input.value = state.logicalSolution[i][j];
-//                     input.classList.add("solution-cell");
-//                     candidatesGrid.style.display = 'none';
-//                 } else if (Array.isArray(state.logicalSolution[i][j])) {
-//                     const candidates = state.logicalSolution[i][j];
-//                     input.value = candidates.join('');
-//                     candidatesGrid.querySelectorAll('.candidates-cell').forEach(cell => {
-//                         const num = parseInt(cell.dataset.number);
-//                         cell.style.display = candidates.includes(num) ? 'flex' : 'none';
-//                     });
-//                     candidatesGrid.style.display = 'grid';
-//                 }
-//             }
-//         }
-//     }
-// }
 
 export function show_logical_solution() {
     if (!state.logicalSolution) {
@@ -914,14 +773,34 @@ export function show_logical_solution() {
     }
 }
 
-
-
-export function save_sudoku_as_image() {
+export function save_sudoku_as_image(is_puzzle = true) {
     const container = document.querySelector('.sudoku-container');
     if (!container) {
         show_result('请先创建数独网格！', 'error');
         return;
     }
+
+    
+    if (is_puzzle) {
+        check_uniqueness();
+        hide_solution();
+    }
+
+    // 统计信息
+    const score = state.solve_stats.total_score || 0;
+    const technique_counts = state.solve_stats.technique_counts || {};
+    // // technique_counts 转为字符串，如 naked_single_2_hidden_pair_1
+    // const technique_str = Object.entries(technique_counts)
+    // 判断是否有非零技巧
+    const hasTechnique = Object.values(technique_counts).some(count => count > 0);
+
+    // 仅当有技巧统计且次数大于0时才输出技巧字符串
+    const technique_str = hasTechnique
+        ? Object.entries(technique_counts)
+            .filter(([_, count]) => count > 0)
+            .map(([tech, count]) => `${tech.replace(/([A-Z])/g, '_$1').toLowerCase()}_${count}`)
+            .join('_')
+        : '';
 
     // 创建临时容器只包含需要截图的部分
     const tempContainer = document.createElement('div');
@@ -971,61 +850,47 @@ export function save_sudoku_as_image() {
     }).then(canvas => {
         // 移除临时容器
         document.body.removeChild(tempContainer);
+
+        // 文件名唯一性处理
+    const key = `分值_${score}_${technique_str}_${is_puzzle ? '题目' : '答案'}`;
+    if (!fileNameCounter[key]) {
+        fileNameCounter[key] = 1;
+    } else {
+        fileNameCounter[key]++;
+    }
+    const count = fileNameCounter[key];
+
+    // 文件名格式：分值_分值_技巧_题目/答案_序号.png
+    const fileName = `分值_${score}_${technique_str}_${count}_${is_puzzle ? '题目' : '答案'}.png`;
         
-        // 创建下载链接
-        const link = document.createElement('a');
-        link.download = 'sudoku-' + new Date().toISOString().slice(0, 10) + '.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
+        // // 创建下载链接
+        // const link = document.createElement('a');
+        // link.download = 'sudoku-' + new Date().toISOString().slice(0, 10) + (is_puzzle ? '-puzzle' : '-solution') + '.png';
+        // link.href = canvas.toDataURL('image/png');
+        // link.click();
+
+        // 文件名格式：sudoku_2025_08_11_puzzle_score_XX_technique_xxx.png
+    // const fileName = `分值_${score}_${technique_str}_${is_puzzle ? '题目' : '答案'}.png`;
+    // const fileName = `score_${score}_technique_${technique_str}.png`;
+
+    // 创建下载链接
+    const link = document.createElement('a');
+    link.download = fileName;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
         
-        show_result('数独已保存为图片！', 'success');
+        // show_result('数独已保存为图片！', 'success');
+        show_result(is_puzzle ? '数独题目已保存为图片！' : '数独解答已保存为图片！', 'success');
+
+        // 如果是题目模式，自动解题并保存解答图片
+        if (is_puzzle) {
+            check_uniqueness();
+            setTimeout(() => {
+                save_sudoku_as_image(false);
+            }, 500); // 延迟，确保解答已填充
+        }
     }).catch(err => {
-        document.body.removeChild(tempContainer);
+        // document.body.removeChild(tempContainer);
         show_result('保存图片失败: ' + err.message, 'error');
     });
 }
-
-// export function save_sudoku_as_image() {
-//     const container = document.querySelector('.sudoku-container');
-//     if (!container) {
-//         show_result('请先创建数独网格！', 'error');
-//         return;
-//     }
-
-//     // 临时克隆
-//     const clone = container.cloneNode(true);
-//     const inputs = clone.querySelectorAll('input');
-
-//     inputs.forEach(input => {
-//         const span = document.createElement('span');
-//         span.textContent = input.value;
-//         span.style.display = 'inline-block';
-//         span.style.width = input.style.width;
-//         span.style.height = input.style.height;
-//         span.style.fontSize = input.style.fontSize || '48px';
-//         span.style.textAlign = 'center';
-//         span.style.lineHeight = '60px';
-//         span.style.color = '#333';
-//         input.replaceWith(span);
-//     });
-
-//     const tempContainer = document.createElement('div');
-//     tempContainer.style.position = 'absolute';
-//     tempContainer.style.left = '-9999px';
-//     tempContainer.appendChild(clone);
-//     document.body.appendChild(tempContainer);
-
-//     html2canvas(tempContainer, {
-//         backgroundColor: null,
-//         scale: 3,
-//         logging: true,
-//         useCORS: true
-//     }).then(canvas => {
-//         document.body.removeChild(tempContainer);
-//         const link = document.createElement('a');
-//         link.download = 'sudoku.png';
-//         link.href = canvas.toDataURL();
-//         link.click();
-//         show_result('保存完成', 'success');
-//     });
-// }

@@ -221,7 +221,7 @@ export function check_candidates_uniqueness() {
         }
     }
 
-    let solutionCount = 0;
+    let solution_count = 0;
     let solution = null;
 
     // 主求解函数
@@ -234,19 +234,19 @@ export function check_candidates_uniqueness() {
             if (state.techniqueSettings.Brute_Force) {
                 solve_By_BruteForce();
             } else {
-                if (solutionCount === -2) {
+                if (solution_count === -2) {
                     return;
                 }
                 else {
-                    solutionCount = -1;  // 设置特殊标记值
+                    solution_count = -1;  // 设置特殊标记值
                     return;  // 提前返回防止后续覆盖
                 }
             }
         }
         // 添加技巧使用统计
-        if (logicalResult.techniqueCounts) {
+        if (logicalResult.technique_counts) {
             log_process("\n=== 技巧使用统计 ===");
-            for (const [technique, count] of Object.entries(logicalResult.techniqueCounts)) {
+            for (const [technique, count] of Object.entries(logicalResult.technique_counts)) {
                 if (count > 0) {
                     log_process(`${technique}: ${count}次`);
                 }
@@ -256,11 +256,11 @@ export function check_candidates_uniqueness() {
 
     // 逻辑求解函数
     function solve_By_Logic() {
-        const { changed, hasEmptyCandidate, techniqueCounts } = solve_By_Elimination(board, size);
+        const { changed, hasEmptyCandidate, technique_counts } = solve_By_Elimination(board, size);
         log_process("1...判断当前数独是否有解");
         
         if (hasEmptyCandidate) {
-            solutionCount = -2;
+            solution_count = -2;
             return { isSolved: false };
         }
         log_process("2...当前数独有解");
@@ -281,23 +281,23 @@ export function check_candidates_uniqueness() {
         log_process("3...判断当前数独能通过逻辑推理完全解出");
 
         if (isSolved) {
-            solutionCount = 1;
+            solution_count = 1;
             solution = board.map(row => [...row]);
-            return { isSolved: true, techniqueCounts };
+            return { isSolved: true, technique_counts };
         }
 
         log_process("4...当前候选数数独无法通过逻辑推理完全解出，尝试暴力求解...");
-        return { isSolved: false, techniqueCounts };
+        return { isSolved: false, technique_counts };
     }
 
     // 暴力求解函数
     function solve_By_BruteForce(r = 0, c = 0) {
         const backup = board.map(row => [...row]);
         
-        if (solutionCount >= 2) return;
+        if (solution_count >= 2) return;
         if (r === size) {
-            solutionCount++;
-            if (solutionCount === 1) {
+            solution_count++;
+            if (solution_count === 1) {
                 solution = board.map(row => row.map(cell => 
                     Array.isArray(cell) ? cell[0] : cell
                 ));
@@ -341,11 +341,11 @@ export function check_candidates_uniqueness() {
 
 
     // 显示结果
-    if (state.solutionCount === -1) {
+    if (state.solution_count === -1) {
         show_result("当前技巧无法解出");
-    } else if (state.solutionCount === 0 || state.solutionCount === -2) {
+    } else if (state.solution_count === 0 || state.solution_count === -2) {
         show_result("当前数独无解！");
-    } else if (state.solutionCount === 1) {
+    } else if (state.solution_count === 1) {
         // 退出候选数模式
         state.is_candidates_mode = false;
         document.getElementById('toggleCandidatesMode').textContent = '切换候选数模式';
@@ -376,9 +376,9 @@ export function check_candidates_uniqueness() {
             }
         }
         show_result("当前数独恰好有唯一解！已自动填充答案。");
-    } else if (state.solutionCount > 1) {
+    } else if (state.solution_count > 1) {
         show_result("当前数独有多个解。");
     } else {
-        show_result(`当前数独有${state.solutionCount}个解！`);
+        show_result(`当前数独有${state.solution_count}个解！`);
     }
 }

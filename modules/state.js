@@ -8,11 +8,16 @@ export const state = {
     originalBoard: null, // 备份原始题目状态
     isShowingSolution: false, // 是否正在显示答案
     solution: null,
-    solutionCount: 0,
+    // solution_Count: 0,
     silentMode: false,
     box_missing_subsets: {},
     row_missing_subsets: {},
     col_missing_subsets: {},
+    solve_stats: {
+        solution_count: 0,
+        technique_counts: {},
+        total_score: 0,
+    },
 };
 
 // 设置当前模式(会自动取消其他模式)

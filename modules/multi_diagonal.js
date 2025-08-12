@@ -177,16 +177,16 @@ export function check_multi_diagonal_uniqueness() {
     );
 
 
-    const { solutionCount, solution } = solve(board, size, isValid_multi_diagonal); // 调用主求解函数
-    state.solutionCount = solutionCount;
+    const { solution_count, solution } = solve(board, size, isValid_multi_diagonal); // 调用主求解函数
+    state.solve_stats.solution_count = solution_count;
 
 
     // 显示结果
-    if (state.solutionCount === -1) {
+    if (state.solve_stats.solution_count === -1) {
         show_result("当前技巧无法解出");
-    } else if (state.solutionCount === 0 || state.solutionCount === -2) {
+    } else if (state.solve_stats.solution_count === 0 || state.solve_stats.solution_count === -2) {
         show_result("当前数独无解！");
-    } else if (state.solutionCount === 1) {
+    } else if (state.solve_stats.solution_count === 1) {
         // 退出候选数模式
         state.is_candidates_mode = false;
         document.getElementById('toggleCandidatesMode').textContent = '切换候选数模式';
@@ -217,10 +217,10 @@ export function check_multi_diagonal_uniqueness() {
             }
         }
         show_result("当前数独恰好有唯一解！已自动填充答案。");
-    } else if (state.solutionCount > 1) {
+    } else if (state.solve_stats.solution_count > 1) {
         show_result("当前数独有多个解。");
     } else {
-        show_result(`当前数独有${state.solutionCount}个解！`);
+        show_result(`当前数独有${state.solve_stats.solution_count}个解！`);
     }
 }
 

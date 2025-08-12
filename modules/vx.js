@@ -372,7 +372,7 @@ export function check_vx_uniqueness() {
     }));
     
     // 使用基础求解函数
-    const { solutionCount, solution } = base_solve(
+    const { solution_count, solution } = base_solve(
         board, 
         size, 
         (r, c, num) => isValidPlacement(r, c, num, board, size, vxConstraints, allAdjacentPairs),
@@ -380,9 +380,9 @@ export function check_vx_uniqueness() {
     );
     
     // 显示结果
-    if (solutionCount === 0) {
+    if (solution_count === 0) {
         show_result("当前VX数独无解！请检查数字和VX标记是否正确。", 'error');
-    } else if (solutionCount === 1) {
+    } else if (solution_count === 1) {
         show_result("当前VX数独有唯一解！", 'success');
         
         // 可选：填充唯一解

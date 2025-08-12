@@ -129,7 +129,7 @@ export function check_consecutive_uniqueness() {
     }
 
     // 使用基础求解函数
-    const { solutionCount, solution } = base_solve(
+    const { solution_count, solution } = base_solve(
         board, 
         size, 
         (r, c, num) => isValidPlacement(r, c, num, board, size, consecutiveConstraints, allAdjacentPairs),
@@ -137,16 +137,16 @@ export function check_consecutive_uniqueness() {
     );
     
     // 显示结果
-    if (solutionCount === 0) {
+    if (solution_count === 0) {
         show_result("当前定向连续数独无解！请检查数字和连续标记是否正确。", 'error');
-    } else if (solutionCount === 1) {
+    } else if (solution_count === 1) {
         show_result("当前定向连续数独有唯一解！", 'success');
         
         // if (confirm("是否要填充唯一解？")) {
             fill_solution(container, solution, size);
         // }
     } else {
-        show_result(`当前定向连续数独有 ${solutionCount} 个解！`, 'error');
+        show_result(`当前定向连续数独有 ${solution_count} 个解！`, 'error');
     }
 }
 // ... 其他已有代码保持不变 ...
@@ -285,16 +285,16 @@ export function generate_consecutive_puzzle(size) {
 
     // 7. 验证题目唯一性并显示技巧统计
     const testBoard = puzzle.map(row => [...row]);
-    const { solutionCount, techniqueCounts } = base_solve(
+    const { solution_count, technique_counts } = base_solve(
         testBoard, 
         size,
         (r, c, num) => isValidPlacement(r, c, num, testBoard, size, consecutive_marks, getAllAdjacentPairs(size)),
         true
     );
     
-    if (techniqueCounts) {
+    if (technique_counts) {
         log_process("\n=== 技巧使用统计 ===");
-        for (const [technique, count] of Object.entries(techniqueCounts)) {
+        for (const [technique, count] of Object.entries(technique_counts)) {
             if (count > 0) {
                 log_process(`${technique}: ${count}次`);
             }
@@ -345,14 +345,14 @@ function dig_consecutive_holes(puzzle, size, solution, symmetry = 'none') {
             
             // 验证唯一解（考虑连续约束）
             const testBoard = puzzle.map(row => [...row]);
-            const { solutionCount } = base_solve(
+            const { solution_count } = base_solve(
                 testBoard, 
                 size,
                 (r, c, num) => isValidPlacement(r, c, num, testBoard, size, consecutive_marks, getAllAdjacentPairs(size)),
                 true
             );
             
-            if (solutionCount === 1) {
+            if (solution_count === 1) {
                 // 输出挖洞信息
                 positionsToDig.forEach(([r, c], idx) => {
                     log_process(`挖除位置: (${r+1},${c+1}) 数字: ${tempValues[idx]}`);
@@ -421,16 +421,16 @@ function dig_consecutive_holes(puzzle, size, solution, symmetry = 'none') {
 
 //     // 7. 验证题目唯一性并显示技巧统计
 //     const testBoard = puzzle.map(row => [...row]);
-//     const { solutionCount, techniqueCounts } = base_solve(
+//     const { solution_count, technique_counts } = base_solve(
 //         testBoard, 
 //         size,
 //         (r, c, num) => isValidPlacement(r, c, num, testBoard, size, consecutive_marks, getAllAdjacentPairs(size)),
 //         true
 //     );
     
-//     if (techniqueCounts) {
+//     if (technique_counts) {
 //         log_process("\n=== 技巧使用统计 ===");
-//         for (const [technique, count] of Object.entries(techniqueCounts)) {
+//         for (const [technique, count] of Object.entries(technique_counts)) {
 //             if (count > 0) {
 //                 log_process(`${technique}: ${count}次`);
 //             }
@@ -478,14 +478,14 @@ function dig_consecutive_holes(puzzle, size, solution, symmetry = 'none') {
             
 //             // 验证唯一解（考虑连续约束）
 //             const testBoard = puzzle.map(row => [...row]);
-//             const { solutionCount } = base_solve(
+//             const { solution_count } = base_solve(
 //                 testBoard, 
 //                 size,
 //                 (r, c, num) => isValidPlacement(r, c, num, testBoard, size, consecutive_marks, getAllAdjacentPairs(size)),
 //                 true
 //             );
             
-//             if (solutionCount === 1) {
+//             if (solution_count === 1) {
 //                 // 输出挖洞信息
 //                 positionsToDig.forEach(([r, c], idx) => {
 //                     log_process(`挖除位置: (${r+1},${c+1}) 数字: ${tempValues[idx]}`);
@@ -583,7 +583,7 @@ function dig_consecutive_holes(puzzle, size, solution, symmetry = 'none') {
             
 //             // 验证唯一解（考虑连续约束）
 //             const testBoard = puzzle.map(row => [...row]);
-//             const { solutionCount } = base_solve(
+//             const { solution_count } = base_solve(
 //                 testBoard, 
 //                 size,
 //                 (r, c, num) => isValidPlacement(r, c, num, testBoard, size, consecutive_marks, getAllAdjacentPairs(size)),
@@ -591,7 +591,7 @@ function dig_consecutive_holes(puzzle, size, solution, symmetry = 'none') {
 //                 true
 //             );
             
-//             if (solutionCount === 1) {
+//             if (solution_count === 1) {
 //                 holesDug += positionsToDig.length;
 //                 changed = true;
 //             } else {
@@ -947,23 +947,23 @@ function check_and_mark_pair(row1, col1, row2, col2, direction) {
 //     );
 
 //     // 调用solve函数，传入自定义验证函数处理连续约束
-//     const { solutionCount, solution } = solve(
+//     const { solution_count, solution } = solve(
 //         candidateBoard, 
 //         size,
 //         (r, c, num) => isValidPlacement(r, c, num, board, size, consecutiveConstraints, allAdjacentPairs)
 //     );
     
 //     // 显示结果
-//     if (solutionCount === 0) {
+//     if (solution_count === 0) {
 //         show_result("当前定向连续数独无解！请检查数字和连续标记是否正确。", 'error');
-//     } else if (solutionCount === 1) {
+//     } else if (solution_count === 1) {
 //         show_result("当前定向连续数独有唯一解！", 'success');
         
 //         if (confirm("是否要填充唯一解？")) {
 //             fill_solution(container, solution, size);
 //         }
 //     } else {
-//         show_result(`当前定向连续数独有 ${solutionCount} 个解！`, 'error');
+//         show_result(`当前定向连续数独有 ${solution_count} 个解！`, 'error');
 //     }
 // }
 
