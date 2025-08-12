@@ -302,6 +302,7 @@ export function create_technique_panel() {
             id: 'block',
         items: [
             { id: 'Box_Block', name: '宫区块', default: true },
+            { id: 'Box_Block_One_Cut', name: '一刀流宫区块', default: true },
             { id: 'Row_Col_Block', name: '行列区块', default: true },
             { id: 'Diagonal_Block', name: '对角线区块', default: true }
         ]
@@ -323,13 +324,9 @@ export function create_technique_panel() {
                 // 隐性数组
                 { id: 'Box_Hidden_Triple', name: '宫隐性三数组', default: true },
                 { id: 'Row_Col_Hidden_Triple', name: '行列隐性三数组', default: true },
-                // { id: 'Box_Hidden_Quad', name: '宫隐性四数组', default: true },
-                // { id: 'Row_Col_Hidden_Quad', name: '行列隐性四数组', default: true },
                 // 显性数组
                 { id: 'Box_Naked_Triple', name: '宫显性三数组', default: true },
                 { id: 'Row_Col_Naked_Triple', name: '行列显性三数组', default: true },
-                // { id: 'Box_Naked_Quad', name: '宫显性四数组', default: true },
-                // { id: 'Row_Col_Naked_Quad', name: '行列显性四数组', default: true }
                 // 合并所有四数组为一个开关
                 { id: 'All_Quad', name: '四数组(显性+隐性)(可能有bug，慎用)', default: false },
             ]
@@ -369,6 +366,7 @@ export function create_technique_panel() {
             Box_One_Cut: true,
             Row_Col_Elimination: true,
             Box_Block: true,
+            Box_Block_One_Cut: true,
             Row_Col_Block: true,
             Box_Naked_Pair: true,
             Row_Col_Naked_Pair: true,

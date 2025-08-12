@@ -19,6 +19,7 @@ export function solve_By_Elimination(board, size) {
         "行列排除": 0,
         "对角线排除": 0,
         "宫区块": 0,
+        "一刀流宫区块": 0,
         "行列区块": 0,
         "宫显性数对": 0,
         "行列显性数对": 0,
@@ -68,8 +69,9 @@ export function solve_By_Elimination(board, size) {
         "对角线排除_9": 110,
         // 其他技巧分值
         "宫排除": 2,
-        "一刀流宫排除": 1,
+        "一刀流宫排除": 2,
         "宫区块": 10,
+        "一刀流宫区块": 10,
         "宫隐性数对": 30,
         "行列区块": 40,
         "宫隐性三数组": 70,
@@ -119,6 +121,7 @@ export function solve_By_Elimination(board, size) {
 
         // 第六优先级：宫区块
         [() => state.techniqueSettings?.Box_Block && check_Box_Block_Elimination(board, size)],
+        [() => state.techniqueSettings?.Box_Block_One_Cut && check_Box_Block_Elimination_One_Cut(board, size)],
         // 第七优先级：行列区块，对角线区块
         [() => state.techniqueSettings?.Row_Col_Block && check_Row_Col_Block_Elimination(board, size)],
         [() => state.current_mode === 'diagonal' && state.techniqueSettings?.Diagonal_Block && check_Diagonal_Block_Elimination(board, size)],
@@ -156,10 +159,6 @@ export function solve_By_Elimination(board, size) {
         [() => state.techniqueSettings?.Box_Naked_Pair && check_Box_Naked_Subset_Elimination(board, size, 2)],
         // 第十四优先级：行列显性数对
         [() => (state.techniqueSettings?.Row_Col_Naked_Pair) && check_Row_Col_Naked_Subset_Elimination(board, size, 2)],
-        // [
-        //     () => state.techniqueSettings?.Row_Naked_Pair && check_Row_Naked_Subset_Elimination(board, size, 2),
-        //     () => state.techniqueSettings?.Col_Naked_Pair && check_Col_Naked_Subset_Elimination(board, size, 2)
-        // ],
 
         // 第十四点五优先级：宫隐性欠一数对
         [() => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Box_Missing_One_Subset_Elimination(board, size, 2)],//缺一门宫隐性欠一数对
@@ -173,10 +172,7 @@ export function solve_By_Elimination(board, size) {
         [() => state.techniqueSettings?.Box_Naked_Triple && check_Box_Naked_Subset_Elimination(board, size, 3)],
         // 第十八优先级：行列显性三数组（同一级）
         [() => (state.techniqueSettings?.Row_Col_Naked_Triple) && check_Row_Col_Naked_Subset_Elimination(board, size, 3)],
-        // [
-        //     () => state.techniqueSettings?.Row_Naked_Triple && check_Row_Naked_Subset_Elimination(board, size, 3),
-        //     () => state.techniqueSettings?.Col_Naked_Triple && check_Col_Naked_Subset_Elimination(board, size, 3)
-        // ],
+
         // 第十八点五优先级：宫行列隐性欠一三数组
         [() => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Box_Missing_One_Subset_Elimination(board, size, 3)],//缺一门宫隐性欠一三数组
         [() => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Row_Col_Missing_One_Subset_Elimination(board, size, 3)],//缺一门行列隐性欠一三数组
@@ -190,12 +186,7 @@ export function solve_By_Elimination(board, size) {
         // 第二十优先级：行列隐性四数组
         [() => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Row_Col_Missing_One_Subset_Elimination(board, size, 4)],
         [() => (state.techniqueSettings?.Row_Col_Hidden_Quad) && check_Row_Col_Hidden_Subset_Elimination(board, size, 4)],
-        // [
-        //     () => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Row_Missing_One_Subset_Elimination(board, size, 4),//缺一门行隐性欠一四数组
-        //     () => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Col_Missing_One_Subset_Elimination(board, size, 4),//缺一门列隐性欠一四数组
-        //     () => state.techniqueSettings?.Row_Hidden_Quad && check_Row_Hidden_Subset_Elimination(board, size, 4),
-        //     () => state.techniqueSettings?.Col_Hidden_Quad && check_Col_Hidden_Subset_Elimination(board, size, 4)
-        // ],
+
         // 第二十一优先级：宫显性四数组
         [() => state.techniqueSettings?.Box_Naked_Quad && check_Box_Naked_Subset_Elimination(board, size, 4)],
         // 第二十二优先级：行列显性四数组
@@ -290,6 +281,10 @@ export function solve_By_Elimination(board, size) {
                                     case 'Box_Block':
                                         chinese_name = "宫区块";
                                         score_key = "宫区块";
+                                        break;
+                                    case 'Box_Block_One_Cut':
+                                        chinese_name = "一刀流宫区块";
+                                        score_key = "一刀流宫区块";
                                         break;
                                     case 'Row_Col_Block':
                                         chinese_name = "行列区块";
@@ -1712,7 +1707,96 @@ function check_Box_Block_Elimination(board, size) {
     }
     return has_conflict;
 }
+// ...existing code...
 
+// 一刀流宫区块排除
+function check_Box_Block_Elimination_One_Cut(board, size) {
+    // log_process(`[一刀流宫区块排除] 开始检查`);
+    // 宫的大小定义（兼容6宫格）
+    const box_size = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
+    let has_conflict = false;
+
+    // 遍历每个数字
+    for (let num = 1; num <= size; num++) {
+        // 统计整个数独中数字num出现的次数
+        let num_count_total = 0;
+        for (let r = 0; r < size; r++) {
+            for (let c = 0; c < size; c++) {
+                if (board[r][c] === num) num_count_total++;
+            }
+        }
+        // 如果已填满则跳过
+        if (num_count_total === size) continue;
+
+        // 遍历每个宫
+        for (let box_row = 0; box_row < size / box_size[0]; box_row++) {
+            for (let box_col = 0; box_col < size / box_size[1]; box_col++) {
+                const start_row = box_row * box_size[0];
+                const start_col = box_col * box_size[1];
+                const num_positions = [];
+
+                // 统计该宫内num的所有候选格
+                for (let r = start_row; r < start_row + box_size[0]; r++) {
+                    for (let c = start_col; c < start_col + box_size[1]; c++) {
+                        const cell = board[r][c];
+                        if (Array.isArray(cell) && cell.includes(num)) {
+                            num_positions.push([r, c]);
+                        }
+                    }
+                }
+
+                // 区块排除逻辑
+                if (num_positions.length > 1) {
+                    // 检查是否全部在同一行
+                    const all_same_row = num_positions.every(([r, _]) => r === num_positions[0][0]);
+                    // 检查是否全部在同一列
+                    const all_same_col = num_positions.every(([_, c]) => c === num_positions[0][1]);
+
+                    if (all_same_row) {
+                        const target_row = num_positions[0][0];
+                        let excluded_cells = [];
+                        for (let col = 0; col < size; col++) {
+                            if (col < start_col || col >= start_col + box_size[1]) {
+                                const cell = board[target_row][col];
+                                if (Array.isArray(cell) && cell.includes(num)) {
+                                    board[target_row][col] = cell.filter(n => n !== num);
+                                    excluded_cells.push(`${getRowLetter(target_row+1)}${col+1}`);
+                                }
+                            }
+                        }
+                        if (excluded_cells.length > 0) {
+                            const block_cells = num_positions.map(pos => `${getRowLetter(pos[0]+1)}${pos[1]+1}`).join('、');
+                            if (!state.silentMode) log_process(`[一刀流宫区块排除] ${block_cells}构成${num}区块，排除${excluded_cells.join('、')}的${num}`);
+                            return;
+                        }
+                    }
+
+                    if (all_same_col) {
+                        const target_col = num_positions[0][1];
+                        let excluded_cells = [];
+                        for (let row = 0; row < size; row++) {
+                            if (row < start_row || row >= start_row + box_size[0]) {
+                                const cell = board[row][target_col];
+                                if (Array.isArray(cell) && cell.includes(num)) {
+                                    board[row][target_col] = cell.filter(n => n !== num);
+                                    excluded_cells.push(`${getRowLetter(row+1)}${target_col+1}`);
+                                }
+                            }
+                        }
+                        if (excluded_cells.length > 0) {
+                            const block_cells = num_positions.map(pos => `${getRowLetter(pos[0]+1)}${pos[1]+1}`).join('、');
+                            if (!state.silentMode) log_process(`[一刀流宫区块排除] ${block_cells}构成${num}区块，排除${excluded_cells.join('、')}的${num}`);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return has_conflict;
+}
+
+// ...existing code...
 // 检查行列区块排除（合并函数）
 function check_Row_Col_Block_Elimination(board, size) {
     // 宫的大小定义（兼容6宫格）
