@@ -184,48 +184,196 @@ export function handle_key_navigation(e, row, col, size, inputs) {
     }
 }
 
-// 切换候选数模式函数
-export function change_Candidates_Mode(inputs, size, isCandidatesMode, isSkyscraper = false) {
-    const startRow = isSkyscraper ? 1 : 0;
-    const endRow = isSkyscraper ? size : size - 1;
-    const startCol = isSkyscraper ? 1 : 0;
-    const endCol = isSkyscraper ? size : size - 1;
+// // 切换候选数模式函数
+// export function change_Candidates_Mode(inputs, size, isCandidatesMode, isSkyscraper = false) {
+//     const startRow = isSkyscraper ? 1 : 0;
+//     const endRow = isSkyscraper ? size : size - 1;
+//     const startCol = isSkyscraper ? 1 : 0;
+//     const endCol = isSkyscraper ? size : size - 1;
 
-    for (let row = startRow; row <= endRow; row++) {
-        if (!inputs[row] || !Array.isArray(inputs[row])) continue;
-        for (let col = startCol; col <= endCol; col++) {
-            const mainInput = inputs[row][col];
-            if (!mainInput || !mainInput.parentElement) continue;
-            const cell = inputs[row][col].parentElement;
-            const candidatesGrid = cell.querySelector('.candidates-grid');
+//     for (let row = startRow; row <= endRow; row++) {
+//         if (!inputs[row] || !Array.isArray(inputs[row])) continue;
+//         for (let col = startCol; col <= endCol; col++) {
+//             const mainInput = inputs[row][col];
+//             if (!mainInput || !mainInput.parentElement) continue;
+//             const cell = inputs[row][col].parentElement;
+//             const candidatesGrid = cell.querySelector('.candidates-grid');
             
-            if (isCandidatesMode) {
-                // 切换到候选数模式
-                mainInput.style.display = 'block';
-                mainInput.classList.add('hide-input-text');
-                candidatesGrid.style.display = 'grid';
+//             if (isCandidatesMode) {
+//                 // 切换到候选数模式
+//                 mainInput.style.display = 'block';
+//                 mainInput.classList.add('hide-input-text');
+//                 candidatesGrid.style.display = 'grid';
                 
-                // 更新候选数显示
-                updateCandidatesDisplay(mainInput, candidatesGrid, size);
+//                 // 更新候选数显示
+//                 updateCandidatesDisplay(mainInput, candidatesGrid, size);
+//             } else {
+//                 // 切换回普通模式
+//                 mainInput.style.display = 'block';
+//                 mainInput.classList.remove('hide-input-text');
+//                 candidatesGrid.style.display = 'none';
+//             }
+//         }
+//     }
+
+//     // 辅助函数：更新候选数显示 (保持原状)
+//     function updateCandidatesDisplay(mainInput, candidatesGrid, size) {
+//         const inputNumbers = [...new Set(mainInput.value.split(''))]
+//             .map(Number)
+//             .filter(n => !isNaN(n) && n >= 1 && n <= size);
+        
+//         candidatesGrid.querySelectorAll('.candidates-cell').forEach(cell => {
+//             const num = parseInt(cell.dataset.number);
+//             cell.style.display = inputNumbers.includes(num) ? 'flex' : 'none';
+//         });
+//     }
+// }
+
+// ...existing code...
+
+// 切换候选数模式函数
+export function change_candidates_mode(inputs, size, is_skyscraper = false) {
+    // force_mode: true=候选数模式，false=普通模式，null=自动切换
+    // if (force_mode !== null) {
+    //     state.is_candidates_mode = force_mode;
+    // } else {
+    //     state.is_candidates_mode = !state.is_candidates_mode;
+    // }
+    const is_candidates_mode = state.is_candidates_mode;
+
+    const start_row = is_skyscraper ? 1 : 0;
+    const end_row = is_skyscraper ? size : size - 1;
+    const start_col = is_skyscraper ? 1 : 0;
+    const end_col = is_skyscraper ? size : size - 1;
+
+    for (let row = start_row; row <= end_row; row++) {
+        if (!inputs[row] || !Array.isArray(inputs[row])) continue;
+        for (let col = start_col; col <= end_col; col++) {
+            const main_input = inputs[row][col];
+            if (!main_input || !main_input.parentElement) continue;
+            const cell = main_input.parentElement;
+            const candidates_grid = cell.querySelector('.candidates-grid');
+            let value = main_input.value.trim();
+
+            if (is_candidates_mode && !value && main_input.dataset.candidates) {
+                value = main_input.dataset.candidates;
+                main_input.value = value;
+            }
+            
+            if (is_candidates_mode) {
+                // 判断是否为单个数字
+                if (value.length === 1) {
+                    // 只显示主输入框，不显示候选数网格
+                    main_input.style.display = 'block';
+                    main_input.classList.remove('hide-input-text');
+                    if (candidates_grid) candidates_grid.style.display = 'none';
+                } else {
+                    // 多个数字，显示候选数网格
+                    main_input.style.display = 'block';
+                    main_input.classList.add('hide-input-text');
+                    if (candidates_grid) {
+                        update_candidates_display(main_input, candidates_grid, size);
+                        candidates_grid.style.display = 'grid';
+                    }
+                }
+                // // 切换到候选数模式
+                // main_input.style.display = 'block';
+                // main_input.classList.add('hide-input-text');
+                // candidates_grid.style.display = 'grid';
+                // update_candidates_display(main_input, candidates_grid, size);
             } else {
                 // 切换回普通模式
-                mainInput.style.display = 'block';
-                mainInput.classList.remove('hide-input-text');
-                candidatesGrid.style.display = 'none';
+                if (value.length > 1) {
+                    // 多个数字，全部隐藏
+                    // main_input.value = '';
+                    main_input.dataset.candidates = main_input.value;
+                    main_input.value = '';
+                    // main_input.style.display = 'block';
+                    // if (candidates_grid) candidates_grid.style.display = 'none';
+                } 
+                // else {
+                //     // 单个数字或空，正常显示
+                //     main_input.style.display = 'block';
+                    main_input.classList.remove('hide-input-text');
+                    if (candidates_grid) candidates_grid.style.display = 'none';
+                // }
+                // // 切换回普通模式
+                // main_input.style.display = 'block';
+                // main_input.classList.remove('hide-input-text');
+                // candidates_grid.style.display = 'none';
             }
         }
     }
 
-    // 辅助函数：更新候选数显示 (保持原状)
-    function updateCandidatesDisplay(mainInput, candidatesGrid, size) {
-        const inputNumbers = [...new Set(mainInput.value.split(''))]
+    // 辅助函数：更新候选数显示
+    function update_candidates_display(main_input, candidates_grid, size) {
+        const input_numbers = [...new Set(main_input.value.split(''))]
             .map(Number)
             .filter(n => !isNaN(n) && n >= 1 && n <= size);
         
-        candidatesGrid.querySelectorAll('.candidates-cell').forEach(cell => {
+        candidates_grid.querySelectorAll('.candidates-cell').forEach(cell => {
             const num = parseInt(cell.dataset.number);
-            cell.style.display = inputNumbers.includes(num) ? 'flex' : 'none';
+            cell.style.display = input_numbers.includes(num) ? 'flex' : 'none';
         });
+    }
+}
+
+export function show_logical_solution() {
+
+    // 先备份当前状态
+    if (!state.originalBoard) {
+        backup_original_board();
+    }
+
+    const container = document.querySelector('.sudoku-container');
+    const size = state.current_grid_size;
+
+    for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
+            const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+            const cell = input.parentElement;
+            const candidatesGrid = cell.querySelector('.candidates-grid');
+            
+            // 只修改空单元格或候选数单元格
+            if (input.value === "" || state.originalBoard[i][j].isCandidateMode) {
+                if (typeof state.logical_solution[i][j] === 'number') {
+                    // 单个数字直接显示
+                    input.value = state.logical_solution[i][j];
+                    input.classList.add("solution-cell");
+                    input.style.display = 'block';
+                    input.classList.remove('hide-input-text');
+                    if (candidatesGrid) candidatesGrid.style.display = 'none';
+                    // 清除候选数记录
+                    delete input.dataset.candidates;
+                } else if (Array.isArray(state.logical_solution[i][j])) {
+                    const candidates = state.logical_solution[i][j];
+                    // 多个候选数显示候选数网格
+                    // log_process(candidates);
+                    if (state.is_candidates_mode) {
+                        input.value = candidates.join('');
+                        input.classList.add('hide-input-text');
+                        input.style.display = 'block';
+                        if (candidatesGrid) {
+                            candidatesGrid.querySelectorAll('.candidates-cell').forEach(cell => {
+                                const num = parseInt(cell.dataset.number);
+                                cell.style.display = candidates.includes(num) ? 'flex' : 'none';
+                            });
+                            candidatesGrid.style.display = 'grid';
+                        }
+                        // 记录候选数
+                        input.dataset.candidates = candidates.join('');
+                    } else {
+                        // 非候选数模式下不显示候选数网格，只清空输入框
+                        // log_process(candidates);
+                        // input.value = '';
+                        input.dataset.candidates = candidates.join('');
+                        input.style.display = 'block';
+                        input.classList.remove('hide-input-text');
+                        if (candidatesGrid) candidatesGrid.style.display = 'none';
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -723,54 +871,6 @@ export function restore_original_board() {
     state.is_candidates_mode = state.originalBoard[0][0].isCandidateMode;
     document.getElementById('toggleCandidatesMode').textContent = 
         state.is_candidates_mode ? '退出候选数模式' : '切换候选数模式';
-}
-
-export function show_logical_solution() {
-    if (!state.logicalSolution) {
-        show_result("请先验证候选数唯一性以获取逻辑解");
-        return;
-    }
-
-    // 先备份当前状态
-    if (!state.originalBoard) {
-        backup_original_board();
-    }
-
-    const container = document.querySelector('.sudoku-container');
-    const size = state.current_grid_size;
-
-    for (let i = 0; i < size; i++) {
-        for (let j = 0; j < size; j++) {
-            const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
-            const cell = input.parentElement;
-            const candidatesGrid = cell.querySelector('.candidates-grid');
-            
-            // 只修改空单元格或候选数单元格
-            if (input.value === "" || state.originalBoard[i][j].isCandidateMode) {
-                if (typeof state.logicalSolution[i][j] === 'number') {
-                    // 单个数字直接显示
-                    input.value = state.logicalSolution[i][j];
-                    input.classList.add("solution-cell");
-                    input.style.display = 'block';
-                    input.classList.remove('hide-input-text');
-                    if (candidatesGrid) candidatesGrid.style.display = 'none';
-                } else if (Array.isArray(state.logicalSolution[i][j])) {
-                    const candidates = state.logicalSolution[i][j];
-                    // 多个候选数显示候选数网格
-                    input.value = candidates.join('');
-                    input.classList.add('hide-input-text');
-                    input.style.display = 'block';
-                    if (candidatesGrid) {
-                        candidatesGrid.querySelectorAll('.candidates-cell').forEach(cell => {
-                            const num = parseInt(cell.dataset.number);
-                            cell.style.display = candidates.includes(num) ? 'flex' : 'none';
-                        });
-                        candidatesGrid.style.display = 'grid';
-                    }
-                }
-            }
-        }
-    }
 }
 
 export function save_sudoku_as_image(is_puzzle = true) {

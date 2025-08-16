@@ -265,7 +265,7 @@ export function check_candidates_uniqueness() {
         }
         log_process("2...当前数独有解");
 
-        state.logicalSolution = board.map(row => [...row]);
+        state.logical_solution = board.map(row => [...row]);
 
         // 检查是否已完全解出
         let isSolved = true;
@@ -381,4 +381,5 @@ export function check_candidates_uniqueness() {
     } else {
         show_result(`当前数独有${state.solution_count}个解！`);
     }
+    show_logical_solution();
 }

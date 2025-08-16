@@ -17,16 +17,6 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_limit = undef
 
     let puzzle, solution, result, holesDug, symmetry;
 
-    // // 允许用户自定义分值下限
-    // let score_lower_limit = 0;
-    // if (typeof window !== 'undefined') {
-    //     const input = window.prompt(
-    //         `请输入你想要的题目分值下限（六宫简单0，普通20，困难40：九宫简单0，普通100，困难200）：`,
-    //         '0'
-    //     );
-    //     score_lower_limit = Number(input) || 0;
-    // }
-
     // 根据分值下限自动设置难度
     let difficulty = 'easy';
     if (size === 6) {
@@ -39,7 +29,16 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_limit = undef
         else difficulty = 'easy';
     }
 
+    // 尝试次数限制
+    let try_count = 0;
+    const MAX_TRY = 20;
     while (true) {
+        try_count++;
+        if (try_count > MAX_TRY) {
+            log_process(`尝试${MAX_TRY}次仍未生成符合条件的题目，已中止。`);
+            show_result(`生成失败，请降低分值下限或调整参数后重试。`);
+            return null;
+        }
         // 1. 生成终盘
         solution = generate_solution(size);
 
@@ -412,9 +411,17 @@ export function shuffle(array) {
 
 
 
-const SYMMETRY_TYPES = ['horizontal', 'vertical', 'central', 'diagonal', 'anti-diagonal', 'none'];
+// const SYMMETRY_TYPES = ['horizontal', 'vertical', 'central', 'diagonal', 'anti-diagonal', 'none'];
 
-
+// 中心对称概率最高，其次对角线/反对角线，再其次水平/垂直，最后不对称
+const SYMMETRY_TYPES = [
+    'central','central','central','central','central',
+    'diagonal','diagonal',
+    'anti-diagonal','anti-diagonal',
+    'horizontal',
+    'vertical',
+    // 'none'
+];
 
 /**
  * 将生成的题目填充到网格

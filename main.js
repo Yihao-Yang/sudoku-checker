@@ -40,39 +40,80 @@ function initializeEventHandlers() {
     // checkSolutionBtn.addEventListener('click', check_solution);
     checkUniquenessBtn.addEventListener('click', check_uniqueness);
     hide_solutionBtn.addEventListener('click', hide_solution);
-    // generatepuzzleBtn.addEventListener('click', () => generate_puzzle(9));
-    
-
-    // generatepuzzleBtn.addEventListener('click', async () => {
-    //     generate_puzzle(state.current_grid_size);
-    // });
     clearAllBtn.addEventListener('click', clear_all_inputs);
     
     document.getElementById('importSudokuFromString').addEventListener('click', import_sudoku_from_string);
     document.getElementById('exportSudokuToString').addEventListener('click', export_sudoku_to_string);
     document.getElementById('saveAsImage').addEventListener('click', save_sudoku_as_image);
 
+    document.getElementById('toggleSolveMode').addEventListener('click', function() {
+        state.is_solve_mode = !state.is_solve_mode;
+        this.textContent = state.is_solve_mode ? '退出解题模式' : '进入解题模式';
+
+        // 切换所有输入框颜色
+        document.querySelectorAll('.sudoku-cell input').forEach(input => {
+            if (state.is_solve_mode) {
+                // 进入解题模式：空格加 solve-mode
+                if (!input.value) {
+                    input.classList.add('solve-mode');
+                }
+            } else {
+                // 退出解题模式：移除所有 solve-mode
+                input.classList.remove('solve-mode');
+                // 如果是空格，移除 solution-cell（让空格变回黑色）
+                if (!input.value) {
+                    input.classList.remove('solution-cell');
+                }
+                // input.classList.remove('solution-cell');
+            }
+            // if (state.is_solve_mode) {
+            //     input.classList.add('solution-cell');
+            // } else {
+            //     input.classList.remove('solution-cell');
+            // }
+        });
+    });
+
+    // 监听所有输入框的输入事件（只需加一次即可）
+document.addEventListener('input', function(e) {
+    if (e.target.matches('.sudoku-cell input')) {
+        if (state.is_solve_mode) {
+            // 只有 solve-mode 的空格才变蓝
+            if (e.target.classList.contains('solve-mode')) {
+                if (e.target.value) {
+                    e.target.classList.add('solution-cell');
+                } else {
+                    e.target.classList.remove('solution-cell');
+                }
+            }
+        } else {
+            // 非解题模式全部恢复黑色
+            e.target.classList.remove('solution-cell');
+        }
+    }
+});
+
     // 分值下限输入框
     const scoreInput = document.createElement('input');
     scoreInput.type = 'number';
     scoreInput.id = 'scoreLowerLimit';
     scoreInput.placeholder = '分值下限';
-    scoreInput.value = '0';
+    scoreInput.value = '';
     scoreInput.style.width = '40px';
     scoreInput.style.marginLeft = '10px';
 
     generatepuzzleBtn.parentNode.insertBefore(scoreInput, generatepuzzleBtn.nextSibling);
 
-    // 挖洞数量输入框
-    const holesInput = document.createElement('input');
-    holesInput.type = 'number';
-    holesInput.id = 'holesCount';
-    holesInput.placeholder = '挖洞数量';
-    holesInput.value = '';
-    holesInput.style.width = '80px';
-    holesInput.style.marginLeft = '10px';
+    // 提示数数量输入框
+    const cluesInput = document.createElement('input');
+    cluesInput.type = 'number';
+    cluesInput.id = 'cluesCount';
+    cluesInput.placeholder = '提示数';
+    cluesInput.value = '';
+    cluesInput.style.width = '70px';
+    cluesInput.style.marginLeft = '10px';
 
-    scoreInput.parentNode.insertBefore(holesInput, scoreInput.nextSibling);
+    scoreInput.parentNode.insertBefore(cluesInput, scoreInput.nextSibling);
 
 
     // 新增：批量自动出题和保存图片
@@ -84,6 +125,7 @@ function initializeEventHandlers() {
     const batchInput = document.createElement('input');
     batchInput.type = 'number';
     batchInput.id = 'batchCount';
+    batchInput.placeholder = '题数';
     batchInput.min = '1';
     batchInput.value = '10';
     batchInput.style.width = '40px';
@@ -95,7 +137,10 @@ function initializeEventHandlers() {
 
     generatepuzzleBtn.addEventListener('click', async () => {
         const scoreLowerLimit = parseInt(scoreInput.value, 10) || 0;
-        const holesCount = parseInt(holesInput.value, 10);
+        // const holesCount = parseInt(holesInput.value, 10);
+        const cluesCount = parseInt(cluesInput.value, 10) || 0;
+        const size = state.current_grid_size;
+        const holesCount = size * size - (isNaN(cluesCount) ? 0 : cluesCount);
         generate_puzzle(state.current_grid_size, scoreLowerLimit, holesCount);
     });
 

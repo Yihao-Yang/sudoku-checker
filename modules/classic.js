@@ -20,16 +20,21 @@ import {
     fill_solution,
     log_process,
     backup_original_board,
-    change_Candidates_Mode
+    change_candidates_mode,
+    show_logical_solution
 } from './core.js';
 import { solve, isValid, eliminate_Candidates } from '../solver/solver_tool.js';
 
 // 最关键的创建数独函数
 export function create_sudoku_grid(size) {
     set_current_mode('classic');
-    // state.is_skyscraper_mode = false;
-    // state.is_vx_mode = false;
-    // state.is_candidates_mode = false;
+    // 重置候选数模式和解题模式按钮及状态
+    state.is_candidates_mode = false;
+    state.is_solve_mode = false;
+    const toggleCandidatesBtn = document.getElementById('toggleCandidatesMode');
+    if (toggleCandidatesBtn) toggleCandidatesBtn.textContent = '进入候选数模式';
+    const toggleSolveBtn = document.getElementById('toggleSolveMode');
+    if (toggleSolveBtn) toggleSolveBtn.textContent = '进入解题模式';
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
@@ -60,16 +65,26 @@ export function create_sudoku_grid(size) {
         Cell_Elimination: true,  
         Brute_Force: false       
     };
+    // 唯余法全部默认开启
+    for (let i = 1; i <= 9; i++) {
+        state.techniqueSettings[`Cell_Elimination_${i}`] = true;
+    }
 
     // 创建技巧开关面板
     create_technique_panel();
 
     // 添加切换候选数模式按钮事件 (保持原状)
     document.getElementById('toggleCandidatesMode').addEventListener('click', function() {
-        state.is_candidates_mode = !state.is_candidates_mode;
-        this.textContent = state.is_candidates_mode ? '退出候选数模式' : '切换候选数模式';
-
-        change_Candidates_Mode(inputs, state.current_grid_size, state.is_candidates_mode);
+    // 判断当前模式，直接设置状态
+        if (!state.is_candidates_mode) {
+            state.is_candidates_mode = true;
+            change_candidates_mode(inputs, state.current_grid_size, false); // 传true表示强制候选数模式
+            this.textContent = '退出候选数模式';
+        } else {
+            state.is_candidates_mode = false;
+            change_candidates_mode(inputs, state.current_grid_size, false); // 传false表示退出候选数模式
+            this.textContent = '进入候选数模式';
+        }
     });
 
 
@@ -266,7 +281,7 @@ export function create_technique_panel() {
     panel.id = 'techniquePanel';
     panel.style.position = 'absolute';  // 改为绝对定位
     // panel.style.position = 'fixed';
-    panel.style.left = 'calc(50% - 750px)';  // 放在数独容器左侧
+    panel.style.left = 'calc(50% - 550px)';  // 放在数独容器左侧
     // panel.style.left = '20px';
     panel.style.top = '290px';  // 与数独容器顶部对齐
     // panel.style.top = '100px';
@@ -536,7 +551,7 @@ export function check_uniqueness() {
     } else if (state.solve_stats.solution_count === 1) {
         // 退出候选数模式
         state.is_candidates_mode = false;
-        document.getElementById('toggleCandidatesMode').textContent = '切换候选数模式';
+        document.getElementById('toggleCandidatesMode').textContent = '进入候选数模式';
         
         // 填充唯一解
         for (let i = 0; i < size; i++) {
@@ -569,4 +584,6 @@ export function check_uniqueness() {
     } else {
         show_result(`当前数独有${state.solve_stats.solution_count}个解！`);
     }
+
+    show_logical_solution();
 }

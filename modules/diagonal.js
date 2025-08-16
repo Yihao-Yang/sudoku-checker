@@ -30,6 +30,10 @@ export function create_diagonal_sudoku(size) {
         Diagonal_Elimination: true,       // 
         Diagonal_Block: true
     };
+    // 唯余法全部默认开启
+    for (let i = 1; i <= 9; i++) {
+        state.techniqueSettings[`Cell_Elimination_${i}`] = true;
+    }
 
     // 刷新技巧面板
     create_technique_panel();

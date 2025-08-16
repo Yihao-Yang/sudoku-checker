@@ -222,7 +222,7 @@ function solve_By_Logic() {
     }
     if (!state.silentMode) log_process("2...当前数独有解");
 
-    // state.logicalSolution = board.map(row => [...row]);
+    state.logical_solution = board.map(row => [...row]);
 
     // 检查是否已完全解出
     let isSolved = true;

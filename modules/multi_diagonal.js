@@ -1,5 +1,5 @@
 import { state, set_current_mode } from './state.js';
-import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation } from './core.js';
+import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, show_logical_solution } from './core.js';
 import { solve, isValid } from '../solver/solver_tool.js';
 import { generate_puzzle, get_symmetric_positions } from '../solver/generate.js';
 
@@ -222,6 +222,7 @@ export function check_multi_diagonal_uniqueness() {
     } else {
         show_result(`当前数独有${state.solve_stats.solution_count}个解！`);
     }
+    // show_logical_solution();
 }
 
     // 斜线数独“添加标记”功能（仅弹窗，后续可扩展）

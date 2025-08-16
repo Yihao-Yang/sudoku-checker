@@ -9,7 +9,7 @@ import {
     handle_key_navigation,
     base_solve,
     fill_solution,
-    change_Candidates_Mode
+    change_candidates_mode
 } from './core.js';
 import { state, set_current_mode } from './state.js';
 import { create_candidates_grid } from './core.js';
@@ -54,7 +54,7 @@ export function create_skyscraper_sudoku(size) {
         state.is_candidates_mode = !state.is_candidates_mode;
         this.textContent = state.is_candidates_mode ? '退出候选数模式' : '切换候选数模式';
 
-        change_Candidates_Mode(inputs, size, state.is_candidates_mode, true);
+        change_candidates_mode(inputs, size, state.is_candidates_mode, true);
     });
     
     for (let row = 0; row < size + 2; row++) {
