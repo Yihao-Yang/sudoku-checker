@@ -51,12 +51,13 @@ export function create_sudoku_grid(size) {
     state.techniqueSettings = {
         Box_Elimination: true,
         Row_Col_Elimination: true,
-        Box_Block: true,        
-        Row_Col_Block: true,    
-        Box_Naked_Pair: true,   
-        Row_Col_Naked_Pair: true, 
-        Box_Hidden_Pair: true,  
-        Row_Col_Hidden_Pair: true, 
+        Box_Block: true,
+        Box_Pair_Block: true,
+        Row_Col_Block: true,
+        Box_Naked_Pair: true,
+        Row_Col_Naked_Pair: true,
+        Box_Hidden_Pair: true,
+        Row_Col_Hidden_Pair: true,
         Box_Naked_Triple: true, 
         Row_Col_Naked_Triple: true, 
         Box_Hidden_Triple: true, 
@@ -318,6 +319,7 @@ export function create_technique_panel() {
         items: [
             { id: 'Box_Block', name: '宫区块', default: true },
             { id: 'Box_Block_One_Cut', name: '一刀流宫区块', default: true },
+            { id: 'Box_Pair_Block', name: '宫组合区块', default: true },
             { id: 'Row_Col_Block', name: '行列区块', default: true },
             { id: 'Diagonal_Block', name: '对角线区块', default: true }
         ]
@@ -328,9 +330,12 @@ export function create_technique_panel() {
                 // 隐性数对
                 { id: 'Box_Hidden_Pair', name: '宫隐性数对', default: true },
                 { id: 'Row_Col_Hidden_Pair', name: '行列隐性数对', default: true },
+                { id: 'Diagonal_Hidden_Pair', name: '对角线隐性数对', default: state.techniqueSettings?.Diagonal_Elimination ?? false },
+                
                 // 显性数对
                 { id: 'Box_Naked_Pair', name: '宫显性数对', default: true },
-                { id: 'Row_Col_Naked_Pair', name: '行列显性数对', default: true }
+                { id: 'Row_Col_Naked_Pair', name: '行列显性数对', default: true },
+                { id: 'Diagonal_Naked_Pair', name: '对角线显性数对', default: state.techniqueSettings?.Diagonal_Elimination ?? false },
             ]
         },
         {
@@ -339,9 +344,11 @@ export function create_technique_panel() {
                 // 隐性数组
                 { id: 'Box_Hidden_Triple', name: '宫隐性三数组', default: true },
                 { id: 'Row_Col_Hidden_Triple', name: '行列隐性三数组', default: true },
+                { id: 'Diagonal_Hidden_Triple', name: '对角线隐性三数组', default: state.techniqueSettings?.Diagonal_Elimination ?? false },
                 // 显性数组
                 { id: 'Box_Naked_Triple', name: '宫显性三数组', default: true },
                 { id: 'Row_Col_Naked_Triple', name: '行列显性三数组', default: true },
+                { id: 'Diagonal_Naked_Triple', name: '对角线显性三数组', default: state.techniqueSettings?.Diagonal_Elimination ?? false },
                 // 合并所有四数组为一个开关
                 { id: 'All_Quad', name: '四数组(显性+隐性)(可能有bug，慎用)', default: false },
             ]
@@ -382,6 +389,7 @@ export function create_technique_panel() {
             Row_Col_Elimination: true,
             Box_Block: true,
             Box_Block_One_Cut: true,
+            Box_Pair_Block: true,
             Row_Col_Block: true,
             Box_Naked_Pair: true,
             Row_Col_Naked_Pair: true,

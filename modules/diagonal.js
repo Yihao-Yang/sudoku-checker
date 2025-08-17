@@ -15,6 +15,7 @@ export function create_diagonal_sudoku(size) {
         Box_Elimination: true,
         Row_Col_Elimination: true,
         Box_Block: true,        // 
+        Box_Pair_Block: true,
         Row_Col_Block: true,    // 
         Box_Naked_Pair: true,   // 
         Row_Col_Naked_Pair: true, // 
@@ -28,7 +29,11 @@ export function create_diagonal_sudoku(size) {
         Cell_Elimination: true,  // 
         Brute_Force: false,
         Diagonal_Elimination: true,       // 
-        Diagonal_Block: true
+        Diagonal_Block: true,
+        Diagonal_Naked_Pair: true,
+        Diagonal_Hidden_Pair: true,
+        Diagonal_Naked_Triple: true,
+        Diagonal_Hidden_Triple: true
     };
     // 唯余法全部默认开启
     for (let i = 1; i <= 9; i++) {

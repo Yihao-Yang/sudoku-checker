@@ -506,33 +506,33 @@ export function bold_border(cell, row, col, size) {
 
     // 顶部边框
     if (row === 0) {
-        borders.top = '4px solid #000';
+        borders.top = '5px solid #000';
     } else if (row % boxRows === 0) {
-        borders.top = '2px solid #000';
+        borders.top = '2.5px solid #000';
     } else {
         borders.top = '0.75px solid #000';
     }
     // 左侧边框
     if (col === 0) {
-        borders.left = '4px solid #000';
+        borders.left = '5px solid #000';
     } else if (col % boxCols === 0) {
-        borders.left = '2px solid #000';
+        borders.left = '2.5px solid #000';
     } else {
         borders.left = '0.75px solid #000';
     }
     // 右侧边框
     if (col === size - 1) {
-        borders.right = '4px solid #000';
+        borders.right = '5px solid #000';
     } else if ((col + 1) % boxCols === 0) {
-        borders.right = '2px solid #000';
+        borders.right = '2.5px solid #000';
     } else {
         borders.right = '0.75px solid #000';
     }
     // 底部边框
     if (row === size - 1) {
-        borders.bottom = '4px solid #000';
+        borders.bottom = '5px solid #000';
     } else if ((row + 1) % boxRows === 0) {
-        borders.bottom = '2px solid #000';
+        borders.bottom = '2.5px solid #000';
     } else {
         borders.bottom = '0.75px solid #000';
     }

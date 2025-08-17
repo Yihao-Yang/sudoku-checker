@@ -7,13 +7,26 @@ import { get_all_mark_lines, get_cells_on_line } from "../modules/multi_diagonal
  * 从同行同列同宫中移除指定数字的候选数
  */
 export function eliminate_Candidates(board, size, i, j, num) {
+    // 新增：用于记录所有被删除的候选数及其位置信息
+    const eliminations = [];
+
     // 处理行和列
     for (let k = 0; k < size; k++) {
         if (Array.isArray(board[i][k])) {
+            const before = board[i][k].slice();
             board[i][k] = board[i][k].filter(candidate_num => candidate_num !== num);
+            const eliminated = before.filter(candidate_num => candidate_num === num);
+            if (eliminated.length > 0) {
+                eliminations.push({ row: i, col: k, eliminated });
+            }
         }
         if (Array.isArray(board[k][j])) {
+            const before = board[k][j].slice();
             board[k][j] = board[k][j].filter(candidate_num => candidate_num !== num);
+            const eliminated = before.filter(candidate_num => candidate_num === num);
+            if (eliminated.length > 0) {
+                eliminations.push({ row: k, col: j, eliminated });
+            }
         }
     }
 
@@ -25,7 +38,12 @@ export function eliminate_Candidates(board, size, i, j, num) {
     for (let row_idx = start_row; row_idx < start_row + box_size[0]; row_idx++) {
         for (let col_idx = start_col; col_idx < start_col + box_size[1]; col_idx++) {
             if (Array.isArray(board[row_idx][col_idx])) {
+                const before = board[row_idx][col_idx].slice();
                 board[row_idx][col_idx] = board[row_idx][col_idx].filter(candidate_num => candidate_num !== num);
+                const eliminated = before.filter(candidate_num => candidate_num === num);
+                if (eliminated.length > 0) {
+                    eliminations.push({ row: row_idx, col: col_idx, eliminated });
+                }
             }
         }
     }
@@ -38,7 +56,12 @@ export function eliminate_Candidates(board, size, i, j, num) {
             if (i === j) {
                 for (let idx = 0; idx < size; idx++) {
                     if (Array.isArray(board[idx][idx])) {
+                        const before = board[idx][idx].slice();
                         board[idx][idx] = board[idx][idx].filter(candidate_num => candidate_num !== num);
+                        const eliminated = before.filter(candidate_num => candidate_num === num);
+                        if (eliminated.length > 0) {
+                            eliminations.push({ row: idx, col: idx, eliminated });
+                        }
                     }
                 }
             }
@@ -48,7 +71,12 @@ export function eliminate_Candidates(board, size, i, j, num) {
                     const row_diag = idx;
                     const col_diag = size - 1 - idx;
                     if (Array.isArray(board[row_diag][col_diag])) {
+                        const before = board[row_diag][col_diag].slice();
                         board[row_diag][col_diag] = board[row_diag][col_diag].filter(candidate_num => candidate_num !== num);
+                        const eliminated = before.filter(candidate_num => candidate_num === num);
+                        if (eliminated.length > 0) {
+                            eliminations.push({ row: row_diag, col: col_diag, eliminated });
+                        }
                     }
                 }
             }
@@ -63,13 +91,21 @@ export function eliminate_Candidates(board, size, i, j, num) {
                     // 对该线上的所有格子都移除num候选数
                     for (const [r, c] of cells) {
                         if (Array.isArray(board[r][c])) {
+                            const before = board[r][c].slice();
                             board[r][c] = board[r][c].filter(candidate_num => candidate_num !== num);
+                            const eliminated = before.filter(candidate_num => candidate_num === num);
+                            if (eliminated.length > 0) {
+                                eliminations.push({ row: r, col: c, eliminated });
+                            }
                         }
                     }
                 }
             }
         }
     }
+
+    // 返回所有被删除的候选数及其位置信息
+    return eliminations;
 }
 
 // 辅助函数：比较两个board状态是否相同
