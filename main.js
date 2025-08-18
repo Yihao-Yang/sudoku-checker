@@ -147,7 +147,8 @@ document.addEventListener('input', function(e) {
     batchBtn.addEventListener('click', async () => {
         const count = parseInt(batchInput.value, 10);
         const score_lower_limit = parseInt(scoreInput.value, 10) || 0;
-        const holes_count = parseInt(holesInput.value, 10);
+        const size = state.current_grid_size;
+        const holes_count = size * size - (isNaN(cluesCount) ? 0 : cluesCount);
         if (isNaN(count) || count < 1) return;
         for (let i = 0; i < count; i++) {
             generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
