@@ -9,20 +9,18 @@ import {
 } from './modules/core.js';
 
 import { 
-    create_sudoku_grid
+    create_sudoku_grid, check_uniqueness
 } from './modules/classic.js';
 
 import { 
     check_candidates_uniqueness
 } from './modules/candidates.js';
-import { 
-    check_uniqueness
-} from './modules/classic.js';
 
 import {
     generate_puzzle, fill_puzzle_to_grid
 } from './solver/generate.js'
 import { state } from './modules/state.js';
+import { generate_multi_diagonal_puzzle } from './modules/multi_diagonal.js'; 
 
 function initializeEventHandlers() {
     const fourGridBtn = document.getElementById('fourGrid');
@@ -151,7 +149,12 @@ document.addEventListener('input', function(e) {
         const holes_count = size * size - (isNaN(cluesCount) ? 0 : cluesCount);
         if (isNaN(count) || count < 1) return;
         for (let i = 0; i < count; i++) {
-            generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+            if (state.current_mode === 'multi_diagonal') {
+                // 如果是多斜线模式，调用对应的生成函数
+                generate_multi_diagonal_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+            } else {
+                generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+            }
             // 等待出题和保存图片完成
             await new Promise(resolve => setTimeout(resolve, 800));
             save_sudoku_as_image(true);
