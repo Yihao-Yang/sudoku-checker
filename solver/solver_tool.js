@@ -4,108 +4,92 @@ import { state } from "../modules/state.js";
 import { get_all_mark_lines, get_cells_on_line } from "../modules/multi_diagonal.js";
 
 /**
- * 从同行同列同宫中移除指定数字的候选数
+ * 从所有相关区域移除指定数字的候选数
  */
-export function eliminate_Candidates(board, size, i, j, num) {
-    // 新增：用于记录所有被删除的候选数及其位置信息
+export function eliminate_candidates(board, size, i, j, num) {
     const eliminations = [];
+    // 根据当前模式获取所有区域
+    const mode = (typeof state !== "undefined" && state.current_mode) ? state.current_mode : "classic";
 
-    // 处理行和列
-    for (let k = 0; k < size; k++) {
-        if (Array.isArray(board[i][k])) {
-            const before = board[i][k].slice();
-            board[i][k] = board[i][k].filter(candidate_num => candidate_num !== num);
-            const eliminated = before.filter(candidate_num => candidate_num === num);
-            if (eliminated.length > 0) {
-                eliminations.push({ row: i, col: k, eliminated });
-            }
-        }
-        if (Array.isArray(board[k][j])) {
-            const before = board[k][j].slice();
-            board[k][j] = board[k][j].filter(candidate_num => candidate_num !== num);
-            const eliminated = before.filter(candidate_num => candidate_num === num);
-            if (eliminated.length > 0) {
-                eliminations.push({ row: k, col: j, eliminated });
-            }
-        }
-    }
-
-    // 处理宫
-    const box_size = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
-    const start_row = Math.floor(i / box_size[0]) * box_size[0];
-    const start_col = Math.floor(j / box_size[1]) * box_size[1];
-
-    for (let row_idx = start_row; row_idx < start_row + box_size[0]; row_idx++) {
-        for (let col_idx = start_col; col_idx < start_col + box_size[1]; col_idx++) {
-            if (Array.isArray(board[row_idx][col_idx])) {
-                const before = board[row_idx][col_idx].slice();
-                board[row_idx][col_idx] = board[row_idx][col_idx].filter(candidate_num => candidate_num !== num);
+    // 满格区域
+    const regions = get_all_regions(size, mode);
+    const related_regions = regions.filter(region =>
+        region.cells.some(([r, c]) => r === i && c === j)
+    );
+    for (const region of related_regions) {
+        for (const [r, c] of region.cells) {
+            if (Array.isArray(board[r][c])) {
+                const before = board[r][c].slice();
+                board[r][c] = board[r][c].filter(candidate_num => candidate_num !== num);
                 const eliminated = before.filter(candidate_num => candidate_num === num);
                 if (eliminated.length > 0) {
-                    eliminations.push({ row: row_idx, col: col_idx, eliminated });
+                    eliminations.push({ row: r, col: c, eliminated });
                 }
             }
         }
     }
-
-    // 斜线相关候选数排除
-    if (typeof state !== 'undefined') {
-        // diagonal模式：主副对角线
-        if (state.current_mode === 'diagonal') {
-            // 主对角线
-            if (i === j) {
-                for (let idx = 0; idx < size; idx++) {
-                    if (Array.isArray(board[idx][idx])) {
-                        const before = board[idx][idx].slice();
-                        board[idx][idx] = board[idx][idx].filter(candidate_num => candidate_num !== num);
-                        const eliminated = before.filter(candidate_num => candidate_num === num);
-                        if (eliminated.length > 0) {
-                            eliminations.push({ row: idx, col: idx, eliminated });
-                        }
-                    }
-                }
-            }
-            // 副对角线
-            if (i + j === size - 1) {
-                for (let idx = 0; idx < size; idx++) {
-                    const row_diag = idx;
-                    const col_diag = size - 1 - idx;
-                    if (Array.isArray(board[row_diag][col_diag])) {
-                        const before = board[row_diag][col_diag].slice();
-                        board[row_diag][col_diag] = board[row_diag][col_diag].filter(candidate_num => candidate_num !== num);
-                        const eliminated = before.filter(candidate_num => candidate_num === num);
-                        if (eliminated.length > 0) {
-                            eliminations.push({ row: row_diag, col: col_diag, eliminated });
-                        }
-                    }
-                }
-            }
-        }
-        // multi_diagonal模式：所有已画斜线，参照isValid_multi_diagonal逻辑
-        if (state.current_mode === 'multi_diagonal') {
-            const mark_lines = get_all_mark_lines();
-            for (const [start, end] of mark_lines) {
-                const cells = get_cells_on_line(size, start, end);
-                // 找到当前格子是否在这条线上
-                if (cells.some(([r, c]) => r === i && c === j)) {
-                    // 对该线上的所有格子都移除num候选数
-                    for (const [r, c] of cells) {
-                        if (Array.isArray(board[r][c])) {
-                            const before = board[r][c].slice();
-                            board[r][c] = board[r][c].filter(candidate_num => candidate_num !== num);
-                            const eliminated = before.filter(candidate_num => candidate_num === num);
-                            if (eliminated.length > 0) {
-                                eliminations.push({ row: r, col: c, eliminated });
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // 返回所有被删除的候选数及其位置信息
     return eliminations;
+}
+
+/**
+ * 获取所有区域（宫、行、列、对角线）格子坐标
+ * @param {number} size - 盘面大小
+ * @param {string} mode - 模式，可选 'classic' | 'diagonal' | 'missing'
+ * @returns {Array<{type: string, index: number, cells: Array<[number, number]>}>}
+ */
+export function get_all_regions(size, mode = 'classic') {
+    const regions = [];
+    const box_size = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
+
+    // 宫
+    for (let box_row = 0; box_row < size / box_size[0]; box_row++) {
+        for (let box_col = 0; box_col < size / box_size[1]; box_col++) {
+            const region_cells = [];
+            for (let r = box_row * box_size[0]; r < (box_row + 1) * box_size[0]; r++) {
+                for (let c = box_col * box_size[1]; c < (box_col + 1) * box_size[1]; c++) {
+                    region_cells.push([r, c]);
+                }
+            }
+            regions.push({ type: '宫', index: box_row * (size / box_size[1]) + box_col + 1, cells: region_cells });
+        }
+    }
+    // 行
+    for (let row = 0; row < size; row++) {
+        const region_cells = [];
+        for (let col = 0; col < size; col++) {
+            region_cells.push([row, col]);
+        }
+        regions.push({ type: '行', index: row + 1, cells: region_cells });
+    }
+    // 列
+    for (let col = 0; col < size; col++) {
+        const region_cells = [];
+        for (let row = 0; row < size; row++) {
+            region_cells.push([row, col]);
+        }
+        regions.push({ type: '列', index: col + 1, cells: region_cells });
+    }
+    // 对角线
+    if (mode === 'diagonal') {
+        const diag1_cells = [];
+        const diag2_cells = [];
+        for (let i = 0; i < size; i++) {
+            diag1_cells.push([i, i]);
+            diag2_cells.push([i, size - 1 - i]);
+        }
+        regions.push({ type: '对角线', index: 1, cells: diag1_cells });
+        regions.push({ type: '对角线', index: 2, cells: diag2_cells });
+    }
+    // 多斜线
+    if (mode === 'multi_diagonal') {
+        const mark_lines = get_all_mark_lines();
+        let lineIndex = 1;
+        for (const [start, end] of mark_lines) {
+            const cells = get_cells_on_line(size, start, end);
+            regions.push({ type: '斜线', index: lineIndex++, cells });
+        }
+    }
+    return regions;
 }
 
 // 辅助函数：比较两个board状态是否相同
@@ -184,7 +168,7 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
                     return { solution_count: -2 }; // 直接返回冲突状态
                 }
                 board[i][j] = num; // 恢复原值
-                eliminate_Candidates(board, size, i, j, num); // 移除相关候选数
+                eliminate_candidates(board, size, i, j, num); // 移除相关候选数
                 // log_process("移除相关候选数");
             }
         }
@@ -315,7 +299,7 @@ function solve_By_BruteForce(r = 0, c = 0, isValid = isValid) {
                 const boardBackup = JSON.parse(JSON.stringify(board));
                 board[r][c] = num;
                 log_process(`[试数] ${getRowLetter(r+1)}${c+1}=${num}`);
-                eliminate_Candidates(board, size, r, c, num);
+                eliminate_candidates(board, size, r, c, num);
                 
                 const { changed, hasEmptyCandidate } = solve_By_Elimination(board, size);
                 if (hasEmptyCandidate) {

@@ -10,7 +10,7 @@ import { isValid_diagonal } from '../modules/diagonal.js';
  * @param {number} size - 数独大小 (4,6,9)
  * @param {string} difficulty - 难度 ('easy', 'medium', 'hard')
  */
-export function generate_puzzle(size, score_lower_limit = 0, holes_limit = undefined) {
+export function generate_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
     // 清除之前的结果
     clear_all_inputs();
     log_process('', true);
@@ -45,7 +45,7 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_limit = undef
         // 2. 随机选择对称模式并挖洞
         symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
         // symmetry = 'none';
-        puzzle = dig_holes(solution, size, 0, symmetry, holes_limit);
+        puzzle = dig_holes(solution, size, 0, symmetry, holes_count);
 
         // 计算实际挖洞数
         holesDug = 0;
@@ -79,7 +79,7 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_limit = undef
         break;
     }
 
-    log_process(`生成${size}宫格${difficulty}难度数独，提示数: ${size*size-holesDug}，对称模式: ${symmetry}`);
+    log_process(`${size}宫格${difficulty}难度数独生成成功，提示数: ${size*size-holesDug}，对称模式: ${symmetry}`);
     // log_process(`生成${size}宫格数独，提示数: ${size*size-holesDug}，对称模式: ${symmetry}`);
 
     // 3. 填充到网格

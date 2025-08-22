@@ -2,6 +2,7 @@ import { state, set_current_mode } from './state.js';
 import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, show_logical_solution } from './core.js';
 import { solve, isValid } from '../solver/solver_tool.js';
 import { generate_puzzle, get_symmetric_positions } from '../solver/generate.js';
+import { create_technique_panel } from './classic.js';
 
 // 斜线数独主入口
 export function create_multi_diagonal_sudoku(size) {
@@ -9,6 +10,35 @@ export function create_multi_diagonal_sudoku(size) {
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
+
+    // 修改技巧开关
+    state.techniqueSettings = {
+        Box_Elimination: true,
+        Row_Col_Elimination: true,
+        Box_Block: true,        // 
+        Box_Pair_Block: true,
+        Row_Col_Block: true,    // 
+        Box_Naked_Pair: true,   // 
+        Row_Col_Naked_Pair: true, // 
+        Box_Hidden_Pair: true,  // 
+        Row_Col_Hidden_Pair: true, // 
+        Box_Naked_Triple: true, // 
+        Row_Col_Naked_Triple: true, // 
+        Box_Hidden_Triple: true, // 
+        Row_Col_Hidden_Triple: true, // 
+        All_Quad: false,         // 
+        Cell_Elimination: true,  // 
+        Brute_Force: false,
+        Variant_Naked_Pair: true,
+        Variant_Naked_Triple: true,
+    };
+    // 唯余法全部默认开启
+    for (let i = 1; i <= 9; i++) {
+        state.techniqueSettings[`Cell_Elimination_${i}`] = true;
+    }
+
+    // 刷新技巧面板
+    create_technique_panel();
 
     // 创建基础数独盘面
     const { container, grid } = create_base_grid(size);
@@ -103,38 +133,221 @@ export function create_multi_diagonal_sudoku(size) {
         // 保留SVG和已画线，不清除
         show_result('已退出标记模式。');
     }
-    add_Extra_Button('验证唯一解', check_multi_diagonal_uniqueness, '#2196F3');
-    add_Extra_Button('隐藏答案', restore_original_board, '#2196F3');
+    // add_Extra_Button('验证唯一解', check_multi_diagonal_uniqueness, '#2196F3');
+    // add_Extra_Button('隐藏答案', restore_original_board, '#2196F3');
     add_Extra_Button('清除标记', clear_multi_diagonal_marks, '#2196F3');
     add_Extra_Button('自动出题', () => generate_multi_diagonal_puzzle(size), '#2196F3');
 }
 
-// 自动生成多斜线数独题目（含对称斜线标记）
-export function generate_multi_diagonal_puzzle(size) {
-// 随机生成斜线标记
+// ...existing code...
+// 生成多斜线数独题目
+export function generate_multi_diagonal_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
+    clear_multi_diagonal_marks();
     const container = document.querySelector('.sudoku-container');
     if (!container) return;
     const grid = container.querySelector('.sudoku-grid');
     if (!grid) return;
 
-    // 随机生成 2 到 4 条斜线标记
-    const numLines = Math.floor(Math.random() * 3) + 2; // 2, 3, or 4 lines
-    for (let i = 0; i < numLines; i++) {
-        // 随机选择起点和终点格子
-        const startRow = Math.floor(Math.random() * size);
-        const startCol = Math.floor(Math.random() * size);
-        const endRow = Math.floor(Math.random() * size);
-        const endCol = Math.floor(Math.random() * size);
+    // 斜线数量在 sqrt(size) 到 size 之间随机
+    const min_lines = Math.ceil(Math.sqrt(size));
+    const max_lines = size;
+    const num_lines = Math.floor(Math.random() * (max_lines - min_lines + 1)) + min_lines;
 
-        // 确保起点和终点不同
-        if (startRow !== endRow || startCol !== endCol) {
-            draw_multi_diagonal_line(size, [startRow, startCol], [endRow, endCol]);
+    let lines_drawn = 0;
+    const box_size = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
+
+    // 选取对称类型
+    const SYMMETRY_TYPES = [
+        'central','central','central','central','central',
+        'diagonal','diagonal',
+        'anti-diagonal','anti-diagonal',
+        'horizontal',
+        'vertical',
+        // 'none'
+    ];
+    const symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
+
+    // 判断两点是否在同一个宫内
+    function is_same_box(r1, c1, r2, c2) {
+        const box_row1 = Math.floor(r1 / box_size[0]);
+        const box_col1 = Math.floor(c1 / box_size[1]);
+        const box_row2 = Math.floor(r2 / box_size[0]);
+        const box_col2 = Math.floor(c2 / box_size[1]);
+        return box_row1 === box_row2 && box_col1 === box_col2;
+    }
+
+    // 获取对称端点
+    function get_symmetric_line(start, end, size, symmetry) {
+        const [r1, c1] = start;
+        const [r2, c2] = end;
+        switch (symmetry) {
+            case 'horizontal':
+                return [
+                    [size - 1 - r1, c1],
+                    [size - 1 - r2, c2]
+                ];
+            case 'vertical':
+                return [
+                    [r1, size - 1 - c1],
+                    [r2, size - 1 - c2]
+                ];
+            case 'central':
+                return [
+                    [size - 1 - r1, size - 1 - c1],
+                    [size - 1 - r2, size - 1 - c2]
+                ];
+            case 'diagonal':
+                return [
+                    [c1, r1],
+                    [c2, r2]
+                ];
+            case 'anti-diagonal':
+                return [
+                    [size - 1 - c1, size - 1 - r1],
+                    [size - 1 - c2, size - 1 - r2]
+                ];
+            default:
+                return null;
         }
     }
 
-    // 调用自动出题
-    generate_puzzle(size);
+    // 用于去重，避免重复画线
+    const line_set = new Set();
 
+    const all_lines = [];
+    let try_count = 0;
+    const MAX_TRY = 100 * num_lines;
+    while (lines_drawn < num_lines && try_count < MAX_TRY) {
+        try_count++;
+        const start_row = Math.floor(Math.random() * size);
+        const start_col = Math.floor(Math.random() * size);
+        const delta = Math.floor(Math.random() * (size - 1)) + 1; // 1~size-1
+        const dir = Math.random() < 0.5 ? 1 : -1;
+        let end_row, end_col;
+
+        if (Math.random() < 0.5) {
+            // 主对角线方向
+            end_row = start_row + delta * dir;
+            end_col = start_col + delta * dir;
+        } else {
+            // 副对角线方向
+            end_row = start_row + delta * dir;
+            end_col = start_col - delta * dir;
+        }
+
+        // 端点有效性
+        if (
+            end_row >= 0 && end_row < size &&
+            end_col >= 0 && end_col < size &&
+            (start_row !== end_row || start_col !== end_col) &&
+            !is_same_box(start_row, start_col, end_row, end_col)
+        ) {
+            // 生成对称线
+            const start = [start_row, start_col];
+            const end = [end_row, end_col];
+            const sym = get_symmetric_line(start, end, size, symmetry);
+
+            // 端点不能落在已有线的任何格子上
+            function endpoint_on_any_line(pt, lines) {
+                for (const [lstart, lend] of lines) {
+                    const cells = get_cells_on_line(size, lstart, lend);
+                    for (const [r, c] of cells) {
+                        if (pt[0] === r && pt[1] === c) return true;
+                    }
+                }
+                return false;
+            }
+            // 检查主线端点
+            if (endpoint_on_any_line(start, all_lines) || endpoint_on_any_line(end, all_lines)) {
+                continue;
+            }
+            // 检查已有线的端点不能落在新线的任何格子上
+            const new_line_cells = get_cells_on_line(size, start, end);
+            let endpoint_on_new_line = false;
+            for (const [lstart, lend] of all_lines) {
+                if (
+                    new_line_cells.some(([r, c]) => (lstart[0] === r && lstart[1] === c) || (lend[0] === r && lend[1] === c))
+                ) {
+                    endpoint_on_new_line = true;
+                    break;
+                }
+            }
+            if (endpoint_on_new_line) continue;
+
+            // 检查对称线端点
+            if (sym) {
+                if (endpoint_on_any_line(sym[0], all_lines) || endpoint_on_any_line(sym[1], all_lines)) {
+                    continue;
+                }
+                // 新线端点不能落在对称线的任何格子上
+                const sym_cells = get_cells_on_line(size, sym[0], sym[1]);
+                if (
+                    sym_cells.some(([r, c]) => (start[0] === r && start[1] === c) || (end[0] === r && end[1] === c))
+                ) {
+                    continue;
+                }
+                // 已有线的端点不能落在对称线的任何格子上
+                let endpoint_on_sym_line = false;
+                for (const [lstart, lend] of all_lines) {
+                    if (
+                        sym_cells.some(([r, c]) => (lstart[0] === r && lstart[1] === c) || (lend[0] === r && lend[1] === c))
+                    ) {
+                        endpoint_on_sym_line = true;
+                        break;
+                    }
+                }
+                if (endpoint_on_sym_line) continue;
+            }
+
+            // 线自身和对称线都不能在同一宫内
+            let valid = true;
+            if (sym) {
+                if (
+                    is_same_box(sym[0][0], sym[0][1], sym[1][0], sym[1][1]) ||
+                    (sym[0][0] === start[0] && sym[0][1] === start[1] && sym[1][0] === end[0] && sym[1][1] === end[1])
+                ) {
+                    valid = false;
+                }
+            }
+
+            // 线去重（无向线，起止点顺序无关）
+            const key1 = `${start[0]},${start[1]}-${end[0]},${end[1]}`;
+            const key2 = `${end[0]},${end[1]}-${start[0]},${start[1]}`;
+            let sym_key1, sym_key2;
+            if (sym) {
+                sym_key1 = `${sym[0][0]},${sym[0][1]}-${sym[1][0]},${sym[1][1]}`;
+                sym_key2 = `${sym[1][0]},${sym[1][1]}-${sym[0][0]},${sym[0][1]}`;
+            }
+
+            if (
+                valid &&
+                !line_set.has(key1) && !line_set.has(key2) &&
+                (!sym || (!line_set.has(sym_key1) && !line_set.has(sym_key2)))
+            ) {
+                let lines_to_add = 1;
+                if (sym && (sym[0][0] !== start[0] || sym[0][1] !== start[1] || sym[1][0] !== end[0] || sym[1][1] !== end[1])) {
+                    lines_to_add = 2;
+                }
+                // 如果加上线会超出总数，则跳过本次
+                if (all_lines.length + lines_to_add > num_lines) {
+                    break;
+                }
+                draw_multi_diagonal_line(size, start, end);
+                all_lines.push([start, end]);
+                line_set.add(key1);
+                line_set.add(key2);
+                if (lines_to_add === 2) {
+                    draw_multi_diagonal_line(size, sym[0], sym[1]);
+                    all_lines.push([sym[0], sym[1]]);
+                    line_set.add(sym_key1);
+                    line_set.add(sym_key2);
+                }
+                lines_drawn++;
+            }
+        }
+    }
+    state.multi_diagonal_lines = all_lines;
+    generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
 }
 
 // 清除所有斜线标记线
@@ -148,6 +361,7 @@ export function clear_multi_diagonal_marks() {
         // 只移除所有已画线（保留SVG容器）
         Array.from(svg.querySelectorAll('line')).forEach(line => line.remove());
     }
+    state.multi_diagonal_lines = [];
     show_result('所有标记已清除。');
 }
 
@@ -344,54 +558,6 @@ export function add_multi_diagonal_mark() {
     }
 }
 
-// /**
-//  * 在数独盘面上画一条斜线标记
-//  * @param {number} size - 数独盘面大小
-//  * @param {[number, number]} start - 起点坐标 [row, col]
-//  * @param {[number, number]} end - 终点坐标 [row, col]
-//  * @param {string} [color='#888'] - 线条颜色
-//  */
-// export function draw_multi_diagonal_line(size, start, end, color = '#888') {
-//     const container = document.querySelector('.sudoku-container');
-//     if (!container) return;
-//     const grid = container.querySelector('.sudoku-grid');
-//     if (!grid) return;
-//     let svg = grid.querySelector('.mark-svg');
-//     if (!svg) {
-//         svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-//         svg.classList.add('mark-svg');
-//         svg.style.position = 'absolute';
-//         svg.style.left = '0';
-//         svg.style.top = '0';
-//         svg.style.width = '100%';
-//         svg.style.height = '100%';
-//         svg.setAttribute('width', grid.clientWidth);
-//         svg.setAttribute('height', grid.clientHeight);
-//         svg.style.pointerEvents = 'none';
-//         grid.appendChild(svg);
-//     }
-//     // 百分比中心
-//     function percent_center(row, col) {
-//         return {
-//             x: (col + 0.5) * (100 / size),
-//             y: (row + 0.5) * (100 / size)
-//         };
-//     }
-//     const p1 = percent_center(start[0], start[1]);
-//     const p2 = percent_center(end[0], end[1]);
-//     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-//     line.setAttribute('x1', `${p1.x}%`);
-//     line.setAttribute('y1', `${p1.y}%`);
-//     line.setAttribute('x2', `${p2.x}%`);
-//     line.setAttribute('y2', `${p2.y}%`);
-//     line.setAttribute('stroke', color);
-//     line.setAttribute('stroke-width', '4');
-//     line.setAttribute('stroke-linecap', 'round');
-//     line.setAttribute('opacity', '1');
-//     svg.appendChild(line);
-// }
-
-// ...existing code...
 /**
  * 在数独盘面上画一条斜线标记
  * @param {number} size - 数独盘面大小
@@ -413,11 +579,15 @@ export function draw_multi_diagonal_line(size, start, end, color = '#888') {
         svg.style.top = '0';
         svg.style.width = '100%';
         svg.style.height = '100%';
-        svg.setAttribute('width', grid.clientWidth);
-        svg.setAttribute('height', grid.clientHeight);
-        svg.style.pointerEvents = 'none';
+        // svg.setAttribute('width', grid.clientWidth);
+        // svg.setAttribute('height', grid.clientHeight);
+        // svg.style.pointerEvents = 'none';
         grid.appendChild(svg);
     }
+
+    // **每次画线前都同步 SVG 尺寸**
+    svg.setAttribute('width', grid.clientWidth);
+    svg.setAttribute('height', grid.clientHeight);
     // 百分比中心
     function percent_center(row, col) {
         return {
@@ -470,6 +640,10 @@ export function get_cells_on_line(size, start, end) {
 }
 // 获取所有已画标记线的端点坐标
 export function get_all_mark_lines() {
+    // 优先读取 state.multi_diagonal_lines
+    if (state.multi_diagonal_lines && state.multi_diagonal_lines.length > 0) {
+        return state.multi_diagonal_lines;
+    }
     const container = document.querySelector('.sudoku-container');
     if (!container) return [];
     const grid = container.querySelector('.sudoku-grid');

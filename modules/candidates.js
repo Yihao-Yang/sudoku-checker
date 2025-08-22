@@ -1,6 +1,6 @@
 import { state, set_current_mode } from './state.js';
 import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, show_logical_solution } from './core.js';
-import { eliminate_Candidates, getRowLetter, isValid } from '../solver/solver_tool.js';
+import { eliminate_candidates, getRowLetter, isValid } from '../solver/solver_tool.js';
 import { solve_By_Elimination } from '../solver/Technique.js';
 
 
@@ -216,7 +216,7 @@ export function check_candidates_uniqueness() {
                     return { changed: false, hasEmptyCandidate: true }; // 直接返回冲突状态
                 }
                 board[i][j] = num; // 恢复原值
-                eliminate_Candidates(board, size, i, j, num); // 移除相关候选数
+                eliminate_candidates(board, size, i, j, num); // 移除相关候选数
             }
         }
     }
@@ -321,7 +321,7 @@ export function check_candidates_uniqueness() {
                     const boardBackup = JSON.parse(JSON.stringify(board));
                     board[r][c] = num;
                     log_process(`[试数] ${getRowLetter(r+1)}${c+1}=${num}`);
-                    eliminate_Candidates(board, size, r, c, num);
+                    eliminate_candidates(board, size, r, c, num);
                     
                     const { changed, hasEmptyCandidate } = solve_By_Elimination(board, size);
                     if (hasEmptyCandidate) {

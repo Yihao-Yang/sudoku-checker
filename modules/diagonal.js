@@ -30,9 +30,9 @@ export function create_diagonal_sudoku(size) {
         Brute_Force: false,
         Diagonal_Elimination: true,       // 
         Diagonal_Block: true,
-        Diagonal_Naked_Pair: true,
+        Variant_Naked_Pair: true,
         Diagonal_Hidden_Pair: true,
-        Diagonal_Naked_Triple: true,
+        Variant_Naked_Triple: true,
         Diagonal_Hidden_Triple: true
     };
     // 唯余法全部默认开启
@@ -104,8 +104,8 @@ export function create_diagonal_sudoku(size) {
     // 添加对角线数独专属按钮
     const extra_buttons = document.getElementById('extraButtons');
     extra_buttons.innerHTML = '';
-    add_Extra_Button('验证唯一解', check_diagonal_uniqueness, '#2196F3');
-    add_Extra_Button('隐藏答案', restore_original_board, '#2196F3');
+    // add_Extra_Button('验证唯一解', check_diagonal_uniqueness, '#2196F3');
+    // add_Extra_Button('隐藏答案', restore_original_board, '#2196F3');
 }
 
 // 绘制两条对角线

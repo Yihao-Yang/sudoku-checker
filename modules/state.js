@@ -14,6 +14,7 @@ export const state = {
     box_missing_subsets: {},
     row_missing_subsets: {},
     col_missing_subsets: {},
+    multi_diagonal_lines: [],
     solve_stats: {
         solution_count: 0,
         technique_counts: {},

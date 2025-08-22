@@ -103,7 +103,7 @@ export function create_missing_sudoku(size) {
     extraButtons.innerHTML = '';
     add_Extra_Button('添加标记', toggle_marking_mode);
     add_Extra_Button('验证唯一性', check_missing_uniqueness);
-    add_Extra_Button('清除数字', clear_numbers);
+    // add_Extra_Button('清除数字', clear_numbers);
     add_Extra_Button('清除标记', clear_marks);
     add_Extra_Button('自动出题', () => generate_missing_puzzle(size));
     
@@ -232,60 +232,6 @@ export function generate_missing_puzzle(size) {
         else difficulty = 'easy';
     }
 
-    // do {
-    //     log_process('', true);
-        
-    //     // 1. 重置盘面
-    //     const container = document.querySelector('.sudoku-container');
-    //     if (!container) return;
-        
-    //     const inputs = container.querySelectorAll('input');
-    //     inputs.forEach(input => {
-    //         input.value = '';
-    //         input.disabled = false;
-    //         input.style.backgroundColor = '';
-    //         input.style.color = '';
-    //         input.classList.remove('solution-cell');
-    //     });
-        
-    //     const cells = container.querySelectorAll('.sudoku-cell');
-    //     cells.forEach(cell => {
-    //         cell.style.backgroundColor = '';
-    //     });
-        
-    //     missing_cells = [];
-    //     is_missing_mode_active = false;
-        
-    //     // 2. 生成新终盘
-    //     const result = generate_missing_solution(size);
-    //     solution = result.board;
-    //     missingCells = result.missingCells;
-        
-    //     // 3. 创建可挖洞的盘面副本
-    //     puzzle = solution.map(row => [...row]);
-        
-    //     // 4. 尝试挖洞
-    //     const symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
-    //     const digResult = dig_missing_holes(puzzle, size, missingCells, symmetry);
-        
-    //     // 5. 验证题目唯一性并显示技巧统计
-    //     const testBoard = puzzle.map(row => [...row]);
-    //     const solveResult = missing_solve(testBoard, size, missingCells, true);
-
-    //     // 分值判断（包含用户输入的下限）
-    //     if (solveResult.total_score !== undefined && solveResult.total_score < score_lower_limit) {
-    //         state.silentMode = false; // 强制输出
-    //         log_process(`题目分值为${solveResult.total_score}，低于下限${score_lower_limit}，重新生成...`);
-    //         state.silentMode = true; // 恢复静默
-    //         continue;
-    //     }
-    //     if (digResult !== false) {
-    //         break; // 挖洞成功，退出循环
-    //     }
-    //     // break;
-        
-    // } while (true);
-    
     while (true) {
         log_process('', true);
         
@@ -320,6 +266,26 @@ export function generate_missing_puzzle(size) {
         
         // 4. 尝试挖洞
         const symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
+        const already_dug = new Set();
+        for (const { row, col } of missingCells) {
+            const symPositions = get_symmetric_positions(row, col, size, symmetry);
+            for (const [r, c] of symPositions) {
+                // 跳过黑格本身
+                if (missingCells.some(cell => cell.row === r && cell.col === c)) continue;
+                // 避免重复挖同一个格
+                const key = `${r},${c}`;
+                if (already_dug.has(key)) continue;
+                puzzle[r][c] = 0;
+                already_dug.add(key);
+            }
+        }
+        const testBoard1 = puzzle.map(row => [...row]);
+        const solveResult1 = missing_solve(testBoard1, size, missingCells, true);
+        if (solveResult1.solution_count !== 1) {
+            // 不是唯一解，重新生成终盘
+            continue;
+        }
+
         const digResult = dig_missing_holes(puzzle, size, missingCells, symmetry);
         
         // 5. 验证题目唯一性并显示技巧统计
@@ -660,22 +626,6 @@ function validate_missing_cells_count(size) {
     }
     
     return true;
-}
-
-/**
- * 清除所有数字，保留标记
- */
-export function clear_numbers() {
-    const container = document.querySelector('.sudoku-container');
-    const inputs = container.querySelectorAll('input');
-    
-    inputs.forEach(input => {
-        if (!input.disabled) {
-            input.value = '';
-        }
-    });
-    
-    show_result("已清除所有数字，保留黑格标记", 'info');
 }
 
 /**

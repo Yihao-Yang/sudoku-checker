@@ -23,7 +23,7 @@ import {
     change_candidates_mode,
     show_logical_solution
 } from './core.js';
-import { solve, isValid, eliminate_Candidates } from '../solver/solver_tool.js';
+import { solve, isValid, eliminate_candidates } from '../solver/solver_tool.js';
 
 // 最关键的创建数独函数
 export function create_sudoku_grid(size) {
@@ -335,7 +335,7 @@ export function create_technique_panel() {
                 // 显性数对
                 { id: 'Box_Naked_Pair', name: '宫显性数对', default: true },
                 { id: 'Row_Col_Naked_Pair', name: '行列显性数对', default: true },
-                { id: 'Diagonal_Naked_Pair', name: '对角线显性数对', default: state.techniqueSettings?.Diagonal_Elimination ?? false },
+                { id: 'Variant_Naked_Pair', name: '变型显性数对', default: state.techniqueSettings?.Diagonal_Elimination ?? false },
             ]
         },
         {
@@ -348,7 +348,7 @@ export function create_technique_panel() {
                 // 显性数组
                 { id: 'Box_Naked_Triple', name: '宫显性三数组', default: true },
                 { id: 'Row_Col_Naked_Triple', name: '行列显性三数组', default: true },
-                { id: 'Diagonal_Naked_Triple', name: '对角线显性三数组', default: state.techniqueSettings?.Diagonal_Elimination ?? false },
+                { id: 'Variant_Naked_Triple', name: '变型显性三数组', default: state.techniqueSettings?.Diagonal_Elimination ?? false },
                 // 合并所有四数组为一个开关
                 { id: 'All_Quad', name: '四数组(显性+隐性)(可能有bug，慎用)', default: false },
             ]
