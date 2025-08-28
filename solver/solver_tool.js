@@ -6,7 +6,7 @@ import { get_all_mark_lines, get_cells_on_line } from "../modules/multi_diagonal
 /**
  * 从所有相关区域移除指定数字的候选数
  */
-export function eliminate_candidates(board, size, i, j, num) {
+export function eliminate_candidates(board, size, i, j, num, calc_score = true) {
     const eliminations = [];
     // 根据当前模式获取所有区域
     const mode = (typeof state !== "undefined" && state.current_mode) ? state.current_mode : "classic";
@@ -19,11 +19,24 @@ export function eliminate_candidates(board, size, i, j, num) {
     for (const region of related_regions) {
         for (const [r, c] of region.cells) {
             if (Array.isArray(board[r][c])) {
-                const before = board[r][c].slice();
-                board[r][c] = board[r][c].filter(candidate_num => candidate_num !== num);
-                const eliminated = before.filter(candidate_num => candidate_num === num);
-                if (eliminated.length > 0) {
-                    eliminations.push({ row: r, col: c, eliminated });
+                // 新增：无论是否真的被消除，都加分
+                if (calc_score) {
+                    const key = `${r},${c},${num}`;
+                    if (!state.candidate_elimination_score[key]) {
+                        state.candidate_elimination_score[key] = 0;
+                    }
+                    state.candidate_elimination_score[key] += 1;
+                    // log_process(`候选数消除分值: [${getRowLetter(r+1)}${c+1}] 候选${num} -> 分值=${state.candidate_elimination_score[key]}`);
+                }
+
+                // 只有真的被消除才记录eliminations
+                if (Array.isArray(board[r][c])) {
+                    const before = board[r][c].slice();
+                    board[r][c] = board[r][c].filter(candidate_num => candidate_num !== num);
+                    const eliminated = before.filter(candidate_num => candidate_num === num);
+                    if (eliminated.length > 0) {
+                        eliminations.push({ row: r, col: c, eliminated });
+                    }
                 }
             }
         }
@@ -151,6 +164,8 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
     size = currentSize;
     state.solve_stats.solution_count = 0;
     solution = null;
+    state.candidate_elimination_score = {};
+    state.total_score_sum = 0;
     // state.solve_stats.solution_count = 0;
 
     for (let i = 0; i < size; i++) {
@@ -214,6 +229,8 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
             state.solve_stats.total_score = logical_result.total_score;
             if (!state.silentMode) log_process(`总分值: ${logical_result.total_score}`);
         }
+        state.total_score_sum = Math.round(state.total_score_sum * 100) / 100; // 保留两位小数
+        if (!state.silentMode) log_process(`新的总分值: ${state.total_score_sum}`);
     }
 
     // 恢复日志函数

@@ -11,6 +11,9 @@ export const state = {
     solution: null,
     // solution_Count: 0,
     silentMode: false,
+    candidate_elimination_score: {},
+    total_score_sum: 0,
+
     box_missing_subsets: {},
     row_missing_subsets: {},
     col_missing_subsets: {},

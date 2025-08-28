@@ -153,7 +153,24 @@ export function solve_By_Elimination(board, size) {
         // 第九优先级：行列区块
         [() => state.techniqueSettings?.Row_Col_Block && check_Row_Col_Block_Elimination(board, size)],
 
-        // 第十优先级：余6-9数的所有排除法
+        // // 第十优先级：余6-9数的所有排除法
+        // [() => state.techniqueSettings?.Cell_Elimination_6 && check_cell_elimination(board, size, 6)],
+        // [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 6)],
+        // [() => state.techniqueSettings?.Cell_Elimination_7 && check_cell_elimination(board, size, 7)],
+        // [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 7)],
+        // [() => state.techniqueSettings?.Cell_Elimination_8 && check_cell_elimination(board, size, 8)],
+        // [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 8)],
+        // [() => state.techniqueSettings?.Cell_Elimination_9 && check_cell_elimination(board, size, 9)],
+        // [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 9)],
+
+
+
+
+
+        // 第十优先级：宫隐性数对，对角线隐性数对
+        [() => state.techniqueSettings?.Box_Hidden_Pair && check_box_hidden_subset_elimination(board, size, 2)],
+        [() => state.current_mode === 'diagonal' && state.techniqueSettings?.Diagonal_Hidden_Pair && check_diagonal_hidden_subset_elimination(board, size, 2)],
+        // 第十一优先级：余6-9数的所有排除法
         [() => state.techniqueSettings?.Cell_Elimination_6 && check_cell_elimination(board, size, 6)],
         [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 6)],
         [() => state.techniqueSettings?.Cell_Elimination_7 && check_cell_elimination(board, size, 7)],
@@ -162,14 +179,6 @@ export function solve_By_Elimination(board, size) {
         [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 8)],
         [() => state.techniqueSettings?.Cell_Elimination_9 && check_cell_elimination(board, size, 9)],
         [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 9)],
-
-
-
-
-
-        // 第十一优先级：宫隐性数对，对角线隐性数对
-        [() => state.techniqueSettings?.Box_Hidden_Pair && check_box_hidden_subset_elimination(board, size, 2)],
-        [() => state.current_mode === 'diagonal' && state.techniqueSettings?.Diagonal_Hidden_Pair && check_diagonal_hidden_subset_elimination(board, size, 2)],
         // 第十二优先级：宫隐性三数组，对角线隐性三数组
         [() => state.techniqueSettings?.Box_Hidden_Triple && check_box_hidden_subset_elimination(board, size, 3)],
         [() => state.current_mode === 'diagonal' && state.techniqueSettings?.Diagonal_Hidden_Triple && check_diagonal_hidden_subset_elimination(board, size, 3)],
@@ -449,8 +458,27 @@ function region_elimination(board, size, region_cells, region_type, region_index
         }
         if (existing_nums.size >= size - nat && positions.length === 1) {
             const [row, col] = positions[0];
+
+            // 计算分值：该区域所有未定格子对该数的candidate_elimination_score倒数和
+            let score_sum = 0;
+            for (const [r, c] of region_cells) {
+                if (Array.isArray(board[r][c])) {
+                    const key = `${r},${c},${num}`;
+                    const score = state.candidate_elimination_score[key] || 0;
+                    if (score > 0) {
+                        score_sum += 1 / score;
+                    }
+                }
+            }
+            state.total_score_sum += score_sum;
+            score_sum = Math.round(score_sum * 100) / 100; // 保留两位小数
+
             board[row][col] = num;
-            if (!state.silentMode) log_process(`[${region_type}排除] 第${region_index}${region_type}${getRowLetter(row+1)}${col+1}=${num}`);
+            // 清空该格子的所有候选数分值
+            for (let n = 1; n <= size; n++) {
+                state.candidate_elimination_score[`${row},${col},${n}`] = 0;
+            }
+            if (!state.silentMode) log_process(`[${region_type}排除] 第${region_index}${region_type}${getRowLetter(row+1)}${col+1}=${num}，分值=${score_sum}`);
             eliminate_candidates(board, size, row, col, num);
             return;
         } else if (positions.length === 0) {
@@ -1130,10 +1158,42 @@ function check_cell_elimination(board, size, nat = 1) {
                             }
                         }
                         if (region_nums.size === size - nat && !region_nums.has(num)) {
+                            // 计算分值：该格子中除num以外的其他候选数的candidate_elimination_score倒数和
+                            let score_sum = 0;
+                            for (let other = 1; other <= size; other++) {
+                                if (other !== num) {
+                                    const key = `${row},${col},${other}`;
+                                    const score = state.candidate_elimination_score[key] || 0;
+                                    // log_process(`候选数分值: [${getRowLetter(row + 1)}${col + 1}] 候选${num} -> 分值=${score_sum}`);
+                                    if (score > 0) {
+                                        score_sum += 1 / score;
+                                    }
+                                }
+                            }
+                            for (let i = 1; i <= nat; i++) {
+                                if (i <= 5) {
+                                    score_sum = score_sum * i; // 乘以nat的阶乘
+                                    // log_process(`候选数分值: [${getRowLetter(row + 1)}${col + 1}] 候选${num} -> 分值=${score_sum}`);
+                                } else if (i > 5) {
+                                    score_sum = score_sum * (10 - i);
+                                    // log_process(`候选数分值: [${getRowLetter(row + 1)}${col + 1}] 候选${num} -> 分值=${score_sum}`);
+                                } else {
+                                    score_sum = score_sum * 1;
+                                    // log_process(`候选数分值: [${getRowLetter(row + 1)}${col + 1}] 候选${num} -> 分值=${score_sum}`);
+                                }
+                            }
+                            score_sum = score_sum / 12; // 4的阶乘
+                            state.total_score_sum += score_sum;
+                            score_sum = Math.round(score_sum * 100) / 100; // 保留两位小数
+
                             board[row][col] = num;
+                            // 清空该格子的所有候选数分值
+                            for (let n = 1; n <= size; n++) {
+                                state.candidate_elimination_score[`${row},${col},${n}`] = 0;
+                            }
                             let region_name = region.type;
                             let region_index = region.index;
-                            if (!state.silentMode) log_process(`[唯余法] ${getRowLetter(row + 1)}${col + 1}=${num}（第${region_index}${region_name}余${nat}数）`);
+                            if (!state.silentMode) log_process(`[唯余法] ${getRowLetter(row + 1)}${col + 1}=${num}（第${region_index}${region_name}余${nat}数），分值=${score_sum}`);
                             eliminate_candidates(board, size, row, col, num);
                             return;
                         }
@@ -1170,14 +1230,22 @@ function region_block_elimination(board, size, region_cells, region_type, region
         // 对每个候选格，模拟eliminate_candidates，收集所有能删到的位置
         const elimination_sets = [];
         for (const [r, c] of candidate_positions) {
+            // // 备份分值状态
+            // const backup_score = JSON.parse(JSON.stringify(state.candidate_elimination_score));
+            // const backup_total = state.total_score_sum;
+
             // 复制board，模拟填入num
             const board_copy = board.map(row => row.map(cell => Array.isArray(cell) ? [...cell] : cell));
             board_copy[r][c] = num;
-            const eliminations = eliminate_candidates(board_copy, size, r, c, num);
+            const eliminations = eliminate_candidates(board_copy, size, r, c, num, false);
             const eliminated_positions = eliminations
                 .filter(e => e.eliminated.includes(num))
                 .map(e => `${e.row},${e.col}`);
             elimination_sets.push(new Set(eliminated_positions));
+
+            // // 恢复分值状态
+            // state.candidate_elimination_score = JSON.parse(JSON.stringify(backup_score));
+            // state.total_score_sum = backup_total;
         }
 
         // 求交集
@@ -1191,12 +1259,33 @@ function region_block_elimination(board, size, region_cells, region_type, region
         }
         if (intersection.size === 0) continue;
 
+        // 计算本区域该数所有候选格的分值总和
+        let score_sum = 1;
+        for (const [r, c] of region_cells) {
+            const key = `${r},${c},${num}`;
+            const score = state.candidate_elimination_score[key] || 0;
+            if (score > 0) {
+                score_sum += 1 / score;
+                // log_process(`候选数分值: [${getRowLetter(r+1)}${c+1}] 候选${num} -> 分值=${score_sum}`);
+            }
+        }
+        score_sum = score_sum * candidate_positions.length;
+        score_sum = Math.round(score_sum * 100) / 100; // 保留两位小数
+        // score_sum += (size - candidate_positions.length) * candidate_positions.length;
+        // score_sum = Math.round(score_sum * 100) / 100; // 保留两位小数
+
         // 真正执行删除
         for (const pos of intersection) {
             const [r, c] = pos.split(',').map(Number);
             if (Array.isArray(board[r][c]) && board[r][c].includes(num)) {
                 board[r][c] = board[r][c].filter(n => n !== num);
                 changed = true;
+
+                // 分值累加到该候选数
+                const key = `${r},${c},${num}`;
+                if (!state.candidate_elimination_score[key]) state.candidate_elimination_score[key] = 0;
+                state.candidate_elimination_score[key] += 1 / score_sum;
+                // log_process(`候选数分值: [${getRowLetter(r+1)}${c+1}] 候选${num} -> 分值=${1 / state.candidate_elimination_score[key]}`);
             }
         }
         if (changed) {
@@ -1205,7 +1294,7 @@ function region_block_elimination(board, size, region_cells, region_type, region
                 const [r, c] = pos.split(',').map(Number);
                 return `${getRowLetter(r+1)}${c+1}`;
             }).join('、');
-            if (!state.silentMode) log_process(`[${region_type}区块排除] 第${region_index}${region_type}的${block_cells}构成${num}区块，删除${eliminated_cells}的${num}`);
+            if (!state.silentMode) log_process(`[${region_type}区块排除] 第${region_index}${region_type}的${block_cells}构成${num}区块，删除${eliminated_cells}的${num}，分值=${score_sum}`);
             return true;
         }
     }
@@ -1627,6 +1716,94 @@ function check_Diagonal_Block_Elimination(board, size) {
  * @param {number} region2_index - 区域2编号
  * @returns {boolean} 是否有变化
  */
+// function region_pair_block_elimination(board, size, region1_cells, region2_cells, region1_type, region1_index, region2_type, region2_index) {
+//     let changed = false;
+//     for (let num = 1; num <= size; num++) {
+//         // 收集两个区域num的所有候选格
+//         const region1_candidates = [];
+//         const region2_candidates = [];
+//         for (const [r, c] of region1_cells) {
+//             const cell = board[r][c];
+//             if (Array.isArray(cell) && cell.includes(num)) {
+//                 region1_candidates.push([r, c]);
+//             }
+//         }
+//         for (const [r, c] of region2_cells) {
+//             const cell = board[r][c];
+//             if (Array.isArray(cell) && cell.includes(num)) {
+//                 region2_candidates.push([r, c]);
+//             }
+//         }
+//         if (region1_candidates.length < 1 || region2_candidates.length < 1) continue;
+
+//         // 检查第一个区域的候选格是否在某两行/列
+//         const region1_rows = new Set(region1_candidates.map(([r, _]) => r));
+//         const region1_cols = new Set(region1_candidates.map(([_, c]) => c));
+//         const region2_rows = new Set(region2_candidates.map(([r, _]) => r));
+//         const region2_cols = new Set(region2_candidates.map(([_, c]) => c));
+
+//         if (region1_rows.size <= 2 && region2_rows.size <= 2) {
+//             // 两个区域的候选格都在某两行
+//             const target_rows = new Set([...region1_rows, ...region2_rows]);
+//             if (target_rows.size <= 2) {
+//                 const excluded_positions = [];
+//                 for (const row of target_rows) {
+//                     for (let col = 0; col < size; col++) {
+//                         if (!region1_candidates.some(([r, c]) => r === row && c === col) &&
+//                             !region2_candidates.some(([r, c]) => r === row && c === col)) {
+//                             const cell = board[row][col];
+//                             if (Array.isArray(cell) && cell.includes(num)) {
+//                                 board[row][col] = cell.filter(n => n !== num);
+//                                 excluded_positions.push(`${getRowLetter(row + 1)}${col + 1}`);
+//                                 changed = true;
+//                             }
+//                         }
+//                     }
+//                 }
+//                 if (changed) {
+//                     const region1_cells_str = region1_candidates.map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`).join('、');
+//                     const region2_cells_str = region2_candidates.map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`).join('、');
+//                     if (!state.silentMode) {
+//                         log_process(`[组合区块排除] 第${region1_index}${region1_type}(${region1_cells_str})与第${region2_index}${region2_type}(${region2_cells_str})的${num}候选数限制在行${[...target_rows].map(r => getRowLetter(r + 1)).join('、')}，删除${excluded_positions.join('、')}的${num}`);
+//                     }
+//                     return true;
+//                 }
+//             }
+//         }
+
+//         if (region1_cols.size <= 2 && region2_cols.size <= 2) {
+//             // 两个区域的候选格都在某两列
+//             const target_cols = new Set([...region1_cols, ...region2_cols]);
+//             if (target_cols.size <= 2) {
+//                 const excluded_positions = [];
+//                 for (const col of target_cols) {
+//                     for (let row = 0; row < size; row++) {
+//                         if (!region1_candidates.some(([r, c]) => r === row && c === col) &&
+//                             !region2_candidates.some(([r, c]) => r === row && c === col)) {
+//                             const cell = board[row][col];
+//                             if (Array.isArray(cell) && cell.includes(num)) {
+//                                 board[row][col] = cell.filter(n => n !== num);
+//                                 excluded_positions.push(`${getRowLetter(row + 1)}${col + 1}`);
+//                                 changed = true;
+//                             }
+//                         }
+//                     }
+//                 }
+//                 if (changed) {
+//                     const region1_cells_str = region1_candidates.map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`).join('、');
+//                     const region2_cells_str = region2_candidates.map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`).join('、');
+//                     if (!state.silentMode) {
+//                         log_process(`[组合区块排除] 第${region1_index}${region1_type}(${region1_cells_str})与第${region2_index}${region2_type}(${region2_cells_str})的${num}候选数限制在列${[...target_cols].map(c => c + 1).join('、')}，删除${excluded_positions.join('、')}的${num}`);
+//                     }
+//                     return true;
+//                 }
+//             }
+//         }
+//     }
+//     return false;
+// }
+
+// ...existing code...
 function region_pair_block_elimination(board, size, region1_cells, region2_cells, region1_type, region1_index, region2_type, region2_index) {
     let changed = false;
     for (let num = 1; num <= size; num++) {
@@ -1653,8 +1830,8 @@ function region_pair_block_elimination(board, size, region1_cells, region2_cells
         const region2_rows = new Set(region2_candidates.map(([r, _]) => r));
         const region2_cols = new Set(region2_candidates.map(([_, c]) => c));
 
+        // 行限制
         if (region1_rows.size <= 2 && region2_rows.size <= 2) {
-            // 两个区域的候选格都在某两行
             const target_rows = new Set([...region1_rows, ...region2_rows]);
             if (target_rows.size <= 2) {
                 const excluded_positions = [];
@@ -1665,25 +1842,59 @@ function region_pair_block_elimination(board, size, region1_cells, region2_cells
                             const cell = board[row][col];
                             if (Array.isArray(cell) && cell.includes(num)) {
                                 board[row][col] = cell.filter(n => n !== num);
-                                excluded_positions.push(`${getRowLetter(row + 1)}${col + 1}`);
+                                excluded_positions.push([row, col]);
                                 changed = true;
                             }
                         }
                     }
                 }
-                if (changed) {
+                if (changed && excluded_positions.length > 0) {
+                    // 分值计算
+                    let score_sum = 0;
+                    let score_sum1 = 1;
+                    let score_sum2 = 1;
+                    // 只统计两个区域内的候选格
+                    for (const [r, c] of region1_cells) {
+                        const key = `${r},${c},${num}`;
+                        const score = state.candidate_elimination_score[key] || 0;
+                        if (score > 0) {
+                            score_sum1 += 1 / score;
+                            // log_process(`考虑分值: [${getRowLetter(r + 1)}${c + 1}] 候选${num} -> 分值=${1 / score}`);
+                        }
+                    }
+                    score_sum1 = score_sum1 * region1_candidates.length;
+                    for (const [r, c] of region2_cells) {
+                        const key = `${r},${c},${num}`;
+                        const score = state.candidate_elimination_score[key] || 0;
+                        if (score > 0) {
+                            score_sum2 += 1 / score;
+                            // log_process(`考虑分值: [${getRowLetter(r + 1)}${c + 1}] 候选${num} -> 分值=${1 / score}`);
+                        }
+                    }
+                    score_sum2 = score_sum2 * region2_candidates.length;
+                    score_sum = score_sum1 + score_sum2;
+                    score_sum = Math.round(score_sum * 100) / 100;
+
+                    // 给被删掉的候选数加分
+                    for (const [row, col] of excluded_positions) {
+                        const key = `${row},${col},${num}`;
+                        if (!state.candidate_elimination_score[key]) state.candidate_elimination_score[key] = 0;
+                        state.candidate_elimination_score[key] += 1 / score_sum;
+                    }
+
                     const region1_cells_str = region1_candidates.map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`).join('、');
                     const region2_cells_str = region2_candidates.map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`).join('、');
+                    const excluded_cells_str = excluded_positions.map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`).join('、');
                     if (!state.silentMode) {
-                        log_process(`[组合区块排除] 第${region1_index}${region1_type}(${region1_cells_str})与第${region2_index}${region2_type}(${region2_cells_str})的${num}候选数限制在行${[...target_rows].map(r => getRowLetter(r + 1)).join('、')}，删除${excluded_positions.join('、')}的${num}`);
+                        log_process(`[组合区块排除] 第${region1_index}${region1_type}(${region1_cells_str})与第${region2_index}${region2_type}(${region2_cells_str})的${num}候选数限制在行${[...target_rows].map(r => getRowLetter(r + 1)).join('、')}，删除${excluded_cells_str}的${num}，分值=${score_sum}`);
                     }
                     return true;
                 }
             }
         }
 
+        // 列限制
         if (region1_cols.size <= 2 && region2_cols.size <= 2) {
-            // 两个区域的候选格都在某两列
             const target_cols = new Set([...region1_cols, ...region2_cols]);
             if (target_cols.size <= 2) {
                 const excluded_positions = [];
@@ -1694,17 +1905,52 @@ function region_pair_block_elimination(board, size, region1_cells, region2_cells
                             const cell = board[row][col];
                             if (Array.isArray(cell) && cell.includes(num)) {
                                 board[row][col] = cell.filter(n => n !== num);
-                                excluded_positions.push(`${getRowLetter(row + 1)}${col + 1}`);
+                                excluded_positions.push([row, col]);
                                 changed = true;
                             }
                         }
                     }
                 }
-                if (changed) {
+                if (changed && excluded_positions.length > 0) {
+                    // 分值计算
+                    let score_sum = 0;
+                    let score_sum1 = 1;
+                    let score_sum2 = 1;
+                    // 只统计两个区域内的候选格
+                    for (const [r, c] of region1_cells) {
+                        const key = `${r},${c},${num}`;
+                        const score = state.candidate_elimination_score[key] || 0;
+                        if (score > 0) {
+                            score_sum1 += 1 / score;
+                            // log_process(`考虑分值: [${getRowLetter(r + 1)}${c + 1}] 候选${num} -> 分值=${1 / score}`);
+                        }
+                    }
+                    score_sum1 = score_sum1 * region1_candidates.length;
+                    for (const [r, c] of region2_cells) {
+                        const key = `${r},${c},${num}`;
+                        const score = state.candidate_elimination_score[key] || 0;
+                        if (score > 0) {
+                            score_sum2 += 1 / score;
+                            // log_process(`考虑分值: [${getRowLetter(r + 1)}${c + 1}] 候选${num} -> 分值=${1 / score}`);
+                        }
+                    }
+                    score_sum2 = score_sum2 * region2_candidates.length;
+                    score_sum = score_sum1 + score_sum2;
+                    score_sum = Math.round(score_sum * 100) / 100;
+
+                    // 给被删掉的候选数加分
+                    for (const [row, col] of excluded_positions) {
+                        const key = `${row},${col},${num}`;
+                        if (!state.candidate_elimination_score[key]) state.candidate_elimination_score[key] = 0;
+                        state.candidate_elimination_score[key] += 1 / score_sum;
+                        // log_process(`给${getRowLetter(row + 1)}${col + 1}的${num}加分，当前分值=${state.candidate_elimination_score[key]}`);
+                    }
+
                     const region1_cells_str = region1_candidates.map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`).join('、');
                     const region2_cells_str = region2_candidates.map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`).join('、');
+                    const excluded_cells_str = excluded_positions.map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`).join('、');
                     if (!state.silentMode) {
-                        log_process(`[组合区块排除] 第${region1_index}${region1_type}(${region1_cells_str})与第${region2_index}${region2_type}(${region2_cells_str})的${num}候选数限制在列${[...target_cols].map(c => c + 1).join('、')}，删除${excluded_positions.join('、')}的${num}`);
+                        log_process(`[组合区块排除] 第${region1_index}${region1_type}(${region1_cells_str})与第${region2_index}${region2_type}(${region2_cells_str})的${num}候选数限制在列${[...target_cols].map(c => c + 1).join('、')}，删除${excluded_cells_str}的${num}，分值=${score_sum}`);
                     }
                     return true;
                 }
@@ -1713,6 +1959,7 @@ function region_pair_block_elimination(board, size, region1_cells, region2_cells
     }
     return false;
 }
+// ...existing code...
 
 /**
  * 宫组合区块排除
@@ -1769,31 +2016,114 @@ function region_naked_subset_elimination(board, size, region_cells, subset_size,
     }
     // 枚举所有 subset_size 个格子的组合
     const combinations = getCombinations(candidates, subset_size);
+    // for (const combo of combinations) {
+    //     // 合并所有候选数
+    //     const union_nums = [...new Set(combo.flatMap(c => c.nums))];
+    //     if (union_nums.length === subset_size) {
+    //         // 只从本区域其他格子中排除这些数
+    //         let affected_cells = [];
+    //         // 分值计算：仿照区块排除
+    //         let score_sum = 0;
+    //         for (const c of combo) {
+    //             const [r, col] = c.pos;
+    //             for (let other = 1; other <= size; other++) {
+    //                 if (!union_nums.includes(other)) {
+    //                     const key = `${r},${col},${other}`;
+    //                     const score = state.candidate_elimination_score[key] || 0;
+    //                     if (score > 0) {
+    //                         score_sum += 1 / score;
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //         score_sum *= (size - combo.length) * combo.length;
+    //         score_sum = Math.round(score_sum * 100) / 100; // 保留两位小数
+
+
+    //         for (const cell of candidates) {
+    //             if (!combo.some(c => c.pos[0] === cell.pos[0] && c.pos[1] === cell.pos[1])) {
+    //                 const original_length = cell.nums.length;
+    //                 // 记录被删掉的数字
+    //                 const deleted_nums = cell.nums.filter(n => union_nums.includes(n));
+    //                 cell.nums = cell.nums.filter(n => !union_nums.includes(n));
+    //                 board[cell.pos[0]][cell.pos[1]] = cell.nums;
+    //                 if (cell.nums.length < original_length) {
+    //                     affected_cells.push(`${getRowLetter(cell.pos[0]+1)}${cell.pos[1]+1}`);
+    //                     changed = true;
+    //                     // 给被删掉的数字加分
+    //                     for (const n of deleted_nums) {
+    //                         const key = `${cell.pos[0]},${cell.pos[1]},${n}`;
+    //                         if (!state.candidate_elimination_score[key]) state.candidate_elimination_score[key] = 0;
+    //                         state.candidate_elimination_score[key] += 1 / score_sum;
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //         if (affected_cells.length > 0) {
+    //             const subset_name = subset_size === 2 ? '数对' : subset_size === 3 ? '三数组' : '四数组';
+    //             const subset_cells = combo.map(c => `${getRowLetter(c.pos[0]+1)}${c.pos[1]+1}`).join('、');
+    //             if (!state.silentMode) log_process(`[${region_type}显性${subset_name}] 第${region_index}${region_type}的${subset_cells}构成${subset_name}${union_nums.join('')}，排除${affected_cells.join('、')}的${union_nums.join('、')}，分值=${score_sum}`);
+    //             return true;
+    //         }
+    //     }
+    // }
+        // ...existing code...
     for (const combo of combinations) {
         // 合并所有候选数
         const union_nums = [...new Set(combo.flatMap(c => c.nums))];
         if (union_nums.length === subset_size) {
-            // 只从本区域其他格子中排除这些数
             let affected_cells = [];
+            // 先尝试删数
             for (const cell of candidates) {
                 if (!combo.some(c => c.pos[0] === cell.pos[0] && c.pos[1] === cell.pos[1])) {
                     const original_length = cell.nums.length;
+                    const deleted_nums = cell.nums.filter(n => union_nums.includes(n));
                     cell.nums = cell.nums.filter(n => !union_nums.includes(n));
                     board[cell.pos[0]][cell.pos[1]] = cell.nums;
                     if (cell.nums.length < original_length) {
                         affected_cells.push(`${getRowLetter(cell.pos[0]+1)}${cell.pos[1]+1}`);
-                        changed = true;
                     }
                 }
             }
+            // 只有真的删数后才计算分值和加分
             if (affected_cells.length > 0) {
+                let score_sum = 0;
+                for (const c of combo) {
+                    const [r, col] = c.pos;
+                    for (let other = 1; other <= size; other++) {
+                        if (!union_nums.includes(other)) {
+                            const key = `${r},${col},${other}`;
+                            const score = state.candidate_elimination_score[key] || 0;
+                            if (score > 0) {
+                                score_sum += 1 / score;
+                                // log_process(`    候选数 ${getRowLetter(r+1)}${col+1} 的 ${other} 分值贡献 +${(1/score).toFixed(2)}`); // 详细分值贡献日志
+                            }
+                        }
+                    }
+                }
+                score_sum *= (size - combo.length) * combo.length;
+                score_sum = Math.round(score_sum * 100) / 100;
+    
+                // 给被删掉的数字加分
+                for (const cell of candidates) {
+                    if (!combo.some(c => c.pos[0] === cell.pos[0] && c.pos[1] === cell.pos[1])) {
+                        const deleted_nums = cell.nums.filter(n => union_nums.includes(n));
+                        for (const n of deleted_nums) {
+                            const key = `${cell.pos[0]},${cell.pos[1]},${n}`;
+                            if (!state.candidate_elimination_score[key]) state.candidate_elimination_score[key] = 0;
+                            state.candidate_elimination_score[key] += 1 / score_sum;
+                        }
+                    }
+                }
+    
                 const subset_name = subset_size === 2 ? '数对' : subset_size === 3 ? '三数组' : '四数组';
                 const subset_cells = combo.map(c => `${getRowLetter(c.pos[0]+1)}${c.pos[1]+1}`).join('、');
-                if (!state.silentMode) log_process(`[${region_type}显性${subset_name}] 第${region_index}${region_type}的${subset_cells}构成${subset_name}${union_nums.join('')}，排除${affected_cells.join('、')}的${union_nums.join('、')}`);
+                if (!state.silentMode) log_process(`[${region_type}显性${subset_name}] 第${region_index}${region_type}的${subset_cells}构成${subset_name}${union_nums.join('')}，排除${affected_cells.join('、')}的${union_nums.join('、')}，分值=${score_sum}`);
                 return true;
             }
         }
     }
+    // ...existing code...
     return false;
 }
 
@@ -1888,7 +2218,27 @@ function region_hidden_subset_elimination(board, size, region_cells, subset_size
             if (is_subset) {
                 let modified = false;
                 let deleted_cells = [];
-                let deleted_nums = new Set();
+                let deleted_detail = [];
+
+                // 分值计算：加区域内其他格子（不在positions内）对应数对组中数字的分值
+                let score_sum = 0;
+                for (const [r, c] of region_cells) {
+                    // 跳过隐性数组本身的格子
+                    if (positions.some(([pr, pc]) => pr === r && pc === c)) continue;
+                    if (Array.isArray(board[r][c])) {
+                        for (const n of num_group) {
+                            const key = `${r},${c},${n}`;
+                            const score = state.candidate_elimination_score[key] || 0;
+                            if (score > 0) {
+                                score_sum += 1 / score;
+                            }
+                        }
+                    }
+                }
+                score_sum *= (size - positions.length) * positions.length;
+                score_sum = Math.round(score_sum * 100) / 100; // 保留两位小数
+
+                // 删除隐性数组格子中非num_group的数字，并给被删掉的数字加分
                 for (const [r, c] of positions) {
                     const before = board[r][c].length;
                     const deleted = board[r][c].filter(n => !num_group.includes(n));
@@ -1896,15 +2246,21 @@ function region_hidden_subset_elimination(board, size, region_cells, subset_size
                     if (board[r][c].length < before && deleted.length > 0) {
                         modified = true;
                         deleted_cells.push(`${getRowLetter(r+1)}${c+1}`);
-                        deleted.forEach(n => deleted_nums.add(n));
+                        deleted_detail.push(`${getRowLetter(r+1)}${c+1}的${deleted.join('、')}`);
+                        // 分值加到被删掉的数字上
+                        for (const n of deleted) {
+                            const key = `${r},${c},${n}`;
+                            if (!state.candidate_elimination_score[key]) state.candidate_elimination_score[key] = 0;
+                            state.candidate_elimination_score[key] += 1 / score_sum;
+                        }
                     }
                 }
                 if (modified) {
                     const subset_name = subset_size === 2 ? '数对' : subset_size === 3 ? '三数组' : '四数组';
                     const cells = positions.map(([r, c]) => `${getRowLetter(r+1)}${c+1}`).join('、');
-                    let detail_msg = deleted_cells.length > 0 ? `，删除${deleted_cells.join('、')}的${[...deleted_nums].join('、')}` : '';
+                    let detail_msg = deleted_detail.length > 0 ? `，删除${deleted_detail.join('，')}` : '';
                     if (!state.silentMode) {
-                        log_process(`[${region_type}隐性${subset_name}] ${cells}构成隐性${subset_name}${num_group.join('')}${detail_msg}`);
+                        log_process(`[${region_type}隐性${subset_name}] ${cells}构成隐性${subset_name}${num_group.join('')}${detail_msg}，分值=${score_sum}`);
                     }
                     return true;
                 }

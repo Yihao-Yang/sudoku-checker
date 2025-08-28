@@ -525,6 +525,8 @@ export function create_technique_panel() {
 export function check_uniqueness() {
     // 清空之前的日志
     log_process('', true);
+    state.candidate_elimination_score = {};
+    state.total_score_sum = 0;
 
     const container = document.querySelector('.sudoku-container');
     const size = state.current_grid_size;

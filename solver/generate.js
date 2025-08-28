@@ -71,9 +71,14 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
         }
         result = solve(testBoard, size, is_valid_func, true);
 
-        // 分值判断（包含用户输入的下限）
-        if (state.solve_stats.total_score < score_lower_limit) {
-            log_process(`题目分值为${state.solve_stats.total_score}，低于下限${score_lower_limit}，重新生成...`);
+        // // 分值判断（包含用户输入的下限）
+        // if (state.solve_stats.total_score < score_lower_limit) {
+        //     log_process(`题目分值为${state.solve_stats.total_score}，低于下限${score_lower_limit}，重新生成...`);
+        //     continue;
+        // }
+        // 新分值判断（包含用户输入的下限）
+        if (state.total_score_sum < score_lower_limit) {
+            log_process(`题目分值为${state.total_score_sum}，低于下限${score_lower_limit}，重新生成...`);
             continue;
         }
         break;
@@ -105,6 +110,8 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
             log_process(`总分值: ${state.solve_stats.total_score}`);
         }
     }
+
+    log_process(`总的新分值: ${state.total_score_sum}`);
 
     return {
         puzzle: puzzle,
@@ -161,110 +168,6 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
     let holes_dug = 0;
     let changed;
 
-    // // 新增：辅助函数，统计某行/列/宫已挖洞数量
-    // function count_holes(puzzle, size, row, col) {
-    //     // 行
-    //     let row_holes = puzzle[row].filter(cell => cell === 0).length;
-    //     // 列
-    //     let col_holes = puzzle.map(r => r[col]).filter(cell => cell === 0).length;
-    //     // 宫
-    //     let block_size = Math.sqrt(size);
-    //     let block_row = Math.floor(row / block_size);
-    //     let block_col = Math.floor(col / block_size);
-    //     let block_holes = 0;
-    //     for (let r = block_row * block_size; r < (block_row + 1) * block_size; r++) {
-    //         for (let c = block_col * block_size; c < (block_col + 1) * block_size; c++) {
-    //             if (puzzle[r][c] === 0) block_holes++;
-    //         }
-    //     }
-    //     return { row_holes, col_holes, block_holes };
-    // }
-
-    // do {
-    //     changed = false;
-    //     let best_score = -1;
-    //     let best_positions_to_dig = null;
-    //     let best_temp_values = null;
-
-    //     // 新增：收集本轮所有候选方案及分值
-    //     const candidates = [];
-
-    //     // 遍历所有可挖位置，寻找分值最高的方案
-    //     for (let pos = 0; pos < size * size; pos++) {
-    //         let row = Math.floor(pos / size);
-    //         let col = pos % size;
-    //         if (puzzle[row][col] === 0) continue;
-
-    //         // 获取对称位置
-    //         const symmetric_positions = get_symmetric_positions(row, col, size, symmetry);
-    //         const positions_to_dig = [ [row, col], ...symmetric_positions ];
-
-    //         // 跳过已挖过的格子
-    //         if (positions_to_dig.some(([r, c]) => puzzle[r][c] === 0)) continue;
-
-    //         // 临时保存所有位置的数字
-    //         const temp_values = positions_to_dig.map(([r, c]) => puzzle[r][c]);
-
-    //         // 预挖洞
-    //         positions_to_dig.forEach(([r, c]) => puzzle[r][c] = 0);
-
-    //         // 验证唯一解并计算分值
-    //         // const test_board = puzzle.map(row => [...row]);
-    //         const test_board = puzzle.map(row =>
-    //             row.map(cell => cell === 0
-    //                 ? [...Array(size)].map((_, n) => n + 1) // 空格转为全候选数
-    //                 : cell
-    //             )
-    //         );
-    //         let is_valid_func;
-    //         if (state.current_mode === 'multi_diagonal') {
-    //             is_valid_func = isValid_multi_diagonal;
-    //         } else if (state.current_mode === 'diagonal') {
-    //             is_valid_func = isValid_diagonal;
-    //         } else {
-    //             is_valid_func = isValid;
-    //         }
-    //         // const result = solve(test_board, size, is_valid_func, true);
-    //         solve(test_board, size, is_valid_func, true);
-
-    //         // 仅考虑唯一解的情况
-    //         if (state.solve_stats.solution_count === 1 && state.solve_stats.total_score !== undefined) {
-    //             // // 测试用
-    //             // candidates.push({
-    //             //     positions: positions_to_dig.map(([r, c]) => [r, c]),
-    //             //     score: state.solve_stats.total_score
-    //             // });
-    //             if (state.solve_stats.total_score > best_score) {
-    //                 best_score = state.solve_stats.total_score;
-    //                 best_positions_to_dig = positions_to_dig.map(([r, c]) => [r, c]);
-    //                 best_temp_values = [...temp_values];
-    //             }
-    //         }
-
-    //         // 恢复数字
-    //         positions_to_dig.forEach(([r, c], idx) => puzzle[r][c] = temp_values[idx]);
-    //     }
-
-    //     // // 测试用
-    //     // // 输出本轮所有候选方案及分值
-    //     // if (candidates.length > 0) {
-    //     //     log_process(`本轮候选挖洞方案分值如下:`);
-    //     //     candidates.forEach((item, idx) => {
-    //     //         const pos_str = item.positions.map(([r, c]) => `(${r},${c})`).join(' ');
-    //     //         const chosen = (item.score === best_score) ? ' <-- 本轮最优' : '';
-    //     //         log_process(`方案${idx+1}: 挖洞位置: ${pos_str}，分值: ${item.score}${chosen}`);
-    //     //     });
-    //     // }
-
-    //     // 如果本轮有最优挖洞方案，则实际挖洞
-    //     if (best_positions_to_dig) {
-    //         best_positions_to_dig.forEach(([r, c]) => puzzle[r][c] = 0);
-    //         holes_dug += best_positions_to_dig.length;
-    //         changed = true;
-    //     }
-    // } while (changed);
-
-        // ...existing code...
     do {
         if (holes_limit !== undefined && holes_dug >= holes_limit) break; // 挖洞数量达到上限，停止
         
@@ -313,15 +216,31 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
             }
             solve(test_board, size, is_valid_func, true);
     
+            // // 仅考虑唯一解的情况
+            // if (state.solve_stats.solution_count === 1 && state.solve_stats.total_score !== undefined) {
+            //     if (state.solve_stats.total_score > best_score) {
+            //         best_score = state.solve_stats.total_score;
+            //         best_candidates = [{
+            //             positions: positions_to_dig.map(([r, c]) => [r, c]),
+            //             temp_values: [...temp_values]
+            //         }];
+            //     } else if (state.solve_stats.total_score === best_score) {
+            //         best_candidates.push({
+            //             positions: positions_to_dig.map(([r, c]) => [r, c]),
+            //             temp_values: [...temp_values]
+            //         });
+            //     }
+            // }
+
             // 仅考虑唯一解的情况
-            if (state.solve_stats.solution_count === 1 && state.solve_stats.total_score !== undefined) {
-                if (state.solve_stats.total_score > best_score) {
-                    best_score = state.solve_stats.total_score;
+            if (state.solve_stats.solution_count === 1 && state.total_score_sum !== undefined) {
+                if (state.total_score_sum > best_score) {
+                    best_score = state.total_score_sum;
                     best_candidates = [{
                         positions: positions_to_dig.map(([r, c]) => [r, c]),
                         temp_values: [...temp_values]
                     }];
-                } else if (state.solve_stats.total_score === best_score) {
+                } else if (state.total_score_sum === best_score) {
                     best_candidates.push({
                         positions: positions_to_dig.map(([r, c]) => [r, c]),
                         temp_values: [...temp_values]
