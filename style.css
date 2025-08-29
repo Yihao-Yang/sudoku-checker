@@ -167,6 +167,10 @@ box-sizing: border-box;
     pointer-events: none;
 }
 
+.extra-region-cell {
+    background-color: #e0e0e0 !important;
+}
+
 .main-input {
     position: absolute;
     width: 100%;

@@ -35,7 +35,10 @@ export function set_current_mode(mode) {
         'missing',
         'consecutive',
         'diagonal',
-        'multi_diagonal'
+        'multi_diagonal',
+        'window',
+        'pyramid',
+        'extra_region',
     ].includes(mode)) {
         state.current_mode = mode;
     } else {

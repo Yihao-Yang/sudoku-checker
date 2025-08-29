@@ -17,12 +17,13 @@ export function solve_By_Elimination(board, size) {
         "宫排除": 0,
         "一刀流宫排除": 0,
         "行列排除": 0,
-        "对角线排除": 0,
+        "变型排除": 0,
         "宫区块": 0,
         "一刀流宫区块": 0,
         "宫组合区块": 0,
+        "变型组合区块": 0,
         "行列区块": 0,
-        "对角线区块": 0,
+        "变型区块": 0,
         "宫显性数对": 0,
         "行列显性数对": 0,
         "变型显性数对": 0,
@@ -34,20 +35,20 @@ export function solve_By_Elimination(board, size) {
         "变型显性四数组": 0,
         "宫隐性数对": 0,
         "行列隐性数对": 0,
-        "对角线隐性数对": 0,
+        "变型隐性数对": 0,
         "宫隐性三数组": 0,
         "行列隐性三数组": 0,
-        "对角线隐性三数组": 0,
+        "变型隐性三数组": 0,
         "宫隐性四数组": 0,
         "行列隐性四数组": 0,
-        "对角线隐性四数组": 0,
+        "变型隐性四数组": 0,
         "欠一排除": 0
     };
 
     let total_score = 0;
     // 技巧分值表
     const technique_scores = {
-        // 唯余法分值细分，行列排除法分值细分，对角线排除法分值细分
+        // 唯余法分值细分，行列排除法分值细分，变型排除法分值细分
         "唯余法_1": 0,
         "唯余法_2": 1,
         "唯余法_3": 5,
@@ -66,27 +67,28 @@ export function solve_By_Elimination(board, size) {
         "行列排除_7": 90,
         "行列排除_8": 100,
         "行列排除_9": 110,
-        "对角线排除_1": 0,
-        "对角线排除_2": 1,
-        "对角线排除_3": 5,
-        "对角线排除_4": 30,
-        "对角线排除_5": 50,
-        "对角线排除_6": 80,
-        "对角线排除_7": 90,
-        "对角线排除_8": 100,
-        "对角线排除_9": 110,
+        "变型排除_1": 0,
+        "变型排除_2": 1,
+        "变型排除_3": 5,
+        "变型排除_4": 30,
+        "变型排除_5": 50,
+        "变型排除_6": 80,
+        "变型排除_7": 90,
+        "变型排除_8": 100,
+        "变型排除_9": 110,
         // 其他技巧分值
         "宫排除": 2,
         "一刀流宫排除": 2,
         "宫区块": 10,
         "一刀流宫区块": 10,
-        "对角线区块": 15,
+        "变型区块": 15,
         "宫隐性数对": 30,
-        "对角线隐性数对": 40,
+        "变型隐性数对": 40,
         "宫组合区块": 40,
+        "变型组合区块": 40,
         "行列区块": 40,
         "宫隐性三数组": 70,
-        "对角线隐性三数组": 100,
+        "变型隐性三数组": 100,
         "宫显性数对": 80,
         "行列显性数对": 90,
         "变型显性数对": 120,
@@ -100,7 +102,7 @@ export function solve_By_Elimination(board, size) {
         "行列显性四数组": 550,
         "变型显性四数组": 550,
         "行列隐性四数组": 600,
-        "对角线隐性四数组": 600,
+        "变型隐性四数组": 600,
 
         // 欠一排除分值细分
         "欠一宫数对": 200,
@@ -119,8 +121,8 @@ export function solve_By_Elimination(board, size) {
         // 第三优先级：宫排除法
     ...Array.from({length: size}, (_, i) => [() => state.techniqueSettings?.Box_Elimination && check_Box_Elimination(board, size, i + 1)]),
         [() => state.techniqueSettings?.Box_One_Cut && check_Box_Elimination_One_Cut(board, size)],
-        // 第三优先级：对角线排除法
-    ...Array.from({length: size}, (_, i) => [() => state.current_mode === 'diagonal' && state.techniqueSettings?.Diagonal_Elimination && check_Diagonal_Elimination(board, size, i + 1)]),
+        // 第三优先级：变型排除法
+    ...Array.from({length: size}, (_, i) => [() => state.current_mode !== 'classic' && state.techniqueSettings?.Variant_Elimination && check_Variant_Elimination(board, size, i + 1)]),
         // 第四优先级：余3数的唯余法
         [() => state.techniqueSettings?.Cell_Elimination_3 && check_cell_elimination(board, size, 3)],
         // 第五优先级：行列排除法
@@ -134,13 +136,14 @@ export function solve_By_Elimination(board, size) {
         
         
 
-        // 第六优先级：宫区块，对角线区块
+        // 第六优先级：宫区块，变型区块
         [() => state.techniqueSettings?.Box_Block && check_box_block_elimination(board, size)],
         [() => state.techniqueSettings?.Box_Block_One_Cut && check_box_block_elimination_One_Cut(board, size)],
-        [() => state.current_mode === 'diagonal' && state.techniqueSettings?.Diagonal_Block && check_Diagonal_Block_Elimination(board, size)],
+        [() => state.current_mode !== 'classic' && state.techniqueSettings?.Variant_Block && check_Variant_Block_Elimination(board, size)],
         // 第七优先级：组合区块
         [() => state.techniqueSettings?.Box_Pair_Block && check_box_pair_block_elimination(board, size)],
-        
+        [() => state.current_mode !== 'classic' && state.techniqueSettings?.Variant_Pair_Block && check_variant_pair_block_elimination(board, size)],
+
 
 
         // 第八优先级：余4，5数的所有排除法
@@ -153,23 +156,13 @@ export function solve_By_Elimination(board, size) {
         // 第九优先级：行列区块
         [() => state.techniqueSettings?.Row_Col_Block && check_Row_Col_Block_Elimination(board, size)],
 
-        // // 第十优先级：余6-9数的所有排除法
-        // [() => state.techniqueSettings?.Cell_Elimination_6 && check_cell_elimination(board, size, 6)],
-        // [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 6)],
-        // [() => state.techniqueSettings?.Cell_Elimination_7 && check_cell_elimination(board, size, 7)],
-        // [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 7)],
-        // [() => state.techniqueSettings?.Cell_Elimination_8 && check_cell_elimination(board, size, 8)],
-        // [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 8)],
-        // [() => state.techniqueSettings?.Cell_Elimination_9 && check_cell_elimination(board, size, 9)],
-        // [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 9)],
 
 
 
 
-
-        // 第十优先级：宫隐性数对，对角线隐性数对
+        // 第十优先级：宫隐性数对，变型隐性数对
         [() => state.techniqueSettings?.Box_Hidden_Pair && check_box_hidden_subset_elimination(board, size, 2)],
-        [() => state.current_mode === 'diagonal' && state.techniqueSettings?.Diagonal_Hidden_Pair && check_diagonal_hidden_subset_elimination(board, size, 2)],
+        [() => state.current_mode !== 'classic' && state.techniqueSettings?.Variant_Hidden_Pair && check_variant_hidden_subset_elimination(board, size, 2)],
         // 第十一优先级：余6-9数的所有排除法
         [() => state.techniqueSettings?.Cell_Elimination_6 && check_cell_elimination(board, size, 6)],
         [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 6)],
@@ -179,9 +172,9 @@ export function solve_By_Elimination(board, size) {
         [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 8)],
         [() => state.techniqueSettings?.Cell_Elimination_9 && check_cell_elimination(board, size, 9)],
         [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 9)],
-        // 第十二优先级：宫隐性三数组，对角线隐性三数组
+        // 第十二优先级：宫隐性三数组，变型隐性三数组
         [() => state.techniqueSettings?.Box_Hidden_Triple && check_box_hidden_subset_elimination(board, size, 3)],
-        [() => state.current_mode === 'diagonal' && state.techniqueSettings?.Diagonal_Hidden_Triple && check_diagonal_hidden_subset_elimination(board, size, 3)],
+        [() => state.current_mode !== 'classic' && state.techniqueSettings?.Variant_Hidden_Triple && check_variant_hidden_subset_elimination(board, size, 3)],
         // 第十三优先级：宫显性数对，变型显性数对
         [() => state.techniqueSettings?.Box_Naked_Pair && check_box_naked_subset_elimination(board, size, 2)],
         [() => state.current_mode !== 'classic' && state.techniqueSettings?.Variant_Naked_Pair && check_variant_naked_subset_elimination(board, size, 2)],
@@ -211,10 +204,10 @@ export function solve_By_Elimination(board, size) {
 
 
 
-        // 第十九优先级：宫隐性四数组，对角线隐性四数组
+        // 第十九优先级：宫隐性四数组，变型隐性四数组
         [() => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Box_Missing_One_Subset_Elimination(board, size, 4)],//缺一门宫隐性欠一四数组
         [() => state.techniqueSettings?.Box_Hidden_Quad && check_box_hidden_subset_elimination(board, size, 4)],
-        [() => state.current_mode === 'diagonal' && state.techniqueSettings?.Diagonal_Hidden_Quad && check_diagonal_hidden_subset_elimination(board, size, 4)],
+        [() => state.current_mode !== 'classic' && state.techniqueSettings?.Variant_Hidden_Quad && check_variant_hidden_subset_elimination(board, size, 4)],
         // 第二十优先级：行列隐性四数组
         [() => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Row_Col_Missing_One_Subset_Elimination(board, size, 4)],
         [() => (state.techniqueSettings?.Row_Col_Hidden_Quad) && check_row_col_hidden_subset_elimination(board, size, 4)],
@@ -272,9 +265,9 @@ export function solve_By_Elimination(board, size) {
                                         chinese_name = "行列排除";
                                         score_key = nat ? `行列排除_${nat}` : "行列排除_1";
                                         break;
-                                    case 'Diagonal_Elimination':
-                                        chinese_name = "对角线排除";
-                                        score_key = nat ? `对角线排除_${nat}` : "对角线排除_1";
+                                    case 'Variant_Elimination':
+                                        chinese_name = "变型排除";
+                                        score_key = nat ? `变型排除_${nat}` : "变型排除_1";
                                         break;
                                     case 'Missing_One':
                                         // 判断当前调用的是哪个函数和nat参数
@@ -325,13 +318,17 @@ export function solve_By_Elimination(board, size) {
                                         chinese_name = "宫组合区块";
                                         score_key = "宫组合区块";
                                         break;
+                                    case 'Variant_Pair_Block':
+                                        chinese_name = "变型组合区块";
+                                        score_key = "变型组合区块";
+                                        break;
                                     case 'Row_Col_Block':
                                         chinese_name = "行列区块";
                                         score_key = "行列区块";
                                         break;
-                                    case 'Diagonal_Block':
-                                        chinese_name = "对角线区块";
-                                        score_key = "对角线区块";
+                                    case 'Variant_Block':
+                                        chinese_name = "变型区块";
+                                        score_key = "变型区块";
                                         break;
                                     case 'Box_Naked_Pair':
                                         chinese_name = "宫显性数对";
@@ -377,9 +374,9 @@ export function solve_By_Elimination(board, size) {
                                         chinese_name = "行列隐性数对";
                                         score_key = "行列隐性数对";
                                         break;
-                                    case 'Diagonal_Hidden_Pair':
-                                        chinese_name = "对角线隐性数对";
-                                        score_key = "对角线隐性数对";
+                                    case 'Variant_Hidden_Pair':
+                                        chinese_name = "变型隐性数对";
+                                        score_key = "变型隐性数对";
                                         break;
                                     case 'Box_Hidden_Triple':
                                         chinese_name = "宫隐性三数组";
@@ -389,17 +386,17 @@ export function solve_By_Elimination(board, size) {
                                         chinese_name = "行列隐性三数组";
                                         score_key = "行列隐性三数组";
                                         break;
-                                    case 'Diagonal_Hidden_Triple':
-                                        chinese_name = "对角线隐性三数组";
-                                        score_key = "对角线隐性三数组";
+                                    case 'Variant_Hidden_Triple':
+                                        chinese_name = "变型隐性三数组";
+                                        score_key = "变型隐性三数组";
                                         break;
                                     case 'Row_Col_Hidden_Quad':
                                         chinese_name = "行列隐性四数组";
                                         score_key = "行列隐性四数组";
                                         break;
-                                    case 'Diagonal_Hidden_Quad':
-                                        chinese_name = "对角线隐性四数组";
-                                        score_key = "对角线隐性四数组";
+                                    case 'Variant_Hidden_Quad':
+                                        chinese_name = "变型隐性四数组";
+                                        score_key = "变型隐性四数组";
                                         break;
                                     //
                                     // case 'Missing_One': chinese_name = "欠一排除"; break;
@@ -704,12 +701,12 @@ function check_Row_Col_Elimination(board, size, nat = 1) {
     return false;
 }
 
-// 对角线排除法
-function check_Diagonal_Elimination(board, size, nat = 1) {
+// 变型排除法
+function check_Variant_Elimination(board, size, nat = 1) {
     // 用统一区域生成方式处理对角线
     const regions = get_all_regions(size, state.current_mode);
     for (const region of regions) {
-        if (region.type === '对角线') {
+        if (region.type !== '宫' && region.type !== '行' && region.type !== '列' && region.type !== '斜线') {
             if (region_elimination(board, size, region.cells, region.type, region.index, nat)) return true;
         }
     }
@@ -1167,6 +1164,7 @@ function check_cell_elimination(board, size, nat = 1) {
                                     // log_process(`候选数分值: [${getRowLetter(row + 1)}${col + 1}] 候选${num} -> 分值=${score_sum}`);
                                     if (score > 0) {
                                         score_sum += 1 / score;
+                                        // log_process(`候选数分值: [${getRowLetter(row + 1)}${col + 1}] 候选${other} -> 分值=${score}`);
                                     }
                                 }
                             }
@@ -1693,12 +1691,12 @@ function check_Row_Col_Block_Elimination(board, size) {
     return has_conflict;
 }
 
-// 对角线区块排除（主对角线、副对角线，统一用region_block_elimination处理）
-function check_Diagonal_Block_Elimination(board, size) {
-    // 用统一区域生成方式处理对角线区块
+// 变型区块排除（主对角线、副对角线，统一用region_block_elimination处理）
+function check_Variant_Block_Elimination(board, size) {
+    // 用统一区域生成方式处理变型区块
     const regions = get_all_regions(size, state.current_mode);
     for (const region of regions) {
-        if (region.type === '对角线') {
+        if (region.type !== '宫' && region.type !== '行' && region.type !== '列' && region.type !== '斜线') {
             if (region_block_elimination(board, size, region.cells, region.type, region.index)) return;
         }
     }
@@ -1716,94 +1714,6 @@ function check_Diagonal_Block_Elimination(board, size) {
  * @param {number} region2_index - 区域2编号
  * @returns {boolean} 是否有变化
  */
-// function region_pair_block_elimination(board, size, region1_cells, region2_cells, region1_type, region1_index, region2_type, region2_index) {
-//     let changed = false;
-//     for (let num = 1; num <= size; num++) {
-//         // 收集两个区域num的所有候选格
-//         const region1_candidates = [];
-//         const region2_candidates = [];
-//         for (const [r, c] of region1_cells) {
-//             const cell = board[r][c];
-//             if (Array.isArray(cell) && cell.includes(num)) {
-//                 region1_candidates.push([r, c]);
-//             }
-//         }
-//         for (const [r, c] of region2_cells) {
-//             const cell = board[r][c];
-//             if (Array.isArray(cell) && cell.includes(num)) {
-//                 region2_candidates.push([r, c]);
-//             }
-//         }
-//         if (region1_candidates.length < 1 || region2_candidates.length < 1) continue;
-
-//         // 检查第一个区域的候选格是否在某两行/列
-//         const region1_rows = new Set(region1_candidates.map(([r, _]) => r));
-//         const region1_cols = new Set(region1_candidates.map(([_, c]) => c));
-//         const region2_rows = new Set(region2_candidates.map(([r, _]) => r));
-//         const region2_cols = new Set(region2_candidates.map(([_, c]) => c));
-
-//         if (region1_rows.size <= 2 && region2_rows.size <= 2) {
-//             // 两个区域的候选格都在某两行
-//             const target_rows = new Set([...region1_rows, ...region2_rows]);
-//             if (target_rows.size <= 2) {
-//                 const excluded_positions = [];
-//                 for (const row of target_rows) {
-//                     for (let col = 0; col < size; col++) {
-//                         if (!region1_candidates.some(([r, c]) => r === row && c === col) &&
-//                             !region2_candidates.some(([r, c]) => r === row && c === col)) {
-//                             const cell = board[row][col];
-//                             if (Array.isArray(cell) && cell.includes(num)) {
-//                                 board[row][col] = cell.filter(n => n !== num);
-//                                 excluded_positions.push(`${getRowLetter(row + 1)}${col + 1}`);
-//                                 changed = true;
-//                             }
-//                         }
-//                     }
-//                 }
-//                 if (changed) {
-//                     const region1_cells_str = region1_candidates.map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`).join('、');
-//                     const region2_cells_str = region2_candidates.map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`).join('、');
-//                     if (!state.silentMode) {
-//                         log_process(`[组合区块排除] 第${region1_index}${region1_type}(${region1_cells_str})与第${region2_index}${region2_type}(${region2_cells_str})的${num}候选数限制在行${[...target_rows].map(r => getRowLetter(r + 1)).join('、')}，删除${excluded_positions.join('、')}的${num}`);
-//                     }
-//                     return true;
-//                 }
-//             }
-//         }
-
-//         if (region1_cols.size <= 2 && region2_cols.size <= 2) {
-//             // 两个区域的候选格都在某两列
-//             const target_cols = new Set([...region1_cols, ...region2_cols]);
-//             if (target_cols.size <= 2) {
-//                 const excluded_positions = [];
-//                 for (const col of target_cols) {
-//                     for (let row = 0; row < size; row++) {
-//                         if (!region1_candidates.some(([r, c]) => r === row && c === col) &&
-//                             !region2_candidates.some(([r, c]) => r === row && c === col)) {
-//                             const cell = board[row][col];
-//                             if (Array.isArray(cell) && cell.includes(num)) {
-//                                 board[row][col] = cell.filter(n => n !== num);
-//                                 excluded_positions.push(`${getRowLetter(row + 1)}${col + 1}`);
-//                                 changed = true;
-//                             }
-//                         }
-//                     }
-//                 }
-//                 if (changed) {
-//                     const region1_cells_str = region1_candidates.map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`).join('、');
-//                     const region2_cells_str = region2_candidates.map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`).join('、');
-//                     if (!state.silentMode) {
-//                         log_process(`[组合区块排除] 第${region1_index}${region1_type}(${region1_cells_str})与第${region2_index}${region2_type}(${region2_cells_str})的${num}候选数限制在列${[...target_cols].map(c => c + 1).join('、')}，删除${excluded_positions.join('、')}的${num}`);
-//                     }
-//                     return true;
-//                 }
-//             }
-//         }
-//     }
-//     return false;
-// }
-
-// ...existing code...
 function region_pair_block_elimination(board, size, region1_cells, region2_cells, region1_type, region1_index, region2_type, region2_index) {
     let changed = false;
     for (let num = 1; num <= size; num++) {
@@ -1991,6 +1901,41 @@ function check_box_pair_block_elimination(board, size) {
 }
 
 /**
+ * 变型组合区块排除
+ * @param {Array<Array>} board - 数独盘面
+ * @param {number} size - 盘面大小
+ * @returns {boolean} 是否有变化
+ */
+function check_variant_pair_block_elimination(board, size) {
+    let has_conflict = false;
+    // 获取所有非宫/行/列的区域（即变型区域）
+    const regions = get_all_regions(size, state.current_mode)
+        .filter(r => r.type !== '行' && r.type !== '列');
+    for (let i = 0; i < regions.length; i++) {
+        for (let j = i + 1; j < regions.length; j++) {
+            // 限制条件：两个区域的候选格不能有重叠
+            const set1 = new Set(regions[i].cells.map(([r, c]) => `${r},${c}`));
+            const set2 = new Set(regions[j].cells.map(([r, c]) => `${r},${c}`));
+            const overlap = [...set1].some(pos => set2.has(pos));
+            if (overlap) continue;
+            if (region_pair_block_elimination(
+                board,
+                size,
+                regions[i].cells,
+                regions[j].cells,
+                regions[i].type,
+                regions[i].index,
+                regions[j].type,
+                regions[j].index
+            )) {
+                return;
+            }
+        }
+    }
+    return false;
+}
+
+/**
  * 通用区域显性数组（数对/三数组/四数组）排除
  * @param {Array<Array>} board - 数独盘面
  * @param {number} size - 盘面大小
@@ -2016,68 +1961,22 @@ function region_naked_subset_elimination(board, size, region_cells, subset_size,
     }
     // 枚举所有 subset_size 个格子的组合
     const combinations = getCombinations(candidates, subset_size);
-    // for (const combo of combinations) {
-    //     // 合并所有候选数
-    //     const union_nums = [...new Set(combo.flatMap(c => c.nums))];
-    //     if (union_nums.length === subset_size) {
-    //         // 只从本区域其他格子中排除这些数
-    //         let affected_cells = [];
-    //         // 分值计算：仿照区块排除
-    //         let score_sum = 0;
-    //         for (const c of combo) {
-    //             const [r, col] = c.pos;
-    //             for (let other = 1; other <= size; other++) {
-    //                 if (!union_nums.includes(other)) {
-    //                     const key = `${r},${col},${other}`;
-    //                     const score = state.candidate_elimination_score[key] || 0;
-    //                     if (score > 0) {
-    //                         score_sum += 1 / score;
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //         score_sum *= (size - combo.length) * combo.length;
-    //         score_sum = Math.round(score_sum * 100) / 100; // 保留两位小数
 
-
-    //         for (const cell of candidates) {
-    //             if (!combo.some(c => c.pos[0] === cell.pos[0] && c.pos[1] === cell.pos[1])) {
-    //                 const original_length = cell.nums.length;
-    //                 // 记录被删掉的数字
-    //                 const deleted_nums = cell.nums.filter(n => union_nums.includes(n));
-    //                 cell.nums = cell.nums.filter(n => !union_nums.includes(n));
-    //                 board[cell.pos[0]][cell.pos[1]] = cell.nums;
-    //                 if (cell.nums.length < original_length) {
-    //                     affected_cells.push(`${getRowLetter(cell.pos[0]+1)}${cell.pos[1]+1}`);
-    //                     changed = true;
-    //                     // 给被删掉的数字加分
-    //                     for (const n of deleted_nums) {
-    //                         const key = `${cell.pos[0]},${cell.pos[1]},${n}`;
-    //                         if (!state.candidate_elimination_score[key]) state.candidate_elimination_score[key] = 0;
-    //                         state.candidate_elimination_score[key] += 1 / score_sum;
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //         if (affected_cells.length > 0) {
-    //             const subset_name = subset_size === 2 ? '数对' : subset_size === 3 ? '三数组' : '四数组';
-    //             const subset_cells = combo.map(c => `${getRowLetter(c.pos[0]+1)}${c.pos[1]+1}`).join('、');
-    //             if (!state.silentMode) log_process(`[${region_type}显性${subset_name}] 第${region_index}${region_type}的${subset_cells}构成${subset_name}${union_nums.join('')}，排除${affected_cells.join('、')}的${union_nums.join('、')}，分值=${score_sum}`);
-    //             return true;
-    //         }
-    //     }
-    // }
-        // ...existing code...
     for (const combo of combinations) {
         // 合并所有候选数
         const union_nums = [...new Set(combo.flatMap(c => c.nums))];
         if (union_nums.length === subset_size) {
             let affected_cells = [];
             // 先尝试删数
+            // 记录每个格子被删掉的数字
+            const deleted_map = new Map();
             for (const cell of candidates) {
                 if (!combo.some(c => c.pos[0] === cell.pos[0] && c.pos[1] === cell.pos[1])) {
                     const original_length = cell.nums.length;
                     const deleted_nums = cell.nums.filter(n => union_nums.includes(n));
+                    if (deleted_nums.length > 0) {
+                        deleted_map.set(`${cell.pos[0]},${cell.pos[1]}`, deleted_nums);
+                    }
                     cell.nums = cell.nums.filter(n => !union_nums.includes(n));
                     board[cell.pos[0]][cell.pos[1]] = cell.nums;
                     if (cell.nums.length < original_length) {
@@ -2096,23 +1995,21 @@ function region_naked_subset_elimination(board, size, region_cells, subset_size,
                             const score = state.candidate_elimination_score[key] || 0;
                             if (score > 0) {
                                 score_sum += 1 / score;
-                                // log_process(`    候选数 ${getRowLetter(r+1)}${col+1} 的 ${other} 分值贡献 +${(1/score).toFixed(2)}`); // 详细分值贡献日志
                             }
                         }
                     }
                 }
-                score_sum *= (size - combo.length) * combo.length;
+                score_sum *= (candidates.length - combo.length) * combo.length;
                 score_sum = Math.round(score_sum * 100) / 100;
     
                 // 给被删掉的数字加分
-                for (const cell of candidates) {
-                    if (!combo.some(c => c.pos[0] === cell.pos[0] && c.pos[1] === cell.pos[1])) {
-                        const deleted_nums = cell.nums.filter(n => union_nums.includes(n));
-                        for (const n of deleted_nums) {
-                            const key = `${cell.pos[0]},${cell.pos[1]},${n}`;
-                            if (!state.candidate_elimination_score[key]) state.candidate_elimination_score[key] = 0;
-                            state.candidate_elimination_score[key] += 1 / score_sum;
-                        }
+                for (const [pos, deleted_nums] of deleted_map.entries()) {
+                    const [row, col] = pos.split(',').map(Number);
+                    for (const n of deleted_nums) {
+                        const key = `${row},${col},${n}`;
+                        if (!state.candidate_elimination_score[key]) state.candidate_elimination_score[key] = 0;
+                        state.candidate_elimination_score[key] += 1 / score_sum;
+                        // log_process(`    候选数 ${getRowLetter(row+1)}${col+1} 的 ${n} 分值贡献 +${(1/score_sum).toFixed(2)}`);
                     }
                 }
     
@@ -2123,6 +2020,7 @@ function region_naked_subset_elimination(board, size, region_cells, subset_size,
             }
         }
     }
+    // ...existing code...
     // ...existing code...
     return false;
 }
@@ -2162,7 +2060,7 @@ function check_variant_naked_subset_elimination(board, size, subset_size = 2) {
     // 用统一区域生成方式处理对角线
     const regions = get_all_regions(size, state.current_mode);
     for (const region of regions) {
-        if (region.type === '对角线' || region.type === '斜线') {
+        if (region.type !== '宫' && region.type !== '行' && region.type !== '列') {
             if (region_naked_subset_elimination(board, size, region.cells, subset_size, region.type, region.index)) return;
         }
     }
@@ -2235,7 +2133,7 @@ function region_hidden_subset_elimination(board, size, region_cells, subset_size
                         }
                     }
                 }
-                score_sum *= (size - positions.length) * positions.length;
+                score_sum *= (candidate_cells.length - positions.length) * positions.length;
                 score_sum = Math.round(score_sum * 100) / 100; // 保留两位小数
 
                 // 删除隐性数组格子中非num_group的数字，并给被删掉的数字加分
@@ -2620,12 +2518,12 @@ function check_row_col_hidden_subset_elimination(board, size, subset_size = 2) {
     return has_conflict;
 }
 
-// 对角线隐性数对组
-function check_diagonal_hidden_subset_elimination(board, size, subset_size = 2) {
-    // 用统一区域生成方式处理对角线
+// 变型隐性数对组
+function check_variant_hidden_subset_elimination(board, size, subset_size = 2) {
+    // 用统一区域生成方式处理所有非宫/行/列的区域
     const regions = get_all_regions(size, state.current_mode);
     for (const region of regions) {
-        if (region.type === '对角线') {
+        if (region.type !== '宫' && region.type !== '行' && region.type !== '列' && region.type !== '斜线') {
             if (region_hidden_subset_elimination(board, size, region.cells, subset_size, region.type, region.index)) return;
         }
     }

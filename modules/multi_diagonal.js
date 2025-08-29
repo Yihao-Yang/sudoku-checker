@@ -365,80 +365,6 @@ export function clear_multi_diagonal_marks() {
     show_result('所有标记已清除。');
 }
 
-// 验证斜线数独唯一解
-export function check_multi_diagonal_uniqueness() {
-    // 清空之前的日志
-    log_process('', true);
-
-    const container = document.querySelector('.sudoku-container');
-    const size = state.current_grid_size;
-
-    // 备份当前题目状态
-    backup_original_board();
-    
-    // 获取当前数独状态，包括候选数信息
-    let board = Array.from({ length: size }, (_, i) =>
-        Array.from({ length: size }, (_, j) => {
-            const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
-            const val = parseInt(input.value);
-            
-            // 如果是候选数模式且有候选数，则返回候选数数组，否则返回单个数字或0
-            if (state.is_candidates_mode && input.value.length > 1) {
-                return [...new Set(input.value.split('').map(Number))].filter(n => n >= 1 && n <= size);
-            }
-            return isNaN(val) ? Array.from({length: size}, (_, n) => n + 1) : val;
-        })
-    );
-
-
-    const { solution_count, solution } = solve(board, size, isValid_multi_diagonal); // 调用主求解函数
-    state.solve_stats.solution_count = solution_count;
-
-
-    // 显示结果
-    if (state.solve_stats.solution_count === -1) {
-        show_result("当前技巧无法解出");
-    } else if (state.solve_stats.solution_count === 0 || state.solve_stats.solution_count === -2) {
-        show_result("当前数独无解！");
-    } else if (state.solve_stats.solution_count === 1) {
-        // 退出候选数模式
-        state.is_candidates_mode = false;
-        document.getElementById('toggleCandidatesMode').textContent = '切换候选数模式';
-        
-        // 填充唯一解
-        for (let i = 0; i < size; i++) {
-            for (let j = 0; j < size; j++) {
-                const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
-                const cell = input.parentElement;
-                const candidatesGrid = cell.querySelector('.candidates-grid');
-                
-                // 更新显示状态
-                input.style.display = 'block';
-                input.classList.remove('hide-input-text');
-                if (candidatesGrid) {
-                    candidatesGrid.style.display = 'none';
-                }
-                
-                // 填充答案
-                if (solution[i][j] > 0) {
-                    // 如果是标准数独模式且该格已有数字，则跳过
-                    if (!state.is_candidates_mode && input.value) {
-                        continue;
-                    }
-                    input.value = solution[i][j];
-                    input.classList.add("solution-cell");
-                }
-            }
-        }
-        show_result("当前数独恰好有唯一解！已自动填充答案。");
-    } else if (state.solve_stats.solution_count > 1) {
-        show_result("当前数独有多个解。");
-    } else {
-        show_result(`当前数独有${state.solve_stats.solution_count}个解！`);
-    }
-    // show_logical_solution();
-}
-
     // 斜线数独“添加标记”功能（仅弹窗，后续可扩展）
 export function add_multi_diagonal_mark() {
     show_result('请依次点击两个格子以添加标记线。');
@@ -673,35 +599,4 @@ export function get_all_mark_lines() {
         }
     }
     return result;
-}
-
-// 多斜线数独专用有效性检测（含标记线）
-export function isValid_multi_diagonal(board, size, row, col, num) {
-    // 标准数独规则
-    for (let i = 0; i < size; i++) {
-        if (board[row][i] === num || board[i][col] === num) return false;
-    }
-    const boxSize = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
-    const startRow = Math.floor(row / boxSize[0]) * boxSize[0];
-    const startCol = Math.floor(col / boxSize[1]) * boxSize[1];
-    for (let r = startRow; r < startRow + boxSize[0]; r++) {
-        for (let c = startCol; c < startCol + boxSize[1]; c++) {
-            if (board[r][c] === num) return false;
-        }
-    }
-    // 检查所有已画标记线
-    const markLines = get_all_mark_lines(); // 需你实现或已有
-    for (const [start, end] of markLines) {
-        const cells = get_cells_on_line(size, start, end);
-        // 如果当前格子在这条线上
-        if (cells.some(([r, c]) => r === row && c === col)) {
-            // 检查线上其他格子是否有重复数字
-            for (const [r, c] of cells) {
-                if ((r !== row || c !== col) && board[r][c] === num) {
-                    return false;
-                }
-            }
-        }
-    }
-    return true;
 }

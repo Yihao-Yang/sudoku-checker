@@ -5,6 +5,9 @@ import { create_diagonal_sudoku } from './diagonal.js';
 import { create_multi_diagonal_sudoku } from './multi_diagonal.js';
 import { create_consecutive_sudoku } from './consecutive.js';
 import { create_missing_sudoku } from './missing.js';
+import { create_window_sudoku } from './window.js';
+import { create_pyramid_sudoku } from './pyramid.js';
+import { create_extra_region_sudoku } from './extra_region.js';
 import { state, set_current_mode } from './state.js';
 import { 
     show_result, 
@@ -256,6 +259,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('斜线', () => create_multi_diagonal_sudoku(4));
         add_Extra_Button('连续', () => create_consecutive_sudoku(4));
         add_Extra_Button('缺一门', () => create_missing_sudoku(4));
+        add_Extra_Button('额外区域', () => create_extra_region_sudoku(4));
     } else if (size === 6) {
         add_Extra_Button('乘积', () => show_result('这是六宫乘积的功能！(待实现)'));
         add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(6));
@@ -264,6 +268,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('斜线', () => create_multi_diagonal_sudoku(6));
         add_Extra_Button('连续', () => create_consecutive_sudoku(6));
         add_Extra_Button('缺一门', () => create_missing_sudoku(6));
+        add_Extra_Button('额外区域', () => create_extra_region_sudoku(6));
     } else if (size === 9) {
         add_Extra_Button('乘积', () => show_result('这是九宫乘积的功能！(待实现)'));
         add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(9));
@@ -273,6 +278,9 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('VX', () => create_vx_sudoku(9));
         add_Extra_Button('连续', () => create_consecutive_sudoku(9));
         add_Extra_Button('缺一门', () => create_missing_sudoku(9));
+        add_Extra_Button('窗口', () => create_window_sudoku(9));
+        add_Extra_Button('金字塔', () => create_pyramid_sudoku(9));
+        add_Extra_Button('额外区域', () => create_extra_region_sudoku(9));
     }
 }
 
@@ -311,7 +319,7 @@ export function create_technique_panel() {
                 { id: 'Box_Elimination', name: '宫排除', default: true },
                 { id: 'Box_One_Cut', name: '一刀流宫排除', default: true },
                 { id: 'Row_Col_Elimination', name: '行列排除', default: true },
-                { id: 'Diagonal_Elimination', name: '对角线排除', default: true }
+                { id: 'Variant_Elimination', name: '变型排除', default: true }
             ]
         },
         {
@@ -320,8 +328,9 @@ export function create_technique_panel() {
             { id: 'Box_Block', name: '宫区块', default: true },
             { id: 'Box_Block_One_Cut', name: '一刀流宫区块', default: true },
             { id: 'Box_Pair_Block', name: '宫组合区块', default: true },
+            { id: 'Variant_Pair_Block', name: '变型组合区块', default: true },
             { id: 'Row_Col_Block', name: '行列区块', default: true },
-            { id: 'Diagonal_Block', name: '对角线区块', default: true }
+            { id: 'Variant_Block', name: '变型区块', default: true }
         ]
         },
         {
@@ -330,12 +339,12 @@ export function create_technique_panel() {
                 // 隐性数对
                 { id: 'Box_Hidden_Pair', name: '宫隐性数对', default: true },
                 { id: 'Row_Col_Hidden_Pair', name: '行列隐性数对', default: true },
-                { id: 'Diagonal_Hidden_Pair', name: '对角线隐性数对', default: state.techniqueSettings?.Diagonal_Elimination ?? false },
+                { id: 'Variant_Hidden_Pair', name: '变型隐性数对', default: state.techniqueSettings?.Variant_Elimination ?? false },
                 
                 // 显性数对
                 { id: 'Box_Naked_Pair', name: '宫显性数对', default: true },
                 { id: 'Row_Col_Naked_Pair', name: '行列显性数对', default: true },
-                { id: 'Variant_Naked_Pair', name: '变型显性数对', default: state.techniqueSettings?.Diagonal_Elimination ?? false },
+                { id: 'Variant_Naked_Pair', name: '变型显性数对', default: state.techniqueSettings?.Variant_Elimination ?? false },
             ]
         },
         {
@@ -344,11 +353,11 @@ export function create_technique_panel() {
                 // 隐性数组
                 { id: 'Box_Hidden_Triple', name: '宫隐性三数组', default: true },
                 { id: 'Row_Col_Hidden_Triple', name: '行列隐性三数组', default: true },
-                { id: 'Diagonal_Hidden_Triple', name: '对角线隐性三数组', default: state.techniqueSettings?.Diagonal_Elimination ?? false },
+                { id: 'Variant_Hidden_Triple', name: '变型隐性三数组', default: state.techniqueSettings?.Variant_Elimination ?? false },
                 // 显性数组
                 { id: 'Box_Naked_Triple', name: '宫显性三数组', default: true },
                 { id: 'Row_Col_Naked_Triple', name: '行列显性三数组', default: true },
-                { id: 'Variant_Naked_Triple', name: '变型显性三数组', default: state.techniqueSettings?.Diagonal_Elimination ?? false },
+                { id: 'Variant_Naked_Triple', name: '变型显性三数组', default: state.techniqueSettings?.Variant_Elimination ?? false },
                 // 合并所有四数组为一个开关
                 { id: 'All_Quad', name: '四数组(显性+隐性)(可能有bug，慎用)', default: false },
             ]
@@ -403,8 +412,8 @@ export function create_technique_panel() {
             Cell_Elimination: true,
             Brute_Force: false,
             Missing_One: state.current_mode === 'missing',
-            Diagonal_Elimination: state.current_mode === 'diagonal',
-            Diagonal_Block: state.current_mode === 'diagonal'
+            // Variant_Elimination: state.current_mode === 'diagonal',
+            // Variant_Block: state.current_mode === 'diagonal'
         };
         techniqueGroups.forEach(group => {
             group.items.forEach(tech => {

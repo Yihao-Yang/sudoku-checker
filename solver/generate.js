@@ -1,8 +1,8 @@
 import { solve, isValid } from './solver_tool.js';
 import { log_process,backup_original_board,show_result, restore_original_board, clear_all_inputs} from '../modules/core.js';
 import { state } from '../modules/state.js';
-import { isValid_multi_diagonal } from '../modules/multi_diagonal.js';
-import { isValid_diagonal } from '../modules/diagonal.js';
+// import { isValid_multi_diagonal } from '../modules/multi_diagonal.js';
+// import { isValid_diagonal } from '../modules/diagonal.js';
 
 
 /**
@@ -61,26 +61,26 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
                 [...Array(size)].map((_, n) => n + 1) : cell
             )
         );
-        let is_valid_func;
-        if (state.current_mode === 'multi_diagonal') {
-            is_valid_func = isValid_multi_diagonal;
-        } else if (state.current_mode === 'diagonal') {
-            is_valid_func = isValid_diagonal;
-        } else {
-            is_valid_func = isValid;
-        }
-        result = solve(testBoard, size, is_valid_func, true);
-
-        // // 分值判断（包含用户输入的下限）
-        // if (state.solve_stats.total_score < score_lower_limit) {
-        //     log_process(`题目分值为${state.solve_stats.total_score}，低于下限${score_lower_limit}，重新生成...`);
-        //     continue;
+        // let is_valid_func;
+        // if (state.current_mode === 'multi_diagonal') {
+        //     is_valid_func = isValid_multi_diagonal;
+        // } else if (state.current_mode === 'diagonal') {
+        //     is_valid_func = isValid_diagonal;
+        // } else {
+        //     is_valid_func = isValid;
         // }
-        // 新分值判断（包含用户输入的下限）
-        if (state.total_score_sum < score_lower_limit) {
-            log_process(`题目分值为${state.total_score_sum}，低于下限${score_lower_limit}，重新生成...`);
+        result = solve(testBoard, size, isValid, true);
+
+        // 老分值判断（包含用户输入的下限）
+        if (state.solve_stats.total_score < score_lower_limit) {
+            log_process(`题目分值为${state.solve_stats.total_score}，低于下限${score_lower_limit}，重新生成...`);
             continue;
         }
+        // // 新分值判断（包含用户输入的下限）
+        // if (state.total_score_sum < score_lower_limit) {
+        //     log_process(`题目分值为${state.total_score_sum}，低于下限${score_lower_limit}，重新生成...`);
+        //     continue;
+        // }
         break;
     }
 
@@ -111,7 +111,7 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
         }
     }
 
-    log_process(`总的新分值: ${state.total_score_sum}`);
+    log_process(`新的总分值: ${state.total_score_sum}`);
 
     return {
         puzzle: puzzle,
@@ -125,25 +125,18 @@ export function generate_solution(size) {
     const board = Array.from({ length: size }, () => 
         Array.from({ length: size }, () => 0)
     );
-    
+    let max_try = 10000;
+    let try_count = 0;
     // 回溯填充数字
     function backtrack() {
+        if (++try_count > max_try) return false;
         for (let row = 0; row < size; row++) {
             for (let col = 0; col < size; col++) {
                 if (board[row][col] === 0) {
                     const nums = shuffle([...Array(size)].map((_, i) => i + 1));
                     
                     for (const num of nums) {
-                        // 根据模式选择有效性检测函数
-                        let is_valid_func;
-                        if (state.current_mode === 'multi_diagonal') {
-                            is_valid_func = isValid_multi_diagonal;
-                        } else if (state.current_mode === 'diagonal') {
-                            is_valid_func = isValid_diagonal;
-                        } else {
-                            is_valid_func = isValid;
-                        }
-                        if (is_valid_func(board, size, row, col, num)) {
+                        if (isValid(board, size, row, col, num)) {
                             board[row][col] = num;
                             
                             if (backtrack()) {
@@ -206,47 +199,40 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
                     : cell
                 )
             );
-            let is_valid_func;
-            if (state.current_mode === 'multi_diagonal') {
-                is_valid_func = isValid_multi_diagonal;
-            } else if (state.current_mode === 'diagonal') {
-                is_valid_func = isValid_diagonal;
-            } else {
-                is_valid_func = isValid;
-            }
-            solve(test_board, size, is_valid_func, true);
-    
-            // // 仅考虑唯一解的情况
-            // if (state.solve_stats.solution_count === 1 && state.solve_stats.total_score !== undefined) {
-            //     if (state.solve_stats.total_score > best_score) {
-            //         best_score = state.solve_stats.total_score;
-            //         best_candidates = [{
-            //             positions: positions_to_dig.map(([r, c]) => [r, c]),
-            //             temp_values: [...temp_values]
-            //         }];
-            //     } else if (state.solve_stats.total_score === best_score) {
-            //         best_candidates.push({
-            //             positions: positions_to_dig.map(([r, c]) => [r, c]),
-            //             temp_values: [...temp_values]
-            //         });
-            //     }
-            // }
 
-            // 仅考虑唯一解的情况
-            if (state.solve_stats.solution_count === 1 && state.total_score_sum !== undefined) {
-                if (state.total_score_sum > best_score) {
-                    best_score = state.total_score_sum;
+            solve(test_board, size, isValid, true);
+    
+            // 仅考虑唯一解的情况，老分值系统
+            if (state.solve_stats.solution_count === 1 && state.solve_stats.total_score !== undefined) {
+                if (state.solve_stats.total_score > best_score) {
+                    best_score = state.solve_stats.total_score;
                     best_candidates = [{
                         positions: positions_to_dig.map(([r, c]) => [r, c]),
                         temp_values: [...temp_values]
                     }];
-                } else if (state.total_score_sum === best_score) {
+                } else if (state.solve_stats.total_score === best_score) {
                     best_candidates.push({
                         positions: positions_to_dig.map(([r, c]) => [r, c]),
                         temp_values: [...temp_values]
                     });
                 }
             }
+
+            // // 仅考虑唯一解的情况，新分值系统
+            // if (state.solve_stats.solution_count === 1 && state.total_score_sum !== undefined) {
+            //     if (state.total_score_sum > best_score) {
+            //         best_score = state.total_score_sum;
+            //         best_candidates = [{
+            //             positions: positions_to_dig.map(([r, c]) => [r, c]),
+            //             temp_values: [...temp_values]
+            //         }];
+            //     } else if (state.total_score_sum === best_score) {
+            //         best_candidates.push({
+            //             positions: positions_to_dig.map(([r, c]) => [r, c]),
+            //             temp_values: [...temp_values]
+            //         });
+            //     }
+            // }
     
             // 恢复数字
             positions_to_dig.forEach(([r, c], idx) => puzzle[r][c] = temp_values[idx]);
@@ -265,17 +251,6 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
             holes_dug += group_size;
             changed = group_size > 0;
         }
-        // if (best_candidates.length > 0) {
-        //     const chosen = best_candidates[Math.floor(Math.random() * best_candidates.length)];
-        //     // 检查剩余可挖洞数量
-        //     let can_dig = chosen.positions.length;
-        //     if (holes_limit !== undefined && holes_dug + can_dig > holes_limit) {
-        //         can_dig = holes_limit - holes_dug;
-        //     }
-        //     chosen.positions.slice(0, can_dig).forEach(([r, c]) => puzzle[r][c] = 0);
-        //     holes_dug += can_dig;
-        //     changed = can_dig > 0;
-        // }
     } while (changed && (holes_limit === undefined || holes_dug < holes_limit));
 
     return puzzle;
