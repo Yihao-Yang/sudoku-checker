@@ -42,10 +42,10 @@ export function create_sudoku_grid(size) {
     controls.classList.remove('hidden');
     state.current_grid_size = size;
 
-    // 移除旧的事件监听器
-    const toggleBtn = document.getElementById('toggleCandidatesMode');
-    const newToggleBtn = toggleBtn.cloneNode(true);
-    toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
+    // // 移除旧的事件监听器
+    // const toggleBtn = document.getElementById('toggleCandidatesMode');
+    // const newToggleBtn = toggleBtn.cloneNode(true);
+    // toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
 
     const { container, grid } = create_base_grid(size);
     const inputs = Array.from({ length: size }, () => new Array(size));
@@ -77,19 +77,19 @@ export function create_sudoku_grid(size) {
     // 创建技巧开关面板
     create_technique_panel();
 
-    // 添加切换候选数模式按钮事件 (保持原状)
-    document.getElementById('toggleCandidatesMode').addEventListener('click', function() {
-    // 判断当前模式，直接设置状态
-        if (!state.is_candidates_mode) {
-            state.is_candidates_mode = true;
-            change_candidates_mode(inputs, state.current_grid_size, false); // 传true表示强制候选数模式
-            this.textContent = '退出候选数模式';
-        } else {
-            state.is_candidates_mode = false;
-            change_candidates_mode(inputs, state.current_grid_size, false); // 传false表示退出候选数模式
-            this.textContent = '进入候选数模式';
-        }
-    });
+    // // 添加切换候选数模式按钮事件 (保持原状)
+    // document.getElementById('toggleCandidatesMode').addEventListener('click', function() {
+    // // 判断当前模式，直接设置状态
+    //     if (!state.is_candidates_mode) {
+    //         state.is_candidates_mode = true;
+    //         change_candidates_mode(inputs, state.current_grid_size, false); // 传true表示强制候选数模式
+    //         this.textContent = '退出候选数模式';
+    //     } else {
+    //         state.is_candidates_mode = false;
+    //         change_candidates_mode(inputs, state.current_grid_size, false); // 传false表示退出候选数模式
+    //         this.textContent = '进入候选数模式';
+    //     }
+    // });
 
 
     for (let i = 0; i < size * size; i++) {
@@ -103,65 +103,55 @@ export function create_sudoku_grid(size) {
         cell.dataset.col = col;
 
         // 创建主输入框
-        const mainInput = document.createElement('input');
-        mainInput.type = 'text';
-        mainInput.className = 'main-input';
-        mainInput.maxLength = size;
-        mainInput.dataset.row = row;
-        mainInput.dataset.col = col;
+        const main_input = document.createElement('input');
+        main_input.type = 'text';
+        main_input.className = 'main-input';
+        main_input.maxLength = size;
+        main_input.dataset.row = row;
+        main_input.dataset.col = col;
 
-        // 创建候选数容器 (保持原状)
-        const candidatesGrid = document.createElement('div');
-        candidatesGrid.className = 'candidates-grid';
-        candidatesGrid.style.display = 'none';
-
-        // 根据数独尺寸创建候选数格子 (保持原状)
-        // const subSize = Math.sqrt(size);
-        // candidatesGrid.style.gridTemplateColumns = `repeat(${subSize}, 1fr)`;
-        // candidatesGrid.style.gridTemplateRows = `repeat(${subSize}, 1fr)`;
-        const subSize = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)]; // 六宫格特殊处理
-        candidatesGrid.style.gridTemplateColumns = `repeat(${subSize[1]}, 1fr)`;
-        candidatesGrid.style.gridTemplateRows = `repeat(${subSize[0]}, 1fr)`;
-        
+        // 创建候选数容器
+        const candidates_grid = document.createElement('div');
+        candidates_grid.className = 'candidates-grid';
+        candidates_grid.style.display = 'none';
+        // 设置候选数格子布局（和 classic.js 一样）
+        const sub_size = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
+        candidates_grid.style.gridTemplateColumns = `repeat(${sub_size[1]}, 1fr)`;
+        candidates_grid.style.gridTemplateRows = `repeat(${sub_size[0]}, 1fr)`;
         for (let n = 1; n <= size; n++) {
-            const candidateCell = document.createElement('div');
-            candidateCell.className = 'candidates-cell';
-            candidateCell.dataset.number = n;
-            candidateCell.textContent = n;
-            candidateCell.style.display = 'none';
-            candidateCell.style.gridArea = getGridArea(n, subSize);
-            candidatesGrid.appendChild(candidateCell);
+            const candidate_cell = document.createElement('div');
+            candidate_cell.className = 'candidates-cell';
+            candidate_cell.dataset.number = n;
+            candidate_cell.textContent = n;
+            candidate_cell.style.display = 'none';
+            candidate_cell.style.gridArea = get_grid_area(n, sub_size);
+            candidates_grid.appendChild(candidate_cell);
         }
 
-        // 辅助函数：计算固定位置 (保持原状)
-        // function getGridArea(number, subSize) {
-        //     const row = Math.ceil(number / subSize);
-        //     const col = ((number - 1) % subSize) + 1;
-        //     return `${row} / ${col} / ${row} / ${col}`;
-        // }
-        function getGridArea(number, subSize) {
+        function get_grid_area(number, sub_size) {
             if (size === 6) {
                 // 六宫格特殊布局 (2行3列)
-                const row = Math.ceil(number / subSize[1]);
-                const col = ((number - 1) % subSize[1]) + 1;
+                const row = Math.ceil(number / sub_size[1]);
+                const col = ((number - 1) % sub_size[1]) + 1;
                 return `${row} / ${col} / ${row} / ${col}`;
             } else {
                 // 标准正方形宫格布局
-                const row = Math.ceil(number / subSize[0]);
-                const col = ((number - 1) % subSize[0]) + 1;
+                const row = Math.ceil(number / sub_size[0]);
+                const col = ((number - 1) % sub_size[0]) + 1;
                 return `${row} / ${col} / ${row} / ${col}`;
             }
         }
 
         // 添加元素到DOM
-        cell.appendChild(mainInput);
-        cell.appendChild(candidatesGrid);
-        
+        cell.appendChild(main_input);
+        cell.appendChild(candidates_grid);
+        grid.appendChild(cell);
+
         // 存储输入框引用
-        inputs[row][col] = mainInput;
+        inputs[row][col] = main_input;
 
         // 输入事件处理 (保持原状)
-        mainInput.addEventListener('input', function() {
+        main_input.addEventListener('input', function() {
             const maxValue = size;
             const regex = new RegExp(`[^1-${maxValue}]`, 'g');
             this.value = this.value.replace(regex, '');
@@ -173,8 +163,8 @@ export function create_sudoku_grid(size) {
             
             if (state.is_candidates_mode) {
                 this.style.display = 'block';
-                candidatesGrid.style.display = 'grid';
-                
+                candidates_grid.style.display = 'grid';
+
                 cell.querySelectorAll('.candidates-cell').forEach(cell => {
                     const num = parseInt(cell.dataset.number);
                     cell.style.display = inputNumbers.includes(num) ? 'flex' : 'none';
@@ -184,8 +174,8 @@ export function create_sudoku_grid(size) {
                 this.classList.add('hide-input-text'); 
             } else {
                 this.style.display = 'block';
-                candidatesGrid.style.display = 'none';
-                
+                candidates_grid.style.display = 'none';
+
                 if (inputNumbers.length === 1) {
                     this.value = inputNumbers[0];
                 } else if (inputNumbers.length === 0) {
@@ -196,16 +186,16 @@ export function create_sudoku_grid(size) {
 
         // 点击事件 (保持原状)
         cell.addEventListener('click', function() {
-            if (state.is_candidates_mode && mainInput.style.display === 'none') {
-                mainInput.style.display = 'block';
-                candidatesGrid.style.display = 'none';
-                mainInput.focus();
-                mainInput.select();
+            if (state.is_candidates_mode && main_input.style.display === 'none') {
+                main_input.style.display = 'block';
+                candidates_grid.style.display = 'none';
+                main_input.focus();
+                main_input.select();
             }
         });
 
         // 键盘事件监听 (保持原状)
-        mainInput.addEventListener('keydown', function(e) {
+        main_input.addEventListener('keydown', function(e) {
             if (e.key >= '1' && e.key <= size.toString()) {
                 if (state.is_candidates_mode) {
                     e.preventDefault();
@@ -225,12 +215,12 @@ export function create_sudoku_grid(size) {
                 }
             }
             else if (e.key === 'Backspace') {
-                if (state.is_candidates_mode && mainInput.style.display === 'none') {
+                if (state.is_candidates_mode && main_input.style.display === 'none') {
                     e.preventDefault();
-                    mainInput.style.display = 'block';
-                    candidatesGrid.style.display = 'none';
-                    mainInput.focus();
-                    mainInput.select();
+                    main_input.style.display = 'block';
+                    candidates_grid.style.display = 'none';
+                    main_input.focus();
+                    main_input.select();
                 }
             }
             // 使用核心导航函数
@@ -549,10 +539,10 @@ export function check_uniqueness() {
             const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
             const val = parseInt(input.value);
             
-            // 如果是候选数模式且有候选数，则返回候选数数组，否则返回单个数字或0
-            if (state.is_candidates_mode && input.value.length > 1) {
-                return [...new Set(input.value.split('').map(Number))].filter(n => n >= 1 && n <= size);
-            }
+            // // 如果是候选数模式且有候选数，则返回候选数数组，否则返回单个数字或0
+            // if (state.is_candidates_mode && input.value.length > 1) {
+            //     return [...new Set(input.value.split('').map(Number))].filter(n => n >= 1 && n <= size);
+            // }
             return isNaN(val) ? Array.from({length: size}, (_, n) => n + 1) : val;
         })
     );
@@ -604,5 +594,5 @@ export function check_uniqueness() {
         show_result(`当前数独有${state.solve_stats.solution_count}个解！`);
     }
 
-    show_logical_solution();
+    // show_logical_solution();
 }

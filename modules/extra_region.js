@@ -1,5 +1,5 @@
 import { state, set_current_mode } from './state.js';
-import { bold_border, create_base_grid, handle_key_navigation, add_Extra_Button, log_process } from './core.js';
+import { bold_border, create_base_grid, handle_key_navigation, add_Extra_Button, log_process, create_base_cell } from './core.js';
 import { create_technique_panel } from './classic.js';
 import { generate_puzzle } from '../solver/generate.js';
 
@@ -77,17 +77,10 @@ export function create_extra_region_sudoku(size) {
         const row = Math.floor(i / size);
         const col = i % size;
 
-        const cell = document.createElement('div');
-        cell.className = 'sudoku-cell extra-region-mode';
-        cell.dataset.row = row;
-        cell.dataset.col = col;
+        const { cell, main_input, candidates_grid } = create_base_cell(row, col, size);
 
-        const main_input = document.createElement('input');
-        main_input.type = 'text';
-        main_input.className = 'main-input';
-        main_input.maxLength = size;
-        main_input.dataset.row = row;
-        main_input.dataset.col = col;
+// 额外区域模式标记
+    cell.classList.add('extra-region-mode');
 
         // 额外区域高亮
         const cell_key = `${row},${col}`;
@@ -107,7 +100,9 @@ export function create_extra_region_sudoku(size) {
             }
         });
 
+        // 添加元素到DOM
         cell.appendChild(main_input);
+        cell.appendChild(candidates_grid);
         grid.appendChild(cell);
         inputs[row][col] = main_input;
 
@@ -131,76 +126,17 @@ export function create_extra_region_sudoku(size) {
     gridDisplay.appendChild(container);
 }
 
-
-// export function generate_extra_region_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
-//     clear_extra_region_marks(size);
-
-//     // 支持的对称类型
-//     const SYMMETRY_TYPES = [
-//         'central', 'horizontal', 'vertical', 'diagonal', 'anti-diagonal'
-//     ];
-//     const symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
-
-//     // 生成对称点
-//     function get_symmetric_pos(row, col, size, symmetry) {
-//         switch (symmetry) {
-//             case 'horizontal':
-//                 return [size - 1 - row, col];
-//             case 'vertical':
-//                 return [row, size - 1 - col];
-//             case 'central':
-//                 return [size - 1 - row, size - 1 - col];
-//             case 'diagonal':
-//                 return [col, row];
-//             case 'anti-diagonal':
-//                 return [size - 1 - col, size - 1 - row];
-//             default:
-//                 return [row, col];
-//         }
-//     }
-
-//     // 8连通方向
-//     const directions = [
-//         [-1, 0], [1, 0], [0, -1], [0, 1],
-//         [-1, -1], [-1, 1], [1, -1], [1, 1]
-//     ];
-
-//     // 判断两个格子是否相邻
-//     function are_adjacent(r1, c1, r2, c2) {
-//         for (const [dr, dc] of directions) {
-//             if (r1 + dr === r2 && c1 + dc === c2) {
-//                 return true;
-//             }
-//         }
-//         return false;
-//     }
-
-//     // 检查两个区域是否连通
-//     function are_regions_connected(regionA, regionB) {
-//         for (const [r1, c1] of regionA) {
-//             for (const [r2, c2] of regionB) {
-//                 if (are_adjacent(r1, c1, r2, c2)) {
-//                     return true;
-//                 }
-//             }
-//         }
-//         return false;
-//     }
-
-//     // 自动生成题目
-//     generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-// }
-
-// ...existing code...
-
-// ...existing code...
-
+// 生成额外区域数独题目
 export function generate_extra_region_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
     clear_extra_region_marks(size);
 
     // 支持的对称类型
     const SYMMETRY_TYPES = [
-        'horizontal', 'vertical', 'diagonal', 'anti-diagonal', 'diagonal', 'anti-diagonal', 'diagonal', 'anti-diagonal'
+        'central','central','central','central','central',
+        'diagonal','diagonal',
+        'anti-diagonal','anti-diagonal',
+        'horizontal',
+        'vertical',
     ];
     const symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
 
@@ -211,8 +147,8 @@ export function generate_extra_region_puzzle(size, score_lower_limit = 0, holes_
                 return [size - 1 - row, col];
             case 'vertical':
                 return [row, size - 1 - col];
-            // case 'central':
-            //     return [size - 1 - row, size - 1 - col];
+            case 'central':
+                return [size - 1 - row, size - 1 - col];
             case 'diagonal':
                 return [col, row];
             case 'anti-diagonal':
@@ -221,52 +157,6 @@ export function generate_extra_region_puzzle(size, score_lower_limit = 0, holes_
                 return [row, col];
         }
     }
-
-    // 判断是否在对称线上
-    function is_on_symmetry_line(row, col, size, symmetry) {
-        switch (symmetry) {
-            case 'horizontal':
-                return row === (size - 1 - row);
-            case 'vertical':
-                return col === (size - 1 - col);
-            // case 'central':
-            //     return row === (size - 1 - row) && col === (size - 1 - col);
-            case 'diagonal':
-                return row === col;
-            case 'anti-diagonal':
-                return row + col === size - 1;
-            default:
-                return false;
-        }
-    }
-
-    // 判断是否挨着对称线
-    function is_adjacent_to_symmetry_line(row, col, size, symmetry) {
-        switch (symmetry) {
-            case 'horizontal':
-                return Math.abs(row - (size - 1 - row)) === 1;
-            case 'vertical':
-                return Math.abs(col - (size - 1 - col)) === 1;
-            // case 'central':
-            //     return (Math.abs(row - (size - 1 - row)) === 1 && col === (size - 1 - col)) ||
-            //            (Math.abs(col - (size - 1 - col)) === 1 && row === (size - 1 - row));
-            case 'diagonal':
-                return Math.abs(row - col) === 1;
-            case 'anti-diagonal':
-                return Math.abs((row + col) - (size - 1)) === 1;
-            default:
-                return false;
-        }
-    }
-
-    // 8连通方向
-    const directions = [
-        [-1, -1], [-1, 1], [1, -1], [1, 1],
-        [-1, 0], [1, 0], [0, -1], [0, 1],
-        [-1, -1], [-1, 1], [1, -1], [1, 1],
-        [-1, -1], [-1, 1], [1, -1], [1, 1],
-        [-1, -1], [-1, 1], [1, -1], [1, 1]
-    ];
 
     function shuffle(arr) {
         for (let i = arr.length - 1; i > 0; i--) {
@@ -306,148 +196,125 @@ export function generate_extra_region_puzzle(size, score_lower_limit = 0, holes_
         }
         return [];
     }
-    
-    // 方式一：生成一个对称区域（允许对称线上的格子）——随机选格子再检查8连通
-    function generate_single_symmetric_region() {
-        // 判断格子是否合法（在对称线或邻近对称线）
-        function is_valid_cell(row, col, size, symmetry) {
-            return (
-                row >= 0 && row < size && col >= 0 && col < size &&
-                (is_on_symmetry_line(row, col, size, symmetry) ||
-                 is_adjacent_to_symmetry_line(row, col, size, symmetry))
-            );
-        }
-    
-        // 判断8连通
-        function is_connected(cells) {
-            if (cells.length === 0) return false;
-            const visited = new Set();
-            const queue = [cells[0]];
-            visited.add(cells[0].join(','));
-            const directions8 = [
+
+    // 方式二：生成两个对称区域
+    function generate_double_symmetric_regions(size, symmetry, get_symmetric_pos) {
+        // 随机选择连通方式
+        const directions = Math.random() < 0.5
+            ? [
+                [-1, 0], [1, 0], [0, -1], [0, 1]
+            ]
+            : [
                 [-1, 0], [1, 0], [0, -1], [0, 1],
                 [-1, -1], [-1, 1], [1, -1], [1, 1]
             ];
-            while (queue.length) {
-                const [r, c] = queue.shift();
-                for (const [dr, dc] of directions8) {
-                    const nr = r + dr, nc = c + dc;
-                    const key = `${nr},${nc}`;
-                    if (
-                        cells.some(([rr, cc]) => rr === nr && cc === nc) &&
-                        !visited.has(key)
-                    ) {
-                        visited.add(key);
-                        queue.push([nr, nc]);
-                    }
+    
+        function is_adjacent(cell_a, cell_b) {
+            const [r1, c1] = cell_a;
+            const [r2, c2] = cell_b;
+            for (const [dr, dc] of directions) {
+                if (r1 + dr === r2 && c1 + dc === c2) {
+                    return true;
                 }
             }
-            return visited.size === cells.length;
+            return false;
+        }
+    
+        function cell_key(row, col) {
+            return `${row},${col}`;
         }
     
         let attempts = 0;
-        while (attempts < 1000) {
+        while (attempts < 100) {
             attempts++;
-            // 找到所有合法格子
-            let candidates = [];
+            // 1. 随机选一个格子
+            let all_cells = [];
             for (let row = 0; row < size; row++) {
                 for (let col = 0; col < size; col++) {
-                    if (is_valid_cell(row, col, size, symmetry)) {
-                        candidates.push([row, col]);
-                    }
+                    all_cells.push([row, col]);
                 }
             }
-            if (candidates.length < size) continue;
-            // 随机选size个格子
-            shuffle(candidates);
-            let region = candidates.slice(0, size);
-            // 检查8连通
-            if (!is_connected(region)) continue;
-            // 检查对称性
-            let regionSym = region.map(([r, c]) => get_symmetric_pos(r, c, size, symmetry));
-            let isSymmetric = region.every(([r, c]) =>
-                regionSym.some(([sr, sc]) => sr === r && sc === c)
-            );
-            if (!isSymmetric) continue;
-            return [region];
+            // 洗牌
+            for (let i = all_cells.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [all_cells[i], all_cells[j]] = [all_cells[j], all_cells[i]];
+            }
+            let [start_row, start_col] = all_cells[0];
+            let [sym_row, sym_col] = get_symmetric_pos(start_row, start_col, size, symmetry);
+    
+            // 2. 检查不是同一格且不连通
+            if (start_row === sym_row && start_col === sym_col) continue;
+            if (is_adjacent([start_row, start_col], [sym_row, sym_col])) continue;
+    
+            // 3. 初始化区域
+            let region_1 = [[start_row, start_col]];
+            let region_2 = [[sym_row, sym_col]];
+            let region_1_set = new Set([cell_key(start_row, start_col)]);
+            let region_2_set = new Set([cell_key(sym_row, sym_col)]);
+    
+            // 4. 循环扩展
+            while (region_1.length < size) {
+                // 在region_1的随机一个格子的8连通位置找可加入的格子
+                let candidates = [];
+                for (let [r, c] of region_1) {
+                    for (const [dr, dc] of directions) {
+                        let nr = r + dr, nc = c + dc;
+                        let key = cell_key(nr, nc);
+                        let [sym_nr, sym_nc] = get_symmetric_pos(nr, nc, size, symmetry);
+                        let sym_key = cell_key(sym_nr, sym_nc);
+                        // 边界判断
+                        if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
+                        if (region_1_set.has(key) || region_2_set.has(key)) continue;
+                        if (region_1_set.has(sym_key) || region_2_set.has(sym_key)) continue;
+                        candidates.push([nr, nc]);
+                    }
+                }
+                if (candidates.length === 0) break;
+                // 随机选一个
+                const idx = Math.floor(Math.random() * candidates.length);
+                let [chosen_r, chosen_c] = candidates[idx];
+                let [sym_chosen_r, sym_chosen_c] = get_symmetric_pos(chosen_r, chosen_c, size, symmetry);
+    
+                // 5. 判断区域2刚添加的格子是否和区域1的任意一个格子八连通
+                let adjacent = false;
+                for (let [r1, c1] of region_1) {
+                    if (is_adjacent([r1, c1], [sym_chosen_r, sym_chosen_c])) {
+                        adjacent = true;
+                        break;
+                    }
+                    if (is_adjacent([chosen_r, chosen_c], [sym_chosen_r, sym_chosen_c])) {
+                        adjacent = true;
+                        break;
+                    }
+                    
+                }
+                if (adjacent) continue; // 跳过本次添加
+    
+                // 6. 添加到两个区域
+                region_1.push([chosen_r, chosen_c]);
+                region_1_set.add(cell_key(chosen_r, chosen_c));
+                region_2.push([sym_chosen_r, sym_chosen_c]);
+                region_2_set.add(cell_key(sym_chosen_r, sym_chosen_c));
+            }
+    
+            // 7. 检查数量
+            if (region_1.length === size && region_2.length === size) {
+                return [region_1, region_2];
+            }
+            // 否则重试
         }
         return [];
     }
-    
-    // 方式二：生成两个对称区域（都不在对称线及其邻近）——随机选格子再检查8连通
-    function generate_double_symmetric_regions() {
-        // 判断格子是否合法
-        function is_valid_cell(row, col, size, symmetry) {
-            return (
-                row >= 0 && row < size && col >= 0 && col < size &&
-                !is_on_symmetry_line(row, col, size, symmetry) &&
-                !is_adjacent_to_symmetry_line(row, col, size, symmetry)
-            );
-        }
-    
-        // 判断8连通
-        function is_connected(cells) {
-            if (cells.length === 0) return false;
-            const visited = new Set();
-            const queue = [cells[0]];
-            visited.add(cells[0].join(','));
-            const directions8 = [
-                [-1, 0], [1, 0], [0, -1], [0, 1],
-                [-1, -1], [-1, 1], [1, -1], [1, 1]
-            ];
-            while (queue.length) {
-                const [r, c] = queue.shift();
-                for (const [dr, dc] of directions8) {
-                    const nr = r + dr, nc = c + dc;
-                    const key = `${nr},${nc}`;
-                    if (
-                        cells.some(([rr, cc]) => rr === nr && cc === nc) &&
-                        !visited.has(key)
-                    ) {
-                        visited.add(key);
-                        queue.push([nr, nc]);
-                    }
-                }
-            }
-            return visited.size === cells.length;
-        }
-    
-        let attempts = 0;
-        while (attempts < 1000) {
-            attempts++;
-            // 找到所有合法格子
-            let candidates = [];
-            for (let row = 0; row < size; row++) {
-                for (let col = 0; col < size; col++) {
-                    if (is_valid_cell(row, col, size, symmetry)) {
-                        candidates.push([row, col]);
-                    }
-                }
-            }
-            if (candidates.length < size) continue;
-            // 随机选size个格子
-            shuffle(candidates);
-            let regionA = candidates.slice(0, size);
-            // 检查8连通
-            if (!is_connected(regionA)) continue;
-            // 生成对称区域
-            let regionB = regionA.map(([r, c]) => get_symmetric_pos(r, c, size, symmetry));
-            // 检查对称区域是否合法
-            if (!regionB.every(([r, c]) => is_valid_cell(r, c, size, symmetry))) continue;
-            if (!is_connected(regionB)) continue;
-            return [regionA, regionB];
-        }
-        return [];
-    }
+    // ...existing code...
 
     // 随机选择生成方式
     let regions = [];
     if (Math.random() < 0.3) {
         regions = generate_single_region();
-    } else if (Math.random() < 0.5) {
-        regions = generate_single_symmetric_region();
+    // } else if (Math.random() < 0.5) {
+    //     regions = generate_single_symmetric_region();
     } else {
-        regions = generate_double_symmetric_regions();
+        regions = generate_double_symmetric_regions(size, symmetry, get_symmetric_pos);
     }
     if (regions.length === 0) {
         log_process('自动生成额外区域失败，请重试');
@@ -467,23 +334,27 @@ export function generate_extra_region_puzzle(size, score_lower_limit = 0, holes_
     generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
 }
 
-
-// ...existing
-
+// 获取所有合法的额外区域
 export function get_extra_region_cells() {
     const all_cells = Array.from(state.extra_region_cells).map(key => key.split(',').map(Number));
     const size = state.current_grid_size;
-    const visited = new Set();
-    const regions = [];
+    const visited4 = new Set();
+    const visited8 = new Set();
+    const regions4 = [];
+    const regions8 = [];
 
+    // 4连通方向
+    const directions4 = [
+        [-1, 0], [1, 0], [0, -1], [0, 1]
+    ];
     // 8连通方向
-    const directions = [
+    const directions8 = [
         [-1, 0], [1, 0], [0, -1], [0, 1],
         [-1, -1], [-1, 1], [1, -1], [1, 1]
     ];
 
-    // BFS查找连通块
-    function bfs(start_row, start_col) {
+    // BFS查找连通块（可选方向）
+    function bfs(start_row, start_col, directions, visited) {
         const queue = [[start_row, start_col]];
         const region = [[start_row, start_col]];
         visited.add(`${start_row},${start_col}`);
@@ -506,26 +377,25 @@ export function get_extra_region_cells() {
         return region;
     }
 
-    // 分组所有连通块
-    for (const [row, col] of all_cells) {
-        const key = `${row},${col}`;
-        if (!visited.has(key)) {
-            const region = bfs(row, col);
-            // log_process(`检测到一个连通区域，格子数量为: ${region.length}`, region);
-            regions.push(region);
-        }
-    }
-
     // 如果只有一个区域，且格子数量等于size，直接返回（不要求连通）
     if (all_cells.length === size) {
         return [all_cells];
     }
 
-    // 只保留格子数量等于size的连通块
-    const valid_regions = regions.filter(region => region.length === size);
+    // 先用4连通分组所有连通块
+    for (const [row, col] of all_cells) {
+        const key = `${row},${col}`;
+        if (!visited4.has(key)) {
+            const region = bfs(row, col, directions4, visited4);
+            regions4.push(region);
+        }
+    }
 
-    // 检查不同区域之间是否有相邻格子（8连通）
-    function are_regions_adjacent(regionA, regionB) {
+    // 只保留格子数量等于size的连通块
+    const valid_regions4 = regions4.filter(region => region.length === size);
+
+    // 检查不同区域之间是否有相邻格子（4连通）
+    function are_regions_adjacent(regionA, regionB, directions) {
         for (const [r1, c1] of regionA) {
             for (const [r2, c2] of regionB) {
                 for (const [dr, dc] of directions) {
@@ -539,17 +409,51 @@ export function get_extra_region_cells() {
     }
 
     // 如果有两个区域相邻，则全部无效
-    for (let i = 0; i < valid_regions.length; i++) {
-        for (let j = i + 1; j < valid_regions.length; j++) {
-            if (are_regions_adjacent(valid_regions[i], valid_regions[j])) {
-                return [];
+    let valid = true;
+    for (let i = 0; i < valid_regions4.length; i++) {
+        for (let j = i + 1; j < valid_regions4.length; j++) {
+            if (are_regions_adjacent(valid_regions4[i], valid_regions4[j], directions4)) {
+                valid = false;
+                break;
             }
         }
+        if (!valid) break;
+    }
+
+    // 如果4连通合法，直接返回
+    if (valid_regions4.length > 0 && valid) {
+        return valid_regions4;
+    }
+
+    // 否则用8连通分组
+    for (const [row, col] of all_cells) {
+        const key = `${row},${col}`;
+        if (!visited8.has(key)) {
+            const region = bfs(row, col, directions8, visited8);
+            regions8.push(region);
+        }
+    }
+    const valid_regions8 = regions8.filter(region => region.length === size);
+
+    // 检查不同区域之间是否有相邻格子（8连通）
+    valid = true;
+    for (let i = 0; i < valid_regions8.length; i++) {
+        for (let j = i + 1; j < valid_regions8.length; j++) {
+            if (are_regions_adjacent(valid_regions8[i], valid_regions8[j], directions8)) {
+                valid = false;
+                break;
+            }
+        }
+        if (!valid) break;
     }
 
     // 返回所有合法的额外区域（每个区域是一个数组，外层是数组）
-    return valid_regions;
+    if (valid_regions8.length > 0 && valid) {
+        return valid_regions8;
+    }
+    return [];
 }
+
 // 清除所有额外区域标记（界面和数据都恢复）
 export function clear_extra_region_marks(size) {
     state.extra_region_cells.clear();

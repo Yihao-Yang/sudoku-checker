@@ -5,7 +5,8 @@ import {
     import_sudoku_from_string,
     export_sudoku_to_string,
     restore_original_board,
-    save_sudoku_as_image
+    save_sudoku_as_image,
+    change_candidates_mode
 } from './modules/core.js';
 
 import { 
@@ -44,6 +45,21 @@ function initializeEventHandlers() {
     document.getElementById('importSudokuFromString').addEventListener('click', import_sudoku_from_string);
     document.getElementById('exportSudokuToString').addEventListener('click', export_sudoku_to_string);
     document.getElementById('saveAsImage').addEventListener('click', save_sudoku_as_image);
+
+    // ...existing code...
+    document.getElementById('toggleCandidatesMode').addEventListener('click', function() {
+        state.is_candidates_mode = !state.is_candidates_mode;
+        this.textContent = state.is_candidates_mode ? '退出候选数模式' : '进入候选数模式';
+        // 重新获取当前输入框引用
+        const size = state.current_grid_size;
+        const inputs = Array.from({ length: size }, (_, row) =>
+            Array.from({ length: size }, (_, col) =>
+                document.querySelector(`.sudoku-cell input[data-row="${row}"][data-col="${col}"]`)
+            )
+        );
+        change_candidates_mode(inputs, size, false);
+    });
+    // ...existing code...
 
     document.getElementById('toggleSolveMode').addEventListener('click', function() {
         state.is_solve_mode = !state.is_solve_mode;

@@ -1,5 +1,5 @@
 import { state, set_current_mode } from './state.js';
-import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation } from './core.js';
+import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell } from './core.js';
 import { solve, isValid, get_all_regions } from '../solver/solver_tool.js';
 import { create_technique_panel } from './classic.js';
 
@@ -51,29 +51,20 @@ export function create_diagonal_sudoku(size) {
         const row = Math.floor(i / size);
         const col = i % size;
 
-        // 创建单元格容器
-        const cell = document.createElement('div');
-        cell.className = 'sudoku-cell diagonal-mode';
-        cell.dataset.row = row;
-        cell.dataset.col = col;
+        const { cell, main_input, candidates_grid } = create_base_cell(row, col, size);
 
-        // 创建主输入框
-        const main_input = document.createElement('input');
-        main_input.type = 'text';
-        main_input.className = 'main-input';
-        main_input.maxLength = size;
-        main_input.dataset.row = row;
-        main_input.dataset.col = col;
+        // cell.classList.add('diagonal-mode');
+
+        // 添加元素到DOM
+        cell.appendChild(main_input);
+        cell.appendChild(candidates_grid);
+        grid.appendChild(cell);
+        inputs[row][col] = main_input;
 
         // 对角线高亮（主对角线和副对角线）
         if (row === col || row + col === size - 1) {
             cell.classList.add('diagonal-cell');
         }
-
-        // 添加元素到DOM
-        cell.appendChild(main_input);
-        grid.appendChild(cell);
-        inputs[row][col] = main_input;
 
         // 输入事件处理
         main_input.addEventListener('input', function() {
@@ -91,8 +82,8 @@ export function create_diagonal_sudoku(size) {
             handle_key_navigation(e, row, col, size, inputs);
         });
 
-        // 加粗边框
-        bold_border(cell, row, col, size);
+        // // 加粗边框
+        // bold_border(cell, row, col, size);
     }
 
     container.appendChild(grid);

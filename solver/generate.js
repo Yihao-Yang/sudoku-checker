@@ -1,15 +1,11 @@
-import { solve, isValid } from './solver_tool.js';
+import { solve, isValid, eliminate_candidates } from './solver_tool.js';
 import { log_process,backup_original_board,show_result, restore_original_board, clear_all_inputs} from '../modules/core.js';
 import { state } from '../modules/state.js';
 // import { isValid_multi_diagonal } from '../modules/multi_diagonal.js';
 // import { isValid_diagonal } from '../modules/diagonal.js';
 
 
-/**
- * 自动生成标准数独题目
- * @param {number} size - 数独大小 (4,6,9)
- * @param {string} difficulty - 难度 ('easy', 'medium', 'hard')
- */
+// 自动生成标准数独题目
 export function generate_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
     // 清除之前的结果
     clear_all_inputs();
@@ -119,43 +115,113 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
     };
 }
 
-// 生成数独终盘（直接使用回溯法生成）
-export function generate_solution(size) {
-    
-    const board = Array.from({ length: size }, () => 
-        Array.from({ length: size }, () => 0)
+// 生成完整数独终盘
+export function generate_solution(sudoku_size) {
+    // 初始化为候选数数组
+    const sudoku_board = Array.from({ length: sudoku_size }, () =>
+        Array.from({ length: sudoku_size }, () => [...Array(sudoku_size)].map((_, i) => i + 1))
     );
-    let max_try = 10000;
-    let try_count = 0;
-    // 回溯填充数字
-    function backtrack() {
-        if (++try_count > max_try) return false;
-        for (let row = 0; row < size; row++) {
-            for (let col = 0; col < size; col++) {
-                if (board[row][col] === 0) {
-                    const nums = shuffle([...Array(size)].map((_, i) => i + 1));
-                    
-                    for (const num of nums) {
-                        if (isValid(board, size, row, col, num)) {
-                            board[row][col] = num;
-                            
-                            if (backtrack()) {
-                                return true;
-                            }
-                            
-                            board[row][col] = 0;
-                        }
+    let max_attempts = 10000;
+    let attempt_count = 0;
+
+    // 生成所有格子的坐标并打乱
+    const cell_positions = [];
+    for (let r = 0; r < sudoku_size; r++) {
+        for (let c = 0; c < sudoku_size; c++) {
+            cell_positions.push([r, c]);
+        }
+    }
+    shuffle(cell_positions);
+
+    // 新增：主动给数的记录
+    let given_numbers = [];
+    let best_score = -1;
+
+    function backtrack(cell_index = 0) {
+        if (++attempt_count > max_attempts) return false;
+        if (cell_index >= cell_positions.length) return true; // 填满
+
+        const [row, col] = cell_positions[cell_index];
+        if (Array.isArray(sudoku_board[row][col]) && sudoku_board[row][col].length > 1) {
+            const candidates = shuffle([...sudoku_board[row][col]]);
+            for (const num of candidates) {
+                if (isValid(sudoku_board, sudoku_size, row, col, num)) {
+                    backup_original_board();
+                    sudoku_board[row][col] = [num];
+                    log_process(`尝试在 [${row+1},${col+1}] 填入 ${num}`);
+
+                    // 新增：记录主动给数
+                    given_numbers.push({ row, col, num });
+
+                    // 构造只包含主动给数的盘面
+                    const test_board = Array.from({ length: sudoku_size }, (_, r) =>
+                        Array.from({ length: sudoku_size }, (_, c) => {
+                            const found = given_numbers.find(item => item.row === r && item.col === c);
+                            return found ? found.num : 0;
+                        })
+                    );
+
+                    // 唯一解检测
+                    const result = solve(
+                        // sudoku_board.map(r => r.map(cell => Array.isArray(cell) && cell.length === 1 ? cell[0] : cell)),
+                        test_board.map(r => r.map(cell => cell === 0 ? [...Array(sudoku_size)].map((_, n) => n + 1) : cell)),
+                        sudoku_size,
+                        isValid,
+                        false
+                    );
+
+                    if (result.solution_count === 0 || result.solution_count === -2) {
+                        restore_original_board();
+                        sudoku_board[row][col] = candidates;
+                        given_numbers.pop(); // 回溯时移除主动给数
+                        continue;
                     }
-                    return false;
+                    if (result.solution_count === 1) {
+                        for (let i = 0; i < sudoku_size; i++) {
+                            for (let j = 0; j < sudoku_size; j++) {
+                                sudoku_board[i][j] = [result.solution[i][j]];
+                            }
+                        }
+                        return true;
+                    } else {
+                        if (state.logical_solution) {
+                            for (let i = 0; i < sudoku_size; i++) {
+                                for (let j = 0; j < sudoku_size; j++) {
+                                    if (Array.isArray(state.logical_solution[i][j])) {
+                                        sudoku_board[i][j] = [...state.logical_solution[i][j]];
+                                    } else {
+                                        sudoku_board[i][j] = state.logical_solution[i][j];
+                                    }
+                                }
+                            }
+                        }
+                        if (backtrack(cell_index + 1)) return true;
+                        sudoku_board[row][col] = candidates;
+                        given_numbers.pop(); // 回溯时移除主动给数
+                    }
                 }
             }
+            return false;
+        } else {
+            // 已确定，递归下一个
+            return backtrack(cell_index + 1);
         }
-        return true;
     }
+
     backtrack();
-    return board; // 全部填完返回终盘
+    // 返回终盘（转为数字）
+    return sudoku_board.map(row => row.map(cell => Array.isArray(cell) ? cell[0] : cell));
+    // // 只返回主动给数的盘面
+    // const result_board = Array.from({ length: sudoku_size }, (_, r) =>
+    //     Array.from({ length: sudoku_size }, (_, c) => {
+    //         const found = given_numbers.find(item => item.row === r && item.col === c);
+    //         return found ? found.num : 0;
+    //     })
+    // );
+    // return result_board;
 }
 
+// 挖洞，返回题目盘
 function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined) {
     const puzzle = solution.map(row => [...row]);
     let holes_dug = 0;
@@ -250,6 +316,7 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
             chosen.positions.forEach(([r, c]) => puzzle[r][c] = 0);
             holes_dug += group_size;
             changed = group_size > 0;
+            log_process(`挖洞位置: ${chosen.positions.map(([r, c]) => `[${r+1},${c+1}]`).join(' ')}，当前已挖洞数: ${holes_dug}`);
         }
     } while (changed && (holes_limit === undefined || holes_dug < holes_limit));
 

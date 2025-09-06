@@ -1,6 +1,6 @@
 // filepath: c:\Users\86156\Desktop\sudoku\sudoku34\modules\window.js
 import { state, set_current_mode } from './state.js';
-import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation } from './core.js';
+import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell } from './core.js';
 import { solve } from '../solver/solver_tool.js';
 import { create_technique_panel } from './classic.js';
 
@@ -50,17 +50,7 @@ export function create_window_sudoku(size) {
         const row = Math.floor(i / size);
         const col = i % size;
 
-        const cell = document.createElement('div');
-        cell.className = 'sudoku-cell window-mode';
-        cell.dataset.row = row;
-        cell.dataset.col = col;
-
-        const main_input = document.createElement('input');
-        main_input.type = 'text';
-        main_input.className = 'main-input';
-        main_input.maxLength = size;
-        main_input.dataset.row = row;
-        main_input.dataset.col = col;
+        const { cell, main_input, candidates_grid } = create_base_cell(row, col, size);
 
         // 窗口高亮（以4x4为例，左上/右下4x4区域高亮）
         if (is_window_cell(row, col, size)) {
@@ -68,6 +58,7 @@ export function create_window_sudoku(size) {
         }
 
         cell.appendChild(main_input);
+        cell.appendChild(candidates_grid);
         grid.appendChild(cell);
         inputs[row][col] = main_input;
 
@@ -84,7 +75,7 @@ export function create_window_sudoku(size) {
             handle_key_navigation(e, row, col, size, inputs);
         });
 
-        bold_border(cell, row, col, size);
+        // bold_border(cell, row, col, size);
     }
 
     container.appendChild(grid);

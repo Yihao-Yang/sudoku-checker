@@ -337,9 +337,10 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
                 const num = cell;
                 board[i][j] = 0; // 临时清空
                 if (!isValid(board, size, i, j, num)) {
-                    log_process(`[冲突] ${getRowLetter(i+1)}${j+1}=${num}与已有数字冲突，无解！`);
+                    // log_process(`[冲突] ${getRowLetter(i+1)}${j+1}=${num}与已有数字冲突，无解！`);
                     // return { changed: false, hasEmptyCandidate: true }; // 直接返回冲突状态
-                    return { solution_count: -2 }; // 直接返回冲突状态
+                    state.solve_stats.solution_count = -2; // 直接返回冲突状态
+                    return {solution_count: state.solve_stats.solution_count}
                 }
                 board[i][j] = num; // 恢复原值
                 eliminate_candidates(board, size, i, j, num); // 移除相关候选数

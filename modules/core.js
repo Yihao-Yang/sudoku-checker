@@ -102,23 +102,58 @@ export function create_base_grid(size, isSkyscraper = false) {
  * 创建基础单元格和输入框
  */
 export function create_base_cell(row, col, size, isSkyscraper = false) {
+    // 创建单元格容器
     const cell = document.createElement('div');
     cell.className = 'sudoku-cell';
     cell.dataset.row = row;
     cell.dataset.col = col;
 
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.maxLength = isSkyscraper ? 1 : size;
-    input.dataset.row = row;
-    input.dataset.col = col;
+    // 创建主输入框
+    const main_input = document.createElement('input');
+    main_input.type = 'text';
+    main_input.className = 'main-input';
+    main_input.maxLength = size;
+    main_input.dataset.row = row;
+    main_input.dataset.col = col;
+
+    // 创建候选数容器
+    const candidates_grid = document.createElement('div');
+    candidates_grid.className = 'candidates-grid';
+    candidates_grid.style.display = 'none';
+    // 设置候选数格子布局（和 classic.js 一样）
+    const sub_size = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
+    candidates_grid.style.gridTemplateColumns = `repeat(${sub_size[1]}, 1fr)`;
+    candidates_grid.style.gridTemplateRows = `repeat(${sub_size[0]}, 1fr)`;
+    for (let n = 1; n <= size; n++) {
+        const candidate_cell = document.createElement('div');
+        candidate_cell.className = 'candidates-cell';
+        candidate_cell.dataset.number = n;
+        candidate_cell.textContent = n;
+        candidate_cell.style.display = 'none';
+        candidate_cell.style.gridArea = get_grid_area(n, sub_size);
+        candidates_grid.appendChild(candidate_cell);
+    }
+
+    function get_grid_area(number, sub_size) {
+        if (size === 6) {
+            // 六宫格特殊布局 (2行3列)
+            const row = Math.ceil(number / sub_size[1]);
+            const col = ((number - 1) % sub_size[1]) + 1;
+            return `${row} / ${col} / ${row} / ${col}`;
+        } else {
+            // 标准正方形宫格布局
+            const row = Math.ceil(number / sub_size[0]);
+            const col = ((number - 1) % sub_size[0]) + 1;
+            return `${row} / ${col} / ${row} / ${col}`;
+        }
+    }
 
     // 添加加粗线以增强宫格感
     if (!isSkyscraper || (row > 0 && row < size + 1 && col > 0 && col < size + 1)) {
         bold_border(cell, isSkyscraper ? row - 1 : row, isSkyscraper ? col - 1 : col, size);
     }
 
-    return { cell, input };
+    return { cell, main_input, candidates_grid };
 }
 
 /**

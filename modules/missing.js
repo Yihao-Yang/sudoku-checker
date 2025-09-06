@@ -76,18 +76,23 @@ export function create_missing_sudoku(size) {
     // 创建单元格
     for (let row = 0; row < size; row++) {
         for (let col = 0; col < size; col++) {
-            const { cell, input } = create_base_cell(row, col, size);
-            inputs[row][col] = input;
-            
+            const { cell, main_input, candidates_grid } = create_base_cell(row, col, size);
+
+            // 添加元素到DOM
+        cell.appendChild(main_input);
+        cell.appendChild(candidates_grid);
+        grid.appendChild(cell);
+            inputs[row][col] = main_input;
+
             // 添加输入处理
-            add_base_input_handlers(input, size);
-            
+            add_base_input_handlers(main_input, size);
+
             // 添加键盘导航
-            input.addEventListener('keydown', (e) => {
+            main_input.addEventListener('keydown', (e) => {
                 handle_key_navigation(e, row, col, size, inputs);
             });
             
-            cell.appendChild(input);
+            cell.appendChild(main_input);
             grid.appendChild(cell);
         }
     }
