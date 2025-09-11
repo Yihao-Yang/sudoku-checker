@@ -79,7 +79,7 @@ export function create_extra_region_sudoku(size) {
 
         const { cell, main_input, candidates_grid } = create_base_cell(row, col, size);
 
-// 额外区域模式标记
+    // 额外区域模式标记
     cell.classList.add('extra-region-mode');
 
         // 额外区域高亮

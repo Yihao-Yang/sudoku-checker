@@ -3,6 +3,7 @@ import { solve_By_Elimination } from "./Technique.js";
 import { state } from "../modules/state.js";
 import { get_all_mark_lines, get_cells_on_line } from "../modules/multi_diagonal.js";
 import { get_extra_region_cells } from '../modules/extra_region.js';
+import { apply_exclusion_marks } from "../modules/exclusion.js";
 
 /**
  * 从所有相关区域移除指定数字的候选数
@@ -327,6 +328,11 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
     state.total_score_sum = 0;
     // state.solve_stats.solution_count = 0;
 
+    // 新增：排除数独自动应用排除标记
+    if (state.current_mode === 'exclusion') {
+        apply_exclusion_marks(board, size);
+    }
+
     for (let i = 0; i < size; i++) {
         for (let j = 0; j < size; j++) {
             const cell = board[i][j];
@@ -360,21 +366,6 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
     // 先尝试逻辑求解
     const logical_result = solve_By_Logic();
     
-    // 如果逻辑求解未完成，则尝试暴力求解
-    if (!logical_result.isSolved) {
-        if (state.techniqueSettings.Brute_Force) {
-            solve_By_BruteForce();
-        } else {
-            if (state.solve_stats.solution_count === -2) {
-                return {solution_count: state.solve_stats.solution_count};
-            }
-            else {
-                state.solve_stats.solution_count = -1;  // 设置特殊标记值
-                return {solution_count: state.solve_stats.solution_count};  // 提前返回防止后续覆盖
-            }
-        }
-    }
-
     // 添加技巧使用统计
     if (logical_result.technique_counts) {
         state.solve_stats.technique_counts = logical_result.technique_counts;
@@ -391,6 +382,23 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
         }
         state.total_score_sum = Math.round(state.total_score_sum * 100) / 100; // 保留两位小数
         if (!state.silentMode) log_process(`新的总分值: ${state.total_score_sum}`);
+    }
+
+    // 如果逻辑求解未完成，则尝试暴力求解
+    if (!logical_result.isSolved) {
+        if (state.techniqueSettings.Brute_Force) {
+            solve_By_BruteForce();
+        } else {
+            if (state.solve_stats.solution_count === -2) {
+                return {solution_count: state.solve_stats.solution_count};
+            }
+            else {
+                state.solve_stats.solution_count = -1;  // 设置特殊标记值
+                // log_process("暴力求解被禁用，无法继续求解。");
+                return {solution_count: state.solve_stats.solution_count};  // 提前返回防止后续覆盖
+                
+            }
+        }
     }
 
     // 恢复日志函数
@@ -441,7 +449,7 @@ function solve_By_Logic() {
         return { isSolved: true, technique_counts, total_score };
     }
 
-    if (!state.silentMode) log_process("4...当前候选数数独无法通过逻辑推理完全解出，尝试暴力求解...");
+    if (!state.silentMode) log_process("4...当前候选数数独无法通过逻辑推理完全解出，请尝试暴力求解...");
     return { isSolved: false, technique_counts, total_score };
 }
 

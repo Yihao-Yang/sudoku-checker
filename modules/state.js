@@ -39,6 +39,7 @@ export function set_current_mode(mode) {
         'window',
         'pyramid',
         'extra_region',
+        'exclusion',
     ].includes(mode)) {
         state.current_mode = mode;
     } else {

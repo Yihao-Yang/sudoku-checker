@@ -23,6 +23,7 @@ import {
 import { state } from './modules/state.js';
 import { generate_multi_diagonal_puzzle } from './modules/multi_diagonal.js'; 
 import { generate_extra_region_puzzle } from './modules/extra_region.js';
+import { generate_exclusion_puzzle } from './modules/exclusion.js';
 
 function initializeEventHandlers() {
     const fourGridBtn = document.getElementById('fourGrid');
@@ -171,6 +172,8 @@ document.addEventListener('input', function(e) {
                 generate_multi_diagonal_puzzle(state.current_grid_size, score_lower_limit, holes_count);
             } else if (state.current_mode === 'extra_region') {
                 generate_extra_region_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+            } else if (state.current_mode === 'exclusion') {
+                generate_exclusion_puzzle(state.current_grid_size, score_lower_limit, holes_count);
             } else {
                 generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
             }

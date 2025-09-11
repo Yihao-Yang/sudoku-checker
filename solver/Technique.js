@@ -49,8 +49,8 @@ export function solve_By_Elimination(board, size) {
     // 技巧分值表
     const technique_scores = {
         // 唯余法分值细分，行列排除法分值细分，变型排除法分值细分
-        "唯余法_1": 0,
-        "唯余法_2": 1,
+        "唯余法_1": 1,
+        "唯余法_2": 2,
         "唯余法_3": 5,
         "唯余法_4": 30,
         "唯余法_5": 50,
@@ -58,8 +58,8 @@ export function solve_By_Elimination(board, size) {
         "唯余法_7": 90,
         "唯余法_8": 100,
         "唯余法_9": 110,
-        "行列排除_1": 0,
-        "行列排除_2": 1,
+        "行列排除_1": 1,
+        "行列排除_2": 2,
         "行列排除_3": 5,
         "行列排除_4": 30,
         "行列排除_5": 50,
@@ -92,7 +92,7 @@ export function solve_By_Elimination(board, size) {
         "宫显性数对": 80,
         "行列显性数对": 90,
         "变型显性数对": 120,
-        "行列隐性数对": 200,
+        "行列隐性数对": 20000,
         "宫显性三数组": 250,
         "行列显性三数组": 300,
         "变型显性三数组": 340,
@@ -1976,8 +1976,10 @@ function region_naked_subset_elimination(board, size, region_cells, subset_size,
             candidates.push({ pos: [r, c], nums: [...cell] });
         }
     }
+    // 只保留候选数少于或等于 subset_size 的格子
+    const filtered_candidates = candidates.filter(c => c.nums.length <= subset_size);
     // 枚举所有 subset_size 个格子的组合
-    const combinations = getCombinations(candidates, subset_size);
+    const combinations = getCombinations(filtered_candidates, subset_size);
 
     for (const combo of combinations) {
         // 合并所有候选数
@@ -2114,7 +2116,14 @@ function region_hidden_subset_elimination(board, size, region_cells, subset_size
     }
     // 检查所有数字组合
     const nums = Array.from({length: size}, (_, i) => i + 1);
-    const num_combinations = getCombinations(nums, subset_size);
+    const filtered_nums = nums.filter(num => {
+        let count = 0;
+        for (const [r, c] of candidate_cells) {
+            if (board[r][c].includes(num)) count++;
+        }
+        return count <= subset_size && count > 0;
+    });
+    const num_combinations = getCombinations(filtered_nums, subset_size);
 
     for (const num_group of num_combinations) {
         // 统计这些数字在哪些格子中出现
@@ -2126,15 +2135,15 @@ function region_hidden_subset_elimination(board, size, region_cells, subset_size
         }
         // 只出现在 subset_size 个格子中
         if (positions.length === subset_size) {
-            // 检查这些格子是否都包含这些数字（可选，严格可不加）
-            let is_subset = true;
-            for (const [r, c] of positions) {
-                if (!num_group.every(n => board[r][c].includes(n))) {
-                    is_subset = false;
-                    break;
-                }
-            }
-            if (is_subset) {
+            // // 检查这些格子是否都包含这些数字（可选，严格可不加）
+            // let is_subset = true;
+            // for (const [r, c] of positions) {
+            //     if (!num_group.every(n => board[r][c].includes(n))) {
+            //         is_subset = false;
+            //         break;
+            //     }
+            // }
+            // if (is_subset) {
                 let modified = false;
                 let deleted_cells = [];
                 let deleted_detail = [];
@@ -2188,7 +2197,7 @@ function region_hidden_subset_elimination(board, size, region_cells, subset_size
                     }
                     return true;
                 }
-            }
+            // }
         }
     }
     return has_conflict;

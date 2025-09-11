@@ -8,6 +8,7 @@ import { create_missing_sudoku } from './missing.js';
 import { create_window_sudoku } from './window.js';
 import { create_pyramid_sudoku } from './pyramid.js';
 import { create_extra_region_sudoku } from './extra_region.js';
+import { create_exclusion_sudoku, apply_exclusion_marks } from './exclusion.js';
 import { state, set_current_mode } from './state.js';
 import { 
     show_result, 
@@ -250,6 +251,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('连续', () => create_consecutive_sudoku(4));
         add_Extra_Button('缺一门', () => create_missing_sudoku(4));
         add_Extra_Button('额外区域', () => create_extra_region_sudoku(4));
+        add_Extra_Button('排除', () => create_exclusion_sudoku(4));
     } else if (size === 6) {
         add_Extra_Button('乘积', () => show_result('这是六宫乘积的功能！(待实现)'));
         add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(6));
@@ -259,6 +261,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('连续', () => create_consecutive_sudoku(6));
         add_Extra_Button('缺一门', () => create_missing_sudoku(6));
         add_Extra_Button('额外区域', () => create_extra_region_sudoku(6));
+        add_Extra_Button('排除', () => create_exclusion_sudoku(6));
     } else if (size === 9) {
         add_Extra_Button('乘积', () => show_result('这是九宫乘积的功能！(待实现)'));
         add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(9));
@@ -271,6 +274,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('窗口', () => create_window_sudoku(9));
         add_Extra_Button('金字塔', () => create_pyramid_sudoku(9));
         add_Extra_Button('额外区域', () => create_extra_region_sudoku(9));
+        add_Extra_Button('排除', () => create_exclusion_sudoku(9));
     }
 }
 
@@ -530,6 +534,7 @@ export function check_uniqueness() {
     const container = document.querySelector('.sudoku-container');
     const size = state.current_grid_size;
 
+
     // 备份当前题目状态
     backup_original_board();
     
@@ -538,17 +543,28 @@ export function check_uniqueness() {
         Array.from({ length: size }, (_, j) => {
             const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
             const val = parseInt(input.value);
-            
-            // // 如果是候选数模式且有候选数，则返回候选数数组，否则返回单个数字或0
-            // if (state.is_candidates_mode && input.value.length > 1) {
-            //     return [...new Set(input.value.split('').map(Number))].filter(n => n >= 1 && n <= size);
-            // }
+
+            // 如果是候选数模式且有候选数，则返回候选数数组，否则返回单个数字或0
+            if (state.is_candidates_mode && input.value.length > 1) {
+                return [...new Set(input.value.split('').map(Number))].filter(n => n >= 1 && n <= size);
+            }
             return isNaN(val) ? Array.from({length: size}, (_, n) => n + 1) : val;
         })
     );
+// 新增：应用排除标记
+    // if (state.current_mode === 'exclusion') {
+    //     apply_exclusion_marks(board, size);
+    // }
+    // log_process('初始数独状态：');
+    // log_process(board.map(row => row.map(cell => Array.isArray(cell) ? `{${cell.join('')}}` : cell).join(' ')).join('\n'));
+    // log_process('-----------------------');
 
-
-    const { solution_count, solution } = solve(board, size, isValid); // 调用主求解函数
+    // 判断当前模式，选择不同的有效性检测函数
+    let valid_func = isValid;
+    // if (state.current_mode === 'exclusion') {
+    //     valid_func = isValid_exclusion;
+    // }
+    const { solution_count, solution } = solve(board, size, valid_func); // 调用主求解函数
     state.solve_stats.solution_count = solution_count;
 
 
@@ -594,5 +610,5 @@ export function check_uniqueness() {
         show_result(`当前数独有${state.solve_stats.solution_count}个解！`);
     }
 
-    // show_logical_solution();
+    show_logical_solution();
 }
