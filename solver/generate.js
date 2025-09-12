@@ -1,7 +1,8 @@
 import { solve, isValid, eliminate_candidates } from './solver_tool.js';
 import { log_process,backup_original_board,show_result, restore_original_board, clear_all_inputs} from '../modules/core.js';
 import { state } from '../modules/state.js';
-import { isValid_exclusion } from '../modules/exclusion.js';
+import { is_valid_exclusion } from '../modules/exclusion.js';
+import { is_valid_quadruple } from '../modules/quadruple.js';
 // import { isValid_multi_diagonal } from '../modules/multi_diagonal.js';
 // import { isValid_diagonal } from '../modules/diagonal.js';
 
@@ -394,7 +395,9 @@ export function generate_solution(size) {
     // 判断当前模式，选择不同的有效性检测函数
     let valid_func = isValid;
     if (state.current_mode === 'exclusion') {
-        valid_func = isValid_exclusion;
+        valid_func = is_valid_exclusion;
+    } else if (state.current_mode === 'quadruple') {
+        valid_func = is_valid_quadruple;
     }
     // 回溯填充数字
     function backtrack() {

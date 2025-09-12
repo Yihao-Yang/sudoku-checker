@@ -3,7 +3,8 @@ import { solve_By_Elimination } from "./Technique.js";
 import { state } from "../modules/state.js";
 import { get_all_mark_lines, get_cells_on_line } from "../modules/multi_diagonal.js";
 import { get_extra_region_cells } from '../modules/extra_region.js';
-import { apply_exclusion_marks } from "../modules/exclusion.js";
+import { apply_exclusion_marks, is_valid_exclusion } from "../modules/exclusion.js";
+import { apply_quadruple_marks, is_valid_quadruple } from "../modules/quadruple.js";
 
 /**
  * 从所有相关区域移除指定数字的候选数
@@ -18,7 +19,43 @@ export function eliminate_candidates(board, size, i, j, num, calc_score = true) 
     const related_regions = regions.filter(region =>
         region.cells.some(([r, c]) => r === i && c === j)
     );
+
     for (const region of related_regions) {
+        // 针对有重复四格提示区域，特殊处理
+        if (region.type === '有重复四格提示' && Array.isArray(region.clue_nums)) {
+            // log_process(`处理特定组合区域 ${region.index} (${region.type}) 的候选数排除`);
+            // 统计该区域内已填入num的数量
+            let filledCount = 0;
+            for (const [r, c] of region.cells) {
+                if (board[r][c] === num) filledCount++;
+            }
+            // 统计提示数中num的数量
+            const clueCount = region.clue_nums.filter(n => n === num).length;
+            // 如果已填数量达到提示数量，则删去剩余格子的候选
+            if (filledCount >= clueCount) {
+                for (const [r, c] of region.cells) {
+                    if (Array.isArray(board[r][c])) {
+                        if (calc_score) {
+                            const key = `${r},${c},${num}`;
+                            if (!state.candidate_elimination_score[key]) {
+                                state.candidate_elimination_score[key] = 0;
+                            }
+                            state.candidate_elimination_score[key] += 1;
+                        }
+                        const before = board[r][c].slice();
+                        board[r][c] = board[r][c].filter(candidate_num => candidate_num !== num);
+                        const eliminated = before.filter(candidate_num => candidate_num === num);
+                        if (eliminated.length > 0) {
+                            eliminations.push({ row: r, col: c, eliminated });
+                        }
+                        // log_process(`候选数消除分值: [${getRowLetter(r+1)}${c+1}] 候选${num} -> 分值=${state.candidate_elimination_score[key]}`);
+                    }
+                }
+                continue; // 已处理该区域，跳过后续处理
+            }
+            // 如果未达到提示数量，则不删候选
+            continue;
+        }
         for (const [r, c] of region.cells) {
             if (Array.isArray(board[r][c])) {
                 // 新增：无论是否真的被消除，都加分
@@ -46,12 +83,7 @@ export function eliminate_candidates(board, size, i, j, num, calc_score = true) 
     return eliminations;
 }
 
-/**
- * 获取所有区域（宫、行、列、对角线）格子坐标
- * @param {number} size - 盘面大小
- * @param {string} mode - 模式，可选 'classic' | 'diagonal' | 'missing'
- * @returns {Array<{type: string, index: number, cells: Array<[number, number]>}>}
- */
+// 获取所有区域（宫、行、列、对角线、额外区域）格子坐标
 export function get_all_regions(size, mode = 'classic') {
     const regions = [];
     const box_size = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
@@ -263,6 +295,113 @@ export function get_all_regions(size, mode = 'classic') {
             }
         }
     }
+    // 新增：四格提示数独的圆圈区域
+    if (mode === 'quadruple') {
+        const container = document.querySelector('.sudoku-container');
+        let idx = 1;
+        if (container) {
+            const marks = container.querySelectorAll('.vx-mark');
+            for (const mark of marks) {
+                const left = parseInt(mark.style.left);
+                const top = parseInt(mark.style.top);
+
+                const grid = container.querySelector('.sudoku-grid');
+                const grid_offset_left = grid.offsetLeft;
+                const grid_offset_top = grid.offsetTop;
+                const cell_width = grid.offsetWidth / size;
+                const cell_height = grid.offsetHeight / size;
+
+                const col_mark = Math.round((left - grid_offset_left + 15) / cell_width);
+                const row_mark = Math.round((top - grid_offset_top + 15) / cell_height);
+
+                // 四个相邻格子的坐标
+                const positions = [
+                    [row_mark - 1, col_mark - 1],
+                    [row_mark - 1, col_mark],
+                    [row_mark, col_mark - 1],
+                    [row_mark, col_mark]
+                ];
+
+                // 只加入有效区域
+                const valid_positions = positions.filter(([r, c]) =>
+                    r >= 0 && r < size && c >= 0 && c < size
+                );
+                if (valid_positions.length === 4) {
+                    // 获取圆圈内的数字
+                    const input = mark.querySelector('input');
+                    let nums = [];
+                    if (input && input.value) {
+                        nums = input.value.split('').map(Number).filter(n => !isNaN(n));
+                    }
+                    // 判断是否有重复
+                    const has_duplicate = nums.length !== new Set(nums).size;
+                    regions.push({
+                        type: has_duplicate ? '有重复四格提示' : '无重复四格提示',
+                        index: idx++,
+                        cells: valid_positions,
+                        clue_nums: nums
+                    });
+                }
+            }
+        }
+    }
+    return regions;
+}
+
+// 获取所有特定组合区域（如四格提示区域）
+export function get_special_combination_regions(size, mode = 'classic') {
+    const regions = [];
+    if (mode === 'quadruple') {
+        const container = document.querySelector('.sudoku-container');
+        if (container) {
+            const marks = container.querySelectorAll('.vx-mark');
+            let region_index = 1;
+            for (const mark of marks) {
+                const left = parseInt(mark.style.left);
+                const top = parseInt(mark.style.top);
+
+                const grid = container.querySelector('.sudoku-grid');
+                const grid_offset_left = grid.offsetLeft;
+                const grid_offset_top = grid.offsetTop;
+                const cell_width = grid.offsetWidth / size;
+                const cell_height = grid.offsetHeight / size;
+
+                const col_mark = Math.round((left - grid_offset_left + 15) / cell_width);
+                const row_mark = Math.round((top - grid_offset_top + 15) / cell_height);
+
+                // 四个相邻格子的坐标
+                const positions = [
+                    [row_mark - 1, col_mark - 1],
+                    [row_mark - 1, col_mark],
+                    [row_mark, col_mark - 1],
+                    [row_mark, col_mark]
+                ];
+
+                // 只加入有效区域
+                const valid_positions = positions.filter(([r, c]) =>
+                    r >= 0 && r < size && c >= 0 && c < size
+                );
+                if (valid_positions.length === 4) {
+                    // 获取圆圈内的数字
+                    const input = mark.querySelector('input');
+                    let nums = [];
+                    if (input && input.value) {
+                        nums = input.value.split('').map(Number).filter(n => !isNaN(n));
+                    }
+                    // 判断是否有重复
+                    const has_duplicate = nums.length !== new Set(nums).size;
+                    if (has_duplicate) {
+                        regions.push({
+                            type: '特定组合区域',
+                            index: region_index++,
+                            cells: valid_positions,
+                            clue_nums: nums
+                        });
+                    }
+                }
+            }
+        }
+    }
     return regions;
 }
 
@@ -331,8 +470,12 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
     // 新增：排除数独自动应用排除标记
     if (state.current_mode === 'exclusion') {
         apply_exclusion_marks(board, size);
+        isValid = is_valid_exclusion;
+    } else if (state.current_mode === 'quadruple') {
+        apply_quadruple_marks(board, size);
+        isValid = is_valid_quadruple;
     }
-
+    // 初始化候选数板
     for (let i = 0; i < size; i++) {
         for (let j = 0; j < size; j++) {
             const cell = board[i][j];
