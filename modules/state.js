@@ -40,6 +40,7 @@ export function set_current_mode(mode) {
         'pyramid',
         'extra_region',
         'exclusion',
+        'quadruple',
     ].includes(mode)) {
         state.current_mode = mode;
     } else {

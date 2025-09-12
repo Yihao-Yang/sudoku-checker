@@ -24,6 +24,9 @@ import { state } from './modules/state.js';
 import { generate_multi_diagonal_puzzle } from './modules/multi_diagonal.js'; 
 import { generate_extra_region_puzzle } from './modules/extra_region.js';
 import { generate_exclusion_puzzle } from './modules/exclusion.js';
+import { generate_quadruple_puzzle } from './modules/quadruple.js';
+
+// 初始化事件处理程序
 
 function initializeEventHandlers() {
     const fourGridBtn = document.getElementById('fourGrid');
@@ -174,6 +177,8 @@ document.addEventListener('input', function(e) {
                 generate_extra_region_puzzle(state.current_grid_size, score_lower_limit, holes_count);
             } else if (state.current_mode === 'exclusion') {
                 generate_exclusion_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+            } else if (state.current_mode === 'quadruple') {
+                generate_quadruple_puzzle(state.current_grid_size, score_lower_limit, holes_count);
             } else {
                 generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
             }

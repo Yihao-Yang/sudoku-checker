@@ -1,40 +1,50 @@
+// quadruple.js
 import { state, set_current_mode } from './state.js';
-import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell } from './core.js';
-import { solve, isValid, get_all_regions } from '../solver/solver_tool.js';
-import { create_technique_panel } from './classic.js';
+import { create_base_grid, create_base_cell, add_Extra_Button, log_process, backup_original_board, restore_original_board, handle_key_navigation } from './core.js';
 import { generate_puzzle } from '../solver/generate.js';
+import { get_all_regions, solve } from '../solver/solver_tool.js';
+import { create_technique_panel } from './classic.js';
 
-// 排除数独主入口
-export function create_exclusion_sudoku(size) {
-    set_current_mode('exclusion');
+// 四数独主入口
+export function create_quadruple_sudoku(size) {
+    set_current_mode('quadruple');
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
 
-    // 技巧设置（可根据具体规则调整）
-    state.techniqueSettings = {
-        Box_Elimination: true,
-        Row_Col_Elimination: true,
-        Box_Block: true,
-        Box_Pair_Block: true,
-        Row_Col_Block: true,
-        Box_Naked_Pair: true,
-        Row_Col_Naked_Pair: true,
-        Box_Hidden_Pair: true,
-        Row_Col_Hidden_Pair: true,
-        Box_Naked_Triple: true,
-        Row_Col_Naked_Triple: true,
-        Box_Hidden_Triple: true,
-        Row_Col_Hidden_Triple: true,
-        All_Quad: false,
-        Cell_Elimination: true,
-        Brute_Force: false,
-    };
-    for (let i = 1; i <= 9; i++) {
-        state.techniqueSettings[`Cell_Elimination_${i}`] = true;
-    }
+    // 修改技巧开关
+        state.techniqueSettings = {
+            Box_Elimination: true,
+            Row_Col_Elimination: true,
+            Box_Block: true,
+            Box_Pair_Block: true,
+            Row_Col_Block: true,
+            Box_Naked_Pair: true,
+            Row_Col_Naked_Pair: true,
+            Box_Hidden_Pair: true,
+            Row_Col_Hidden_Pair: true,
+            Box_Naked_Triple: true,
+            Row_Col_Naked_Triple: true,
+            Box_Hidden_Triple: true,
+            Row_Col_Hidden_Triple: true,
+            All_Quad: false,
+            Cell_Elimination: true,
+            Brute_Force: false,
+            Special_Combination_Region_Elimination: true, // 新增特定组合区域排除
+            Variant_Elimination: true,
+            Variant_Block: true,
+            Variant_Pair_Block: true,
+            Special_Combination_Region_Block: true, // 新增特定组合区块
+            Variant_Hidden_Pair: true,
+            Variant_Hidden_Triple: true
+        };
+        // 唯余法全部默认开启
+        for (let i = 1; i <= 9; i++) {
+            state.techniqueSettings[`Cell_Elimination_${i}`] = true;
+        }
 
-    create_technique_panel();
+        // 刷新技巧面板
+        create_technique_panel();
 
     // 创建基础数独盘面
     const { container, grid } = create_base_grid(size);
@@ -46,14 +56,11 @@ export function create_exclusion_sudoku(size) {
 
         const { cell, main_input, candidates_grid } = create_base_cell(row, col, size);
 
-        // cell.classList.add('exclusion-mode');
-
         cell.appendChild(main_input);
         cell.appendChild(candidates_grid);
         grid.appendChild(cell);
         inputs[row][col] = main_input;
 
-        // 输入事件处理
         main_input.addEventListener('input', function() {
             const max_value = size;
             const regex = new RegExp(`[^1-${max_value}]`, 'g');
@@ -66,26 +73,23 @@ export function create_exclusion_sudoku(size) {
         main_input.addEventListener('keydown', function(e) {
             handle_key_navigation(e, row, col, size, inputs);
         });
-
-        // 可根据排除数独规则高亮或标记
-        // TODO: exclusion-specific cell marking
+        
     }
 
     container.appendChild(grid);
     gridDisplay.appendChild(container);
 
-    // 添加标记功能
-    add_exclusion_mark(size);
+    // 添加四数独圆圈功能
+    add_quadruple_mark(size);
 
-    // 排除数独专属按钮
+    // 四数独专属按钮
     const extra_buttons = document.getElementById('extraButtons');
     extra_buttons.innerHTML = '';
-    add_Extra_Button('自动出题', () => generate_exclusion_puzzle(size), '#2196F3');
-    // add_Extra_Button('隐藏答案', restore_original_board, '#2196F3');
+    add_Extra_Button('自动出题', () => generate_quadruple_puzzle(size), '#2196F3');
 }
 
-// 自动生成排除数独题目（生成圆圈并调用generate_puzzle）
-export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
+// 自动生成四数独题目
+export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
     // 清除已有圆圈
     const container = document.querySelector('.sudoku-container');
     if (!container) return;
@@ -164,7 +168,7 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
             }
             // 调用solve
             backup_original_board();
-            const result = solve(board.map(r => r.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), size, is_valid_exclusion, true);
+            const result = solve(board.map(r => r.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), size, is_valid_quadruple, true);
             // log_process(`尝试添加圆圈位置：(${row},${col}) 和 (${sym_row},${sym_col})，解的数量：${result.solution_count}`);
             if (result.solution_count === 0 || result.solution_count === -2) {
                 // log_process('当前圆圈位置无解，重新生成');
@@ -205,7 +209,7 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
             }
             // 调用solve
             backup_original_board();
-            const result = solve(board.map(r => r.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), size, is_valid_exclusion, true);
+            const result = solve(board.map(r => r.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), size, is_valid_quadruple, true);
             // log_process(`尝试添加圆圈 at (${row},${col})，解数：${result.solution_count}`);
             if (result.solution_count === 0 || result.solution_count === -2) {
                 // log_process('当前圆圈位置无解，重新生成');
@@ -246,14 +250,15 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
         const mark = document.createElement('div');
         mark.className = 'vx-mark';
         mark.style.position = 'absolute';
-        mark.style.left = `${gridOffsetLeft + crossX - 15}px`;
+        mark.style.left = `${gridOffsetLeft + crossX - 30}px`;
         mark.style.top = `${gridOffsetTop + crossY - 15}px`;
+        mark.style.width = '60px';
 
         const input = document.createElement('input');
         input.type = 'text';
-        input.maxLength = 1;
+        input.maxLength = 4;
         input.value = Math.floor(Math.random() * size) + 1;
-        input.style.width = '28px';
+        input.style.width = '60px';
         input.style.height = '28px';
         input.style.fontSize = '22px';
         input.style.textAlign = 'center';
@@ -266,13 +271,32 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
         input.style.transform = 'translate(-50%, -50%)';
         input.style.color = '#333';
 
+        // 随机生成4个数字，可以重复，但每个数字最多出现两次
+        let nums = [];
+        let count_map = {};
+        for (let i = 0; i < 4; i++) {
+            let pool = [];
+            for (let n = 1; n <= size; n++) {
+                if (!count_map[n] || count_map[n] < 2) {
+                    pool.push(n);
+                }
+            }
+            let idx = Math.floor(Math.random() * pool.length);
+            let chosen = pool[idx];
+            nums.push(chosen);
+            count_map[chosen] = (count_map[chosen] || 0) + 1;
+        }
+        // 新增：排序
+        nums.sort((a, b) => a - b);
+        input.value = nums.join('');
+
         mark.appendChild(input);
         container.appendChild(mark);
     }
 }
 
-// 添加排除标记功能
-function add_exclusion_mark(size) {
+// 添加四数独圆圈标记
+function add_quadruple_mark(size) {
     const grid = document.querySelector('.sudoku-grid');
     if (!grid) return;
 
@@ -315,14 +339,15 @@ function add_exclusion_mark(size) {
         const mark = document.createElement('div');
         mark.className = 'vx-mark';
         mark.style.position = 'absolute';
-        mark.style.left = `${gridOffsetLeft + crossX - 15}px`;
+        mark.style.left = `${gridOffsetLeft + crossX - 30}px`;
         mark.style.top = `${gridOffsetTop + crossY - 15}px`;
+        mark.style.width = '60px';
 
         // 创建数字输入框
         const input = document.createElement('input');
         input.type = 'text';
-        input.maxLength = 1;
-        input.style.width = '28px';
+        input.maxLength = 4;
+        input.style.width = '60px';
         input.style.height = '28px';
         input.style.fontSize = '22px';
         input.style.textAlign = 'center';
@@ -359,8 +384,8 @@ function add_exclusion_mark(size) {
 
 }
 
-// 新增：应用所有排除标记，移除交点四格的候选数
-export function apply_exclusion_marks(board, size) {
+// 应用所有四数独圆圈约束
+export function apply_quadruple_marks(board, size) {
     const container = document.querySelector('.sudoku-container');
     const marks = container ? container.querySelectorAll('.vx-mark') : [];
     for (const mark of marks) {
@@ -368,7 +393,7 @@ export function apply_exclusion_marks(board, size) {
         const value = input && input.value.trim();
         if (!value || !/^\d+$/.test(value)) continue;
         // 支持多个数字
-        const excluded_nums = value.split('').map(Number);
+        const included_nums = value.split('').map(Number);
 
         const left = parseInt(mark.style.left);
         const top = parseInt(mark.style.top);
@@ -394,7 +419,7 @@ export function apply_exclusion_marks(board, size) {
             if (r >= 0 && r < size && c >= 0 && c < size) {
                 // 只处理候选数数组
                 if (Array.isArray(board[r][c])) {
-                    board[r][c] = board[r][c].filter(n => !excluded_nums.includes(n));
+                    board[r][c] = board[r][c].filter(n => included_nums.includes(n));
                 }
             }
         }
@@ -402,12 +427,12 @@ export function apply_exclusion_marks(board, size) {
 }
 
 // 排除数独有效性检测函数
-export function is_valid_exclusion(board, size, row, col, num) {
+export function is_valid_quadruple(board, size, row, col, num) {
     // 1. 常规区域判断（与普通数独一致）
-    const mode = state.current_mode || 'exclusion';
+    const mode = state.current_mode || 'quadruple';
     const regions = get_all_regions(size, mode);
     for (const region of regions) {
-        if (region.cells.some(([r, c]) => r === row && c === col)) {
+        if (region.cells.some(([r, c]) => r === row && c === col) && region.type !== '有重复四格提示') {
             for (const [r, c] of region.cells) {
                 if ((r !== row || c !== col) && board[r][c] === num) {
                     return false;
@@ -423,7 +448,8 @@ export function is_valid_exclusion(board, size, row, col, num) {
         const input = mark.querySelector('input');
         const value = input && input.value.trim();
         if (!value || !/^\d+$/.test(value)) continue;
-        const excluded_num = parseInt(value);
+        // 支持多个数字
+        const included_nums = value.split('').map(Number);
 
         // 计算交点对应的行列
         const left = parseInt(mark.style.left);
@@ -446,9 +472,37 @@ export function is_valid_exclusion(board, size, row, col, num) {
             [row_mark, col_mark]
         ];
 
-        // 如果当前格子在交点四格内，且填入被排除数字，则不合法
+        // 判断当前格子是否在交点四格内
+        let in_quad = false;
         for (const [r, c] of positions) {
-            if (r === row && c === col && num === excluded_num) {
+            if (r === row && c === col) {
+                in_quad = true;
+                break;
+            }
+        }
+        if (!in_quad) continue;
+
+        // 统计交点四格已填入的数字
+        let filled_nums = [];
+        for (const [r, c] of positions) {
+            if (r >= 0 && r < size && c >= 0 && c < size) {
+                let cell_value = (r === row && c === col) ? num : board[r][c];
+                if (typeof cell_value === 'number' && cell_value !== 0) {
+                    filled_nums.push(cell_value);
+                }
+            }
+        }
+
+        // 检查所有已填数字都在提示数中
+        if (filled_nums.some(n => !included_nums.includes(n))) {
+            return false;
+        }
+
+        // 检查每个数字填入的数量不能超过提示数中该数字的数量
+        for (let n of included_nums) {
+            const count_in_hint = included_nums.filter(x => x === n).length;
+            const count_in_filled = filled_nums.filter(x => x === n).length;
+            if (count_in_filled > count_in_hint) {
                 return false;
             }
         }

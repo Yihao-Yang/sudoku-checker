@@ -8,7 +8,8 @@ import { create_missing_sudoku } from './missing.js';
 import { create_window_sudoku } from './window.js';
 import { create_pyramid_sudoku } from './pyramid.js';
 import { create_extra_region_sudoku } from './extra_region.js';
-import { create_exclusion_sudoku, apply_exclusion_marks } from './exclusion.js';
+import { create_exclusion_sudoku, apply_exclusion_marks, is_valid_exclusion } from './exclusion.js';
+import { create_quadruple_sudoku, is_valid_quadruple } from './quadruple.js';
 import { state, set_current_mode } from './state.js';
 import { 
     show_result, 
@@ -252,6 +253,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('缺一门', () => create_missing_sudoku(4));
         add_Extra_Button('额外区域', () => create_extra_region_sudoku(4));
         add_Extra_Button('排除', () => create_exclusion_sudoku(4));
+        // add_Extra_Button('四格提示', () => create_quadruple_sudoku(4));
     } else if (size === 6) {
         add_Extra_Button('乘积', () => show_result('这是六宫乘积的功能！(待实现)'));
         add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(6));
@@ -262,6 +264,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('缺一门', () => create_missing_sudoku(6));
         add_Extra_Button('额外区域', () => create_extra_region_sudoku(6));
         add_Extra_Button('排除', () => create_exclusion_sudoku(6));
+        add_Extra_Button('四格提示', () => create_quadruple_sudoku(6));
     } else if (size === 9) {
         add_Extra_Button('乘积', () => show_result('这是九宫乘积的功能！(待实现)'));
         add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(9));
@@ -275,6 +278,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('金字塔', () => create_pyramid_sudoku(9));
         add_Extra_Button('额外区域', () => create_extra_region_sudoku(9));
         add_Extra_Button('排除', () => create_exclusion_sudoku(9));
+        add_Extra_Button('四格提示', () => create_quadruple_sudoku(9));
     }
 }
 
@@ -313,7 +317,8 @@ export function create_technique_panel() {
                 { id: 'Box_Elimination', name: '宫排除', default: true },
                 { id: 'Box_One_Cut', name: '一刀流宫排除', default: true },
                 { id: 'Row_Col_Elimination', name: '行列排除', default: true },
-                { id: 'Variant_Elimination', name: '变型排除', default: true }
+                { id: 'Variant_Elimination', name: '变型排除', default: false },
+                { id: 'Special_Combination_Region_Elimination', name: '特定组合排除', default: false }
             ]
         },
         {
@@ -322,9 +327,10 @@ export function create_technique_panel() {
             { id: 'Box_Block', name: '宫区块', default: true },
             { id: 'Box_Block_One_Cut', name: '一刀流宫区块', default: true },
             { id: 'Box_Pair_Block', name: '宫组合区块', default: true },
-            { id: 'Variant_Pair_Block', name: '变型组合区块', default: true },
+            { id: 'Variant_Pair_Block', name: '变型组合区块', default: false },
             { id: 'Row_Col_Block', name: '行列区块', default: true },
-            { id: 'Variant_Block', name: '变型区块', default: true }
+            { id: 'Variant_Block', name: '变型区块', default: false },
+            { id: 'Special_Combination_Region_Block', name: '特定组合区块', default: false } // 新增特定组合区块
         ]
         },
         {
@@ -561,9 +567,6 @@ export function check_uniqueness() {
 
     // 判断当前模式，选择不同的有效性检测函数
     let valid_func = isValid;
-    // if (state.current_mode === 'exclusion') {
-    //     valid_func = isValid_exclusion;
-    // }
     const { solution_count, solution } = solve(board, size, valid_func); // 调用主求解函数
     state.solve_stats.solution_count = solution_count;
 

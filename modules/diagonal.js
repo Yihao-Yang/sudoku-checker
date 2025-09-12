@@ -14,19 +14,19 @@ export function create_diagonal_sudoku(size) {
     state.techniqueSettings = {
         Box_Elimination: true,
         Row_Col_Elimination: true,
-        Box_Block: true,        // 
+        Box_Block: true,
         Box_Pair_Block: true,
-        Row_Col_Block: true,    // 
-        Box_Naked_Pair: true,   // 
-        Row_Col_Naked_Pair: true, // 
-        Box_Hidden_Pair: true,  // 
-        Row_Col_Hidden_Pair: true, // 
-        Box_Naked_Triple: true, // 
-        Row_Col_Naked_Triple: true, // 
-        Box_Hidden_Triple: true, // 
-        Row_Col_Hidden_Triple: true, // 
-        All_Quad: false,         // 
-        Cell_Elimination: true,  // 
+        Row_Col_Block: true,
+        Box_Naked_Pair: true,
+        Row_Col_Naked_Pair: true,
+        Box_Hidden_Pair: true,
+        Row_Col_Hidden_Pair: true,
+        Box_Naked_Triple: true,
+        Row_Col_Naked_Triple: true,
+        Box_Hidden_Triple: true,
+        Row_Col_Hidden_Triple: true,
+        All_Quad: false,
+        Cell_Elimination: true,
         Brute_Force: false,
         Variant_Elimination: true,
         Variant_Block: true,
