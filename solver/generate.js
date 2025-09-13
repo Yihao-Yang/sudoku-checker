@@ -220,8 +220,32 @@ export function generate_solution(sudoku_size, existing_numbers = null) {
         isValid,
         true
     );
+    // 用逻辑解更新候选数
+    if (result.solution_count === 1) {
+        // 找到唯一解，直接填充整个棋盘
+        for (let i = 0; i < sudoku_size; i++) {
+            for (let j = 0; j < sudoku_size; j++) {
+                sudoku_board[i][j] = [result.solution[i][j]];
+            }
+        }
+        return true;
+    } else {
+        // 更新逻辑解
+        if (state.logical_solution) {
+            for (let i = 0; i < sudoku_size; i++) {
+                for (let j = 0; j < sudoku_size; j++) {
+                    if (Array.isArray(state.logical_solution[i][j])) {
+                        sudoku_board[i][j] = [...state.logical_solution[i][j]];
+                    } else {
+                        sudoku_board[i][j] = state.logical_solution[i][j];
+                    }
+                }
+            }
+        }
+    }
+
     if (state.solve_stats.total_score >= best_score) {
-        // log_process(`当前分值: ${state.solve_stats.total_score} >= ${best_score}`);
+        log_process(`当前分值: ${state.solve_stats.total_score} >= ${best_score}`);
         best_score = state.solve_stats.total_score;
     }
 
@@ -345,32 +369,6 @@ export function generate_solution(sudoku_size, existing_numbers = null) {
             }
 
             return backtrack(cell_index + 1);
-            // 如果所有候选数都尝试过但没有找到更好的解，检查是否有备选方案
-            if (!found_valid && second_best_solution) {
-                log_process(`所有尝试均未超过最高分值${best_score}，采用备选方案，分值: ${second_best_score}`);
-                best_score = second_best_score;
-                
-                // 应用备选方案
-                second_best_solution.forEach((row, i) => {
-                    row.forEach((value, j) => {
-                        sudoku_board[i][j] = [value];
-                    });
-                });
-                
-                // 恢复主动给数
-                given_numbers = [...second_best_given_numbers];
-                log_process(`备选方案的主动给数: ${given_numbers.map(item => `[${item.row+1},${item.col+1}]=${item.num}`).join(' ')}`);
-                
-                // 重置备选方案记录
-                second_best_solution = null;
-                second_best_score = -1;
-                second_best_given_numbers = null;
-                
-                // 继续回溯
-                return backtrack(cell_index + 1);
-            }
-            
-            return false;
         } else {
             // 已确定，递归下一个
             return backtrack(cell_index + 1);

@@ -25,6 +25,8 @@ import { generate_multi_diagonal_puzzle } from './modules/multi_diagonal.js';
 import { generate_extra_region_puzzle } from './modules/extra_region.js';
 import { generate_exclusion_puzzle } from './modules/exclusion.js';
 import { generate_quadruple_puzzle } from './modules/quadruple.js';
+import { generate_odd_puzzle } from './modules/odd.js';
+import { generate_odd_even_puzzle } from './modules/odd_even.js';
 
 // 初始化事件处理程序
 
@@ -179,6 +181,10 @@ document.addEventListener('input', function(e) {
                 generate_exclusion_puzzle(state.current_grid_size, score_lower_limit, holes_count);
             } else if (state.current_mode === 'quadruple') {
                 generate_quadruple_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+            } else if (state.current_mode === 'odd') {
+                generate_odd_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+            } else if (state.current_mode === 'odd_even') {
+                generate_odd_even_puzzle(state.current_grid_size, score_lower_limit, holes_count);
             } else {
                 generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
             }

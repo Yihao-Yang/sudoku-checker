@@ -97,7 +97,7 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
 
     // 生成圆圈数量
     let min_marks = 2, max_marks = 4;
-    if (size === 6) { min_marks = 4; max_marks = 12; }
+    if (size === 6) { min_marks = 6; max_marks = 12; }
     if (size === 9) { min_marks = 10; max_marks = 28; }
     const num_marks = Math.floor(Math.random() * (max_marks - min_marks + 1)) + min_marks;
 

@@ -41,6 +41,8 @@ export function set_current_mode(mode) {
         'extra_region',
         'exclusion',
         'quadruple',
+        'odd',
+        'odd_even'
     ].includes(mode)) {
         state.current_mode = mode;
     } else {

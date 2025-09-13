@@ -5,6 +5,8 @@ import { get_all_mark_lines, get_cells_on_line } from "../modules/multi_diagonal
 import { get_extra_region_cells } from '../modules/extra_region.js';
 import { apply_exclusion_marks, is_valid_exclusion } from "../modules/exclusion.js";
 import { apply_quadruple_marks, is_valid_quadruple } from "../modules/quadruple.js";
+import { apply_odd_marks, is_valid_odd } from "../modules/odd.js";
+import { apply_odd_even_marks, is_valid_odd_even } from "../modules/odd_even.js";
 
 /**
  * 从所有相关区域移除指定数字的候选数
@@ -435,21 +437,31 @@ export function getCombinations(array, size) {
  * 通用有效性检测函数，根据当前模式自动判断所有相关区域
  */
 export function isValid(board, size, row, col, num) {
-    // 获取当前模式（classic/diagonal/missing/...）
-    const mode = state.current_mode || 'classic';
-    // 获取所有相关区域
-    const regions = get_all_regions(size, mode);
-    // 找出包含(row, col)的所有区域
-    for (const region of regions) {
-        if (region.cells.some(([r, c]) => r === row && c === col)) {
-            for (const [r, c] of region.cells) {
-                if ((r !== row || c !== col) && board[r][c] === num) {
-                    return false;
+    if (state.current_mode === 'exclusion') {
+        return is_valid_exclusion(board, size, row, col, num);
+    } else if (state.current_mode === 'quadruple') {
+        return is_valid_quadruple(board, size, row, col, num);
+    } else if (state.current_mode === 'odd') {
+        return is_valid_odd(board, size, row, col, num);
+    } else if (state.current_mode === 'odd_even') {
+        return is_valid_odd_even(board, size, row, col, num);
+    } else {
+        // 获取当前模式（classic/diagonal/missing/...）
+        const mode = state.current_mode || 'classic';
+        // 获取所有相关区域
+        const regions = get_all_regions(size, mode);
+        // 找出包含(row, col)的所有区域
+        for (const region of regions) {
+            if (region.cells.some(([r, c]) => r === row && c === col)) {
+                for (const [r, c] of region.cells) {
+                    if ((r !== row || c !== col) && board[r][c] === num) {
+                        return false;
+                    }
                 }
             }
         }
+        return true;
     }
-    return true;
 }
 
 let board = null;
@@ -470,10 +482,12 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
     // 新增：排除数独自动应用排除标记
     if (state.current_mode === 'exclusion') {
         apply_exclusion_marks(board, size);
-        isValid = is_valid_exclusion;
     } else if (state.current_mode === 'quadruple') {
         apply_quadruple_marks(board, size);
-        isValid = is_valid_quadruple;
+    } else if (state.current_mode === 'odd') {
+        apply_odd_marks(board, size);
+    } else if (state.current_mode === 'odd_even') {
+        apply_odd_even_marks(board, size);
     }
     // 初始化候选数板
     for (let i = 0; i < size; i++) {

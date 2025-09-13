@@ -93,7 +93,7 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
 
     // 生成圆圈数量
     let min_marks = 2, max_marks = 4;
-    if (size === 6) { min_marks = 4; max_marks = 12; }
+    if (size === 6) { min_marks = 6; max_marks = 12; }
     if (size === 9) { min_marks = 10; max_marks = 28; }
     const num_marks = Math.floor(Math.random() * (max_marks - min_marks + 1)) + min_marks;
 
@@ -125,7 +125,7 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
                 return null;
         }
     }
-    log_process(`即将生成排除数独，圆圈数量：${num_marks}，对称类型：${symmetry}`);
+    // log_process(`即将生成排除数独，圆圈数量：${num_marks}，对称类型：${symmetry}`);
 
     // 随机生成圆圈位置和数字（不贴边线，带对称）
     const positions_set = new Set();
