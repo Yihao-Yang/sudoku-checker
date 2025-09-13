@@ -42,7 +42,10 @@ export function set_current_mode(mode) {
         'exclusion',
         'quadruple',
         'odd',
-        'odd_even'
+        'odd_even',
+        'isomorphic',
+        'anti_king',
+        'anti_knight'
     ].includes(mode)) {
         state.current_mode = mode;
     } else {

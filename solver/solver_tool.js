@@ -7,6 +7,8 @@ import { apply_exclusion_marks, is_valid_exclusion } from "../modules/exclusion.
 import { apply_quadruple_marks, is_valid_quadruple } from "../modules/quadruple.js";
 import { apply_odd_marks, is_valid_odd } from "../modules/odd.js";
 import { apply_odd_even_marks, is_valid_odd_even } from "../modules/odd_even.js";
+import { is_valid_anti_king } from "../modules/anti_king.js";
+import { is_valid_anti_knight } from "../modules/anti_knight.js";
 
 /**
  * 从所有相关区域移除指定数字的候选数
@@ -77,6 +79,62 @@ export function eliminate_candidates(board, size, i, j, num, calc_score = true) 
                     const eliminated = before.filter(candidate_num => candidate_num === num);
                     if (eliminated.length > 0) {
                         eliminations.push({ row: r, col: c, eliminated });
+                    }
+                }
+            }
+        }
+    }
+    // Anti-King模式下，斜对角格也要删除候选
+    if (mode === 'anti_king') {
+        const king_moves = [
+            [-1, -1], [-1, 1],
+            [1, -1], [1, 1]
+        ];
+        for (const [dr, dc] of king_moves) {
+            const nr = i + dr;
+            const nc = j + dc;
+            if (nr >= 0 && nr < size && nc >= 0 && nc < size) {
+                if (Array.isArray(board[nr][nc])) {
+                    if (calc_score) {
+                        const key = `${nr},${nc},${num}`;
+                        if (!state.candidate_elimination_score[key]) {
+                            state.candidate_elimination_score[key] = 0;
+                        }
+                        state.candidate_elimination_score[key] += 1;
+                    }
+                    const before = board[nr][nc].slice();
+                    board[nr][nc] = board[nr][nc].filter(candidate_num => candidate_num !== num);
+                    const eliminated = before.filter(candidate_num => candidate_num === num);
+                    if (eliminated.length > 0) {
+                        eliminations.push({ row: nr, col: nc, eliminated });
+                    }
+                }
+            }
+        }
+    } else if (mode === 'anti_knight') {
+        const knight_moves = [
+            [-2, -1], [-2, 1],
+            [2, -1], [2, 1],
+            [-1, -2], [-1, 2],
+            [1, -2], [1, 2]
+        ];
+        for (const [dr, dc] of knight_moves) {
+            const nr = i + dr;
+            const nc = j + dc;
+            if (nr >= 0 && nr < size && nc >= 0 && nc < size) {
+                if (Array.isArray(board[nr][nc])) {
+                    if (calc_score) {
+                        const key = `${nr},${nc},${num}`;
+                        if (!state.candidate_elimination_score[key]) {
+                            state.candidate_elimination_score[key] = 0;
+                        }
+                        state.candidate_elimination_score[key] += 1;
+                    }
+                    const before = board[nr][nc].slice();
+                    board[nr][nc] = board[nr][nc].filter(candidate_num => candidate_num !== num);
+                    const eliminated = before.filter(candidate_num => candidate_num === num);
+                    if (eliminated.length > 0) {
+                        eliminations.push({ row: nr, col: nc, eliminated });
                     }
                 }
             }
@@ -276,6 +334,30 @@ export function get_all_regions(size, mode = 'classic') {
         pyramid4.push([6, 3]);
         regions.push({ type: '金字塔', index: 4, cells: pyramid4 });
     }
+    if (mode === 'isomorphic') {
+        // 获取所有宫格
+        const box_size = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
+        const boxes = [];
+        for (let box_row = 0; box_row < size / box_size[0]; box_row++) {
+            for (let box_col = 0; box_col < size / box_size[1]; box_col++) {
+                const region_cells = [];
+                for (let r = box_row * box_size[0]; r < (box_row + 1) * box_size[0]; r++) {
+                    for (let c = box_col * box_size[1]; c < (box_col + 1) * box_size[1]; c++) {
+                        region_cells.push([r, c]);
+                    }
+                }
+                boxes.push(region_cells);
+            }
+        }
+        // 按宫内顺序编号，生成同位区域
+        for (let pos = 0; pos < box_size[0] * box_size[1]; pos++) {
+            const region_cells = [];
+            for (let boxIdx = 0; boxIdx < boxes.length; boxIdx++) {
+                region_cells.push(boxes[boxIdx][pos]);
+            }
+            regions.push({ type: '同位', index: pos + 1, cells: region_cells });
+        }
+    }
     // 额外区域数独：将手动标记的格子作为一个额外区域
     if (mode === 'extra_region' && typeof get_extra_region_cells === 'function') {
         const extra_region_cells = get_extra_region_cells();
@@ -445,6 +527,10 @@ export function isValid(board, size, row, col, num) {
         return is_valid_odd(board, size, row, col, num);
     } else if (state.current_mode === 'odd_even') {
         return is_valid_odd_even(board, size, row, col, num);
+    } else if (state.current_mode === 'anti_king') {
+        return is_valid_anti_king(board, size, row, col, num);
+    } else if (state.current_mode === 'anti_knight') {
+        return is_valid_anti_knight(board, size, row, col, num);
     } else {
         // 获取当前模式（classic/diagonal/missing/...）
         const mode = state.current_mode || 'classic';
