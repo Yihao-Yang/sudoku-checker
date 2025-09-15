@@ -11,7 +11,7 @@ import { is_valid_quadruple } from '../modules/quadruple.js';
 export function generate_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
     // 清除之前的结果
     clear_all_inputs();
-    log_process('', true);
+    // log_process('', true);
 
     let puzzle, solution, result, holesDug, symmetry;
 

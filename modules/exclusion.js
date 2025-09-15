@@ -1,5 +1,5 @@
 import { state, set_current_mode } from './state.js';
-import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell } from './core.js';
+import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, clear_all_inputs } from './core.js';
 import { solve, isValid, get_all_regions } from '../solver/solver_tool.js';
 import { create_technique_panel } from './classic.js';
 import { generate_puzzle } from '../solver/generate.js';
@@ -146,7 +146,8 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
             sym_row >= 0 && sym_row < size - 1 &&
             sym_col >= 0 && sym_col < size - 1 &&
             !positions_set.has(`${row},${col}`) &&
-            !positions_set.has(`${sym_row},${sym_col}`)
+            !positions_set.has(`${sym_row},${sym_col}`) &&
+            !(sym_row === row && sym_col === col)
         ) {
             positions_set.add(`${row},${col}`);
             positions_set.add(`${sym_row},${sym_col}`);
@@ -165,9 +166,9 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
             // 调用solve
             backup_original_board();
             const result = solve(board.map(r => r.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), size, is_valid_exclusion, true);
-            // log_process(`尝试添加圆圈位置：(${row},${col}) 和 (${sym_row},${sym_col})，解的数量：${result.solution_count}`);
+            log_process(`尝试添加圆圈位置：(${row},${col}) 和 (${sym_row},${sym_col})，解的数量：${result.solution_count}`);
             if (result.solution_count === 0 || result.solution_count === -2) {
-                // log_process('当前圆圈位置无解，重新生成');
+                log_process('当前圆圈位置无解，重新生成');
                 restore_original_board();
                 // 无解，撤销圆圈
                 positions_set.delete(`${row},${col}`);
@@ -206,9 +207,9 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
             // 调用solve
             backup_original_board();
             const result = solve(board.map(r => r.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), size, is_valid_exclusion, true);
-            // log_process(`尝试添加圆圈 at (${row},${col})，解数：${result.solution_count}`);
+            log_process(`尝试添加圆圈 at (${row},${col})，解数：${result.solution_count}`);
             if (result.solution_count === 0 || result.solution_count === -2) {
-                // log_process('当前圆圈位置无解，重新生成');
+                log_process('当前圆圈位置无解，重新生成');
                 restore_original_board();
                 // 无解，撤销圆圈
                 positions_set.delete(`${row},${col}`);
