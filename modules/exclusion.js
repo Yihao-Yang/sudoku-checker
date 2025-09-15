@@ -216,9 +216,8 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
                 positions_set.delete(`${sym_row},${sym_col}`);
                 // 移除最后两个圆圈
                 const marks = container.querySelectorAll('.vx-mark');
-                if (marks.length >= 2) {
+                if (marks.length >= 1) {
                     marks[marks.length - 1].remove();
-                    marks[marks.length - 2].remove();
                 }
                 continue;
             }
