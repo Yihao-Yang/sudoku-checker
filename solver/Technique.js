@@ -1,5 +1,5 @@
 import { state } from '../modules/state.js';
-import { show_result, log_process } from '../modules/core.js';
+import { show_result, log_process, backup_original_board, restore_original_board, } from '../modules/core.js';
 import { eliminate_candidates, isEqual, getCombinations, getRowLetter, get_all_regions, get_special_combination_regions, isValid } from './solver_tool.js';
 import { get_all_mark_lines, get_cells_on_line } from "../modules/multi_diagonal.js";
 import { is_valid_quadruple } from '../modules/quadruple.js';
@@ -1256,53 +1256,120 @@ function check_cell_elimination(board, size, nat = 1) {
  */
 function special_combination_region_elimination(board, size, region_cells, clue_nums, region_type, region_index) {
     let changed = false;
-    // 枚举所有数字的排列方式
-    function permute(nums) {
-        const result = [];
-        function backtrack(path, used) {
-            if (path.length === nums.length) {
-                result.push([...path]);
-                return;
-            }
-            for (let i = 0; i < nums.length; i++) {
-                if (used[i]) continue;
-                used[i] = true;
-                path.push(nums[i]);
-                backtrack(path, used);
-                path.pop();
-                used[i] = false;
-            }
-        }
-        backtrack([], Array(nums.length).fill(false));
-        return result;
-    }
-    const all_permutations = permute(clue_nums);
-
-    // 对每个格子，统计所有排列下能填入的数字集合
-    const cell_possible_nums = region_cells.map(() => new Set());
-    for (const perm of all_permutations) {
-        for (let idx = 0; idx < region_cells.length; idx++) {
-            cell_possible_nums[idx].add(perm[idx]);
+    // 1. 提取每个格子的候选数，并记录已知数
+    const cell_candidates = [];
+    const known_indices = [];
+    const known_nums = [];
+    for (let i = 0; i < region_cells.length; i++) {
+        const [r, c] = region_cells[i];
+        if (typeof board[r][c] === 'number') {
+            known_indices.push(i);
+            known_nums.push(board[r][c]);
+            cell_candidates.push([board[r][c]]);
+        } else if (Array.isArray(board[r][c])) {
+            cell_candidates.push([...board[r][c]]);
+        } else {
+            cell_candidates.push([]);
         }
     }
 
-    // 对每个格子的候选数，若不在所有排列下都能填入，则删除
-    for (let idx = 0; idx < region_cells.length; idx++) {
+    // 2. 提取区域内应填的数字，去除已知数
+    let nums_to_fill = clue_nums.slice();
+    for (const n of known_nums) {
+        // 只去除一次，防止重复数字
+        const idx = nums_to_fill.indexOf(n);
+        if (idx !== -1) nums_to_fill.splice(idx, 1);
+    }
+
+    // 3. 枚举所有数字分配到未定格子的排列（只考虑候选数能填的情况）
+    // 未定格子的下标
+    const unknown_indices = [];
+    for (let i = 0; i < region_cells.length; i++) {
+        if (!known_indices.includes(i)) unknown_indices.push(i);
+    }
+
+    function* valid_assignments(depth, used, path) {
+        if (depth === unknown_indices.length) {
+            yield [...path];
+            return;
+        }
+        const cell_idx = unknown_indices[depth];
+        for (let i = 0; i < nums_to_fill.length; i++) {
+            if (used[i]) continue;
+            const num = nums_to_fill[i];
+            if (!cell_candidates[cell_idx].includes(num)) continue;
+            path.push(num);
+            used[i] = true;
+            yield* valid_assignments(depth + 1, used, path);
+            path.pop();
+            used[i] = false;
+        }
+    }
+
+    // 4. 检查每种分配下每个格子的数字是否合法（先模拟整体填入）
+    const valid_nums_for_cell = region_cells.map(() => new Set());
+    for (const assignment of valid_assignments(0, Array(nums_to_fill.length).fill(false), [])) {
+        // 复制盘面，模拟整体填入
+        const board_copy = board.map(row => row.map(cell => Array.isArray(cell) ? [...cell] : cell));
+        // 先填入已知数
+        for (let i = 0; i < known_indices.length; i++) {
+            const idx = known_indices[i];
+            const [r, c] = region_cells[idx];
+            board_copy[r][c] = known_nums[i];
+        }
+        // 再填入本次分配
+        for (let d = 0; d < unknown_indices.length; d++) {
+            const idx = unknown_indices[d];
+            const [r, c] = region_cells[idx];
+            board_copy[r][c] = assignment[d];
+        }
+        // 检查整体填入后，所有格子的数字是否合法
+        let valid = true;
+        // 检查所有格子（已知和本次分配的）
+        for (let i = 0; i < region_cells.length; i++) {
+            const [r, c] = region_cells[i];
+            const num = typeof board_copy[r][c] === 'number' ? board_copy[r][c] : null;
+            if (num !== null && !isValid(board_copy, size, r, c, num)) {
+                valid = false;
+                break;
+            }
+        }
+        if (valid) {
+            // 只对未定格子记录可行数字
+            for (let d = 0; d < unknown_indices.length; d++) {
+                const idx = unknown_indices[d];
+                valid_nums_for_cell[idx].add(assignment[d]);
+            }
+        }
+    }
+
+    // 5. 对每个未定格子，删去不在所有合法分配下都能填的数字
+    for (let idx of unknown_indices) {
         const [r, c] = region_cells[idx];
         if (!Array.isArray(board[r][c])) continue;
         const before = board[r][c].length;
-        board[r][c] = board[r][c].filter(n => cell_possible_nums[idx].has(n));
+        board[r][c] = board[r][c].filter(n => valid_nums_for_cell[idx].has(n));
         if (board[r][c].length < before) {
             changed = true;
             if (!state.silentMode) {
                 log_process(`[${region_type}候选排除] 第${region_index}${region_type}的${getRowLetter(r+1)}${c+1}删去不可能填入的数字`);
             }
         }
+        // 如果只剩一个候选数，直接确定
+        if (Array.isArray(board[r][c]) && board[r][c].length === 1) {
+            const num = board[r][c][0];
+            board[r][c] = num;
+            eliminate_candidates(board, size, r, c, num);
+            changed = true;
+            if (!state.silentMode) {
+                log_process(`[${region_type}候选排除] 第${region_index}${region_type}的${getRowLetter(r+1)}${c+1}唯一可填${num}，直接确定`);
+            }
+        }
     }
     return changed;
 }
 
-// 变型特定组合区域区块排除
+// 变型特定组合区域排除
 function check_special_combination_region_elimination(board, size) {
     let has_conflict = false;
     const regions = get_special_combination_regions(size, state.current_mode);
@@ -1831,71 +1898,104 @@ function check_Variant_Block_Elimination(board, size) {
  */
 function special_combination_region_block_elimination(board, size, region_cells, clue_nums, region_type, region_index) {
     let changed = false;
-    // 枚举所有数字的排列方式（即4个数字填入4个格子的所有排列）
-    function permute(nums) {
-        const result = [];
-        function backtrack(path, used) {
-            if (path.length === nums.length) {
-                result.push([...path]);
-                return;
-            }
-            for (let i = 0; i < nums.length; i++) {
-                if (used[i]) continue;
-                used[i] = true;
-                path.push(nums[i]);
-                backtrack(path, used);
-                path.pop();
-                used[i] = false;
-            }
+    // 1. 提取每个格子的候选数，并记录已知数
+    const cell_candidates = [];
+    const known_indices = [];
+    const known_nums = [];
+    for (let i = 0; i < region_cells.length; i++) {
+        const [r, c] = region_cells[i];
+        if (typeof board[r][c] === 'number') {
+            known_indices.push(i);
+            known_nums.push(board[r][c]);
+            cell_candidates.push([board[r][c]]);
+        } else if (Array.isArray(board[r][c])) {
+            cell_candidates.push([...board[r][c]]);
+        } else {
+            cell_candidates.push([]);
         }
-        backtrack([], Array(nums.length).fill(false));
-        return result;
     }
-    const all_permutations = permute(clue_nums);
-    // log_process(`[${region_type}区块排除] 检查第${region_index}${region_type}，数字${clue_nums.join('、')}的${all_permutations.length}种排列`);
 
-    // 对每种排列，模拟填入，收集能删掉的候选数
-    const elimination_sets = [];
-    for (const perm of all_permutations) {
-        // 复制board
-        const board_copy = board.map(row => row.map(cell => Array.isArray(cell) ? [...cell] : cell));
-        // 填入数字
-        for (let idx = 0; idx < region_cells.length; idx++) {
-            const [r, c] = region_cells[idx];
-            board_copy[r][c] = perm[idx];
+    // 2. 提取区域内应填的数字，去除已知数
+    let nums_to_fill = clue_nums.slice();
+    for (const n of known_nums) {
+        const idx = nums_to_fill.indexOf(n);
+        if (idx !== -1) nums_to_fill.splice(idx, 1);
+    }
+
+    // 3. 枚举所有数字分配到未定格子的排列（只考虑候选数能填的情况）
+    const unknown_indices = [];
+    for (let i = 0; i < region_cells.length; i++) {
+        if (!known_indices.includes(i)) unknown_indices.push(i);
+    }
+
+    function* valid_assignments(depth, used, path) {
+        if (depth === unknown_indices.length) {
+            yield [...path];
+            return;
         }
-        // log_process(`[${region_type}区块排除] 模拟第${region_index}${region_type}的排列${perm.join('、')}，检查冲突和候选数`);
-        // 检查是否冲突（四个格子填入后，区域内无重复且全局有效）
-        let has_conflict = false;
-        // 全局有效性检测
-        for (let idx = 0; idx < region_cells.length; idx++) {
+        const cell_idx = unknown_indices[depth];
+        for (let i = 0; i < nums_to_fill.length; i++) {
+            if (used[i]) continue;
+            const num = nums_to_fill[i];
+            if (!cell_candidates[cell_idx].includes(num)) continue;
+            path.push(num);
+            used[i] = true;
+            yield* valid_assignments(depth + 1, used, path);
+            path.pop();
+            used[i] = false;
+        }
+    }
+
+    // 4. 检查每种分配下每个格子的数字是否合法（先模拟整体填入）
+    // 合理的所有特定组合方式
+    const valid_assignments_list = [];
+    const elimination_sets = [];
+    for (const assignment of valid_assignments(0, Array(nums_to_fill.length).fill(false), [])) {
+        // 复制盘面，模拟整体填入
+        const board_copy = board.map(row => row.map(cell => Array.isArray(cell) ? [...cell] : cell));
+        // 先填入已知数
+        for (let i = 0; i < known_indices.length; i++) {
+            const idx = known_indices[i];
             const [r, c] = region_cells[idx];
-            if (!is_valid_quadruple(board_copy, size, r, c, perm[idx])) {
-                has_conflict = true;
-                // log_process(`[${region_type}区块排除] 第${region_index}${region_type}的排列${perm.join('、')}在填入${getRowLetter(r+1)}${c+1}=${perm[idx]}时冲突`);
+            board_copy[r][c] = known_nums[i];
+        }
+        // 再填入本次分配
+        for (let d = 0; d < unknown_indices.length; d++) {
+            const idx = unknown_indices[d];
+            const [r, c] = region_cells[idx];
+            board_copy[r][c] = assignment[d];
+        }
+        // 检查整体填入后，所有格子的数字是否合法
+        let valid = true;
+        for (let i = 0; i < region_cells.length; i++) {
+            const [r, c] = region_cells[i];
+            const num = typeof board_copy[r][c] === 'number' ? board_copy[r][c] : null;
+            if (num !== null && !isValid(board_copy, size, r, c, num)) {
+                valid = false;
                 break;
             }
         }
-        
-        // log_process(`[${region_type}区块排除] 第${region_index}${region_type}的排列${perm.join('、')} ${has_conflict ? '有冲突，跳过' : '有效'}`);
-        if (has_conflict) continue; // 跳过有冲突的排列
-        // 统计每个格子原本的候选数
-        const eliminated_map = new Map();
-        for (let idx = 0; idx < region_cells.length; idx++) {
-            const [r, c] = region_cells[idx];
-            const num = perm[idx];
-            const eliminations = eliminate_candidates(board_copy, size, r, c, num, false);
-            for (const elim of eliminations) {
-                if (elim.eliminated.length > 0) {
-                    const key = `${elim.row},${elim.col}`;
-                    if (!eliminated_map.has(key)) eliminated_map.set(key, new Set());
-                    for (const n of elim.eliminated) {
-                        eliminated_map.get(key).add(n);
+        if (valid) {
+            valid_assignments_list.push(assignment.slice());
+            // 统计每个格子原本的候选数被eliminate_candidates删掉的情况
+            const eliminated_map = new Map();
+            for (let d = 0; d < unknown_indices.length; d++) {
+                const idx = unknown_indices[d];
+                const [r, c] = region_cells[idx];
+                const num = assignment[d];
+                const eliminations = eliminate_candidates(board_copy, size, r, c, num, false);
+                for (const elim of eliminations) {
+                    if (elim.eliminated.length > 0) {
+                        const key = `${elim.row},${elim.col}`;
+                        if (!eliminated_map.has(key)) eliminated_map.set(key, new Set());
+                        for (const n of elim.eliminated) {
+                            eliminated_map.get(key).add(n);
+                        }
                     }
                 }
             }
+            elimination_sets.push(eliminated_map);
         }
-        elimination_sets.push(eliminated_map);
     }
 
     // 求所有排列都能删掉的候选数（交集）
