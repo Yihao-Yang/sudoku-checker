@@ -197,7 +197,7 @@ export function generate_odd_puzzle(size, score_lower_limit = 0, holes_count = u
         newMark.style.width = '48px';
         newMark.style.height = '48px';
         newMark.style.borderRadius = '50%';
-        newMark.style.background = 'rgba(224,224,224,0.5)';
+        newMark.style.background = '#e0e0e0';
         newMark.style.zIndex = '1';
         newMark.style.pointerEvents = 'none';
         cell.appendChild(newMark);

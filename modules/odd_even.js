@@ -201,10 +201,10 @@ export function generate_odd_even_puzzle(size, score_lower_limit = 0, holes_coun
         newMark.style.pointerEvents = 'none';
         if (markType === 'circle') {
             newMark.style.borderRadius = '50%';
-            newMark.style.background = 'rgba(224,224,224,0.5)';
+            newMark.style.background = '#e0e0e0';
         } else {
             newMark.style.borderRadius = '10%';
-            newMark.style.background = 'rgba(224,224,224,0.5)';
+            newMark.style.background = '#e0e0e0';
         }
         cell.appendChild(newMark);
     }
