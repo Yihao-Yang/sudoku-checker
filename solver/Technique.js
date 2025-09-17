@@ -97,7 +97,7 @@ export function solve_By_Elimination(board, size) {
         "宫显性数对": 80,
         "行列显性数对": 90,
         "变型显性数对": 120,
-        "行列隐性数对": 20000,
+        "行列隐性数对": 200,
         "宫显性三数组": 250,
         "行列显性三数组": 300,
         "变型显性三数组": 340,
@@ -490,6 +490,12 @@ function region_elimination(board, size, region_cells, region_type, region_index
         }
         if (existing_nums.size >= size - nat && positions.length === 1) {
             const [row, col] = positions[0];
+            // 新增：填入前先判断是否合法
+            if (!isValid(board, size, row, col, num)) {
+                has_conflict = true;
+                if (!state.silentMode) log_process(`[冲突] ${region_type}${region_index ? region_index : ''}中${getRowLetter(row+1)}${col+1}填${num}不合法，无解`);
+                return true;
+            }
 
             let score_sum = 0;
             if (!state.silentMode) {
@@ -1181,6 +1187,12 @@ function check_cell_elimination(board, size, nat = 1) {
                 // 唯一候选数
                 if (cell.length === 1) {
                     const num = cell[0];
+                    // 新增：填入前先判断是否合法
+                    if (!isValid(board, size, row, col, num)) {
+                        has_conflict = true;
+                        if (!state.silentMode) log_process(`[冲突] ${getRowLetter(row + 1)}${col + 1}填${num}不合法，无解`);
+                        return true;
+                    }
                     // 检查所有区域
                     for (const region of regions) {
                         // 该格是否属于该区域

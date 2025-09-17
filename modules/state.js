@@ -41,11 +41,14 @@ export function set_current_mode(mode) {
         'extra_region',
         'exclusion',
         'quadruple',
+        'ratio',
         'odd',
         'odd_even',
         'isomorphic',
         'anti_king',
-        'anti_knight'
+        'anti_knight',
+        'palindrome',
+        'new'
     ].includes(mode)) {
         state.current_mode = mode;
     } else {

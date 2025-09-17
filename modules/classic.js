@@ -13,8 +13,11 @@ import { create_anti_king_sudoku } from './anti_king.js';
 import { create_anti_knight_sudoku } from './anti_knight.js';
 import { create_exclusion_sudoku, apply_exclusion_marks, is_valid_exclusion } from './exclusion.js';
 import { create_quadruple_sudoku, is_valid_quadruple } from './quadruple.js';
+import { create_ratio_sudoku } from './ratio.js';
 import { create_odd_sudoku } from './odd.js';
 import { create_odd_even_sudoku, is_valid_odd_even } from './odd_even.js';
+import { create_palindrome_sudoku } from './palindrome.js';
+import { create_new_sudoku } from './new.js';
 import { state, set_current_mode } from './state.js';
 import { 
     show_result, 
@@ -261,8 +264,11 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('无马', () => create_anti_knight_sudoku(4));
         add_Extra_Button('排除', () => create_exclusion_sudoku(4));
         add_Extra_Button('四格提示', () => create_quadruple_sudoku(4));
+        add_Extra_Button('比例', () => create_ratio_sudoku(4));
         add_Extra_Button('奇数', () => create_odd_sudoku(4));
         add_Extra_Button('奇偶', () => create_odd_even_sudoku(4));
+        add_Extra_Button('回文', () => create_palindrome_sudoku(4));
+        add_Extra_Button('新', () => create_new_sudoku(4));
     } else if (size === 6) {
         add_Extra_Button('乘积', () => show_result('这是六宫乘积的功能！(待实现)'));
         add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(6));
@@ -277,8 +283,11 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('无马', () => create_anti_knight_sudoku(6));
         add_Extra_Button('排除', () => create_exclusion_sudoku(6));
         add_Extra_Button('四格提示', () => create_quadruple_sudoku(6));
+        add_Extra_Button('比例', () => create_ratio_sudoku(6));
         add_Extra_Button('奇数', () => create_odd_sudoku(6));
         add_Extra_Button('奇偶', () => create_odd_even_sudoku(6));
+        add_Extra_Button('回文', () => create_palindrome_sudoku(6));
+        add_Extra_Button('新', () => create_new_sudoku(6));
     } else if (size === 9) {
         add_Extra_Button('乘积', () => show_result('这是九宫乘积的功能！(待实现)'));
         add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(9));
@@ -296,8 +305,11 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('无马', () => create_anti_knight_sudoku(9));
         add_Extra_Button('排除', () => create_exclusion_sudoku(9));
         add_Extra_Button('四格提示', () => create_quadruple_sudoku(9));
+        add_Extra_Button('比例', () => create_ratio_sudoku(9));
         add_Extra_Button('奇数', () => create_odd_sudoku(9));
         add_Extra_Button('奇偶', () => create_odd_even_sudoku(9));
+        add_Extra_Button('回文', () => create_palindrome_sudoku(9));
+        add_Extra_Button('新', () => create_new_sudoku(9));
     }
 }
 
