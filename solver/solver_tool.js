@@ -550,20 +550,41 @@ export function get_special_combination_regions(size, mode = 'classic') {
             });
         }
     } else if (mode === 'palindrome') {
+        // const mark_lines = get_all_mark_lines();
+        // // 合并首尾相接的线段
+        // // 先把每条线段扩展为经过的所有格子
+        // const size = state.current_grid_size || size;
+        // const expanded_lines = mark_lines.map(line => get_cells_on_line(size, line[0], line[1]));
+        // // 合并线段
+        // const merged_lines = merge_connected_lines(expanded_lines);
+        // let lineIndex = 1;
+        // for (const cells of merged_lines) {
+        //     let clue_nums = [];
+        //     for (let i = 0; i < cells.length; i++) {
+        //         clue_nums = clue_nums.concat(Array.from({length: size}, (_, n) => n + 1));
+        //     }
+        //     regions.push({ type: '特定组合区域', index: lineIndex++, cells, clue_nums });
+        // }
         const mark_lines = get_all_mark_lines();
         // 合并首尾相接的线段
-        // 先把每条线段扩展为经过的所有格子
         const size = state.current_grid_size || size;
         const expanded_lines = mark_lines.map(line => get_cells_on_line(size, line[0], line[1]));
-        // 合并线段
         const merged_lines = merge_connected_lines(expanded_lines);
-        let lineIndex = 1;
+        let regionIndex = 1;
         for (const cells of merged_lines) {
-            let clue_nums = [];
-            for (let i = 0; i < cells.length; i++) {
-                clue_nums = clue_nums.concat(Array.from({length: size}, (_, n) => n + 1));
+            const len = cells.length;
+            for (let i = 0; i < Math.floor(len / 2); i++) {
+                const cellA = cells[i];
+                const cellB = cells[len - 1 - i];
+                // 跳过同一个格子的情况（奇数长度中点）
+                // if (cellA[0] === cellB[0] && cellA[1] === cellB[1]) continue;
+                regions.push({
+                    type: '特定组合区域',
+                    index: regionIndex++,
+                    cells: [cellA, cellB],
+                    clue_nums: Array.from({length: size * 2}, (_, n) => (n % size) + 1)
+                });
             }
-            regions.push({ type: '特定组合区域', index: lineIndex++, cells, clue_nums });
         }
         // log_process(`合并后的回文线段数：${regions.length}`);
     }
