@@ -1299,6 +1299,7 @@ function special_combination_region_elimination(board, size, region_cells, clue_
     for (let i = 0; i < region_cells.length; i++) {
         if (!known_indices.includes(i)) unknown_indices.push(i);
     }
+    // log_process(`[${region_type}候选排除] 检查第${region_index}${region_type}，数字${clue_nums.join('、')}，已知数${known_nums.join('、')}，待填数${nums_to_fill.join('、')}`);
 
     function* valid_assignments(depth, used, path) {
         if (depth === unknown_indices.length) {
@@ -1320,7 +1321,12 @@ function special_combination_region_elimination(board, size, region_cells, clue_
 
     // 4. 检查每种分配下每个格子的数字是否合法（先模拟整体填入）
     const valid_nums_for_cell = region_cells.map(() => new Set());
+    const seen = new Set(); // 新增：用于去重
     for (const assignment of valid_assignments(0, Array(nums_to_fill.length).fill(false), [])) {
+        // 对 assignment 排序后转字符串，作为唯一标识
+        const key = assignment.join(',');
+        if (seen.has(key)) continue;
+        seen.add(key);
         // 复制盘面，模拟整体填入
         const board_copy = board.map(row => row.map(cell => Array.isArray(cell) ? [...cell] : cell));
         // 先填入已知数
@@ -1335,6 +1341,11 @@ function special_combination_region_elimination(board, size, region_cells, clue_
             const [r, c] = region_cells[idx];
             board_copy[r][c] = assignment[d];
         }
+        // log_process(`[${region_type}候选排除] 模拟分配: ${region_cells.map((pos, i) => {
+        //     const [r, c] = pos;
+        //     const val = board_copy[r][c];
+        //     return `${getRowLetter(r+1)}${c+1}=${val}`;
+        // }).join('，')}`);
         // 检查整体填入后，所有格子的数字是否合法
         let valid = true;
         // 检查所有格子（已知和本次分配的）
@@ -1962,7 +1973,12 @@ function special_combination_region_block_elimination(board, size, region_cells,
     // 合理的所有特定组合方式
     const valid_assignments_list = [];
     const elimination_sets = [];
+    const seen = new Set(); // 新增：用于去重
     for (const assignment of valid_assignments(0, Array(nums_to_fill.length).fill(false), [])) {
+        // 对 assignment 排序后转字符串，作为唯一标识
+        const key = assignment.join(',');
+        if (seen.has(key)) continue;
+        seen.add(key);
         // 复制盘面，模拟整体填入
         const board_copy = board.map(row => row.map(cell => Array.isArray(cell) ? [...cell] : cell));
         // 先填入已知数

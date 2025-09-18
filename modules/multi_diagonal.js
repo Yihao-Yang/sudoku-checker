@@ -381,10 +381,10 @@ export function add_multi_diagonal_mark() {
         grid.appendChild(svg);
     }
 
-    let firstCell = null;
-    let tempLine = null;
+    let first_cell = null;
+    let temp_line = null;
 
-    function getCellPercentCenter(cell) {
+    function get_cell_percent_center(cell) {
         // 获取cell在grid中的百分比中心
         const cells = Array.from(grid.querySelectorAll('.sudoku-cell'));
         const idx = cells.indexOf(cell);
@@ -397,29 +397,29 @@ export function add_multi_diagonal_mark() {
         return { x, y };
     }
 
-    function drawTempLine(x1, y1, x2, y2) {
-        if (!tempLine) {
-            tempLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-            tempLine.setAttribute('stroke', '#888');
-            tempLine.setAttribute('stroke-width', '4');
-            tempLine.setAttribute('stroke-linecap', 'round');
-            tempLine.setAttribute('opacity', '1');
-            svg.appendChild(tempLine);
+    function draw_temp_line(x1, y1, x2, y2) {
+        if (!temp_line) {
+            temp_line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            temp_line.setAttribute('stroke', '#888');
+            temp_line.setAttribute('stroke-width', '4');
+            temp_line.setAttribute('stroke-linecap', 'round');
+            temp_line.setAttribute('opacity', '1');
+            svg.appendChild(temp_line);
         }
-        tempLine.setAttribute('x1', `${x1}%`);
-        tempLine.setAttribute('y1', `${y1}%`);
-        tempLine.setAttribute('x2', `${x2}%`);
-        tempLine.setAttribute('y2', `${y2}%`);
+        temp_line.setAttribute('x1', `${x1}%`);
+        temp_line.setAttribute('y1', `${y1}%`);
+        temp_line.setAttribute('x2', `${x2}%`);
+        temp_line.setAttribute('y2', `${y2}%`);
     }
 
-    function clearTempLine() {
-        if (tempLine) {
-            tempLine.remove();
-            tempLine = null;
+    function clear_temp_line() {
+        if (temp_line) {
+            temp_line.remove();
+            temp_line = null;
         }
     }
 
-    function drawFinalLine(x1, y1, x2, y2) {
+    function draw_final_line(x1, y1, x2, y2) {
         // 通过百分比坐标反推格子坐标
         const size = Math.sqrt(grid.querySelectorAll('.sudoku-cell').length);
         const col1 = Math.round((x1 / 100) * size - 0.5);
@@ -430,37 +430,37 @@ export function add_multi_diagonal_mark() {
         draw_multi_diagonal_line(size, [row1, col1], [row2, col2]);
     }
 
-    function onCellClick(e) {
+    function on_cell_click(e) {
         const cell = e.currentTarget;
-        if (!firstCell) {
-            firstCell = cell;
+        if (!first_cell) {
+            first_cell = cell;
             cell.classList.add('marking-cell');
-            container._markMouseMove = onMouseMove;
-            container.addEventListener('mousemove', onMouseMove);
-        } else if (cell !== firstCell) {
-            const p1 = getCellPercentCenter(firstCell);
-            const p2 = getCellPercentCenter(cell);
-            drawFinalLine(p1.x, p1.y, p2.x, p2.y);
-            firstCell.classList.remove('marking-cell');
-            clearTempLine();
-            firstCell = null;
-            container.removeEventListener('mousemove', onMouseMove);
+            container._markMouseMove = on_mouse_move;
+            container.addEventListener('mousemove', on_mouse_move);
+        } else if (cell !== first_cell) {
+            const p1 = get_cell_percent_center(first_cell);
+            const p2 = get_cell_percent_center(cell);
+            draw_final_line(p1.x, p1.y, p2.x, p2.y);
+            first_cell.classList.remove('marking-cell');
+            clear_temp_line();
+            first_cell = null;
+            container.removeEventListener('mousemove', on_mouse_move);
         }
     }
 
-    function onMouseMove(e) {
-        if (!firstCell) return;
+    function on_mouse_move(e) {
+        if (!first_cell) return;
         // 鼠标在grid上的百分比位置
-        const gridRect = grid.getBoundingClientRect();
-        const x2 = ((e.clientX - gridRect.left) / gridRect.width) * 100;
-        const y2 = ((e.clientY - gridRect.top) / gridRect.height) * 100;
-        const p1 = getCellPercentCenter(firstCell);
-        drawTempLine(p1.x, p1.y, x2, y2);
+        const grid_rect = grid.getBoundingClientRect();
+        const x2 = ((e.clientX - grid_rect.left) / grid_rect.width) * 100;
+        const y2 = ((e.clientY - grid_rect.top) / grid_rect.height) * 100;
+        const p1 = get_cell_percent_center(first_cell);
+        draw_temp_line(p1.x, p1.y, x2, y2);
     }
 
     Array.from(grid.querySelectorAll('.sudoku-cell')).forEach(cell => {
-        cell._markListener = onCellClick;
-        cell.addEventListener('mousedown', onCellClick);
+        cell._markListener = on_cell_click;
+        cell.addEventListener('mousedown', on_cell_click);
     });
 
     // 响应式：窗口变化时重设SVG尺寸

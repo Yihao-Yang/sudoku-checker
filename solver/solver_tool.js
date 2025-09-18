@@ -10,6 +10,7 @@ import { apply_odd_marks, is_valid_odd } from "../modules/odd.js";
 import { apply_odd_even_marks, is_valid_odd_even } from "../modules/odd_even.js";
 import { is_valid_anti_king } from "../modules/anti_king.js";
 import { is_valid_anti_knight } from "../modules/anti_knight.js";
+import { is_valid_palindrome, merge_connected_lines } from "../modules/palindrome.js";
 
 /**
  * 从所有相关区域移除指定数字的候选数
@@ -548,6 +549,23 @@ export function get_special_combination_regions(size, mode = 'classic') {
                 clue_nums: clue_nums
             });
         }
+    } else if (mode === 'palindrome') {
+        const mark_lines = get_all_mark_lines();
+        // 合并首尾相接的线段
+        // 先把每条线段扩展为经过的所有格子
+        const size = state.current_grid_size || size;
+        const expanded_lines = mark_lines.map(line => get_cells_on_line(size, line[0], line[1]));
+        // 合并线段
+        const merged_lines = merge_connected_lines(expanded_lines);
+        let lineIndex = 1;
+        for (const cells of merged_lines) {
+            let clue_nums = [];
+            for (let i = 0; i < cells.length; i++) {
+                clue_nums = clue_nums.concat(Array.from({length: size}, (_, n) => n + 1));
+            }
+            regions.push({ type: '特定组合区域', index: lineIndex++, cells, clue_nums });
+        }
+        // log_process(`合并后的回文线段数：${regions.length}`);
     }
     return regions;
 }
@@ -596,6 +614,8 @@ export function isValid(board, size, row, col, num) {
         return is_valid_anti_king(board, size, row, col, num);
     } else if (state.current_mode === 'anti_knight') {
         return is_valid_anti_knight(board, size, row, col, num);
+    } else if (state.current_mode === 'palindrome') {
+        return is_valid_palindrome(board, size, row, col, num);
     } else {
         // 获取当前模式（classic/diagonal/missing/...）
         const mode = state.current_mode || 'classic';
