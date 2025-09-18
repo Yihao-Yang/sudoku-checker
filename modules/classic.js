@@ -349,7 +349,8 @@ export function create_technique_panel() {
                 { id: 'Box_One_Cut', name: '一刀流宫排除', default: true },
                 { id: 'Row_Col_Elimination', name: '行列排除', default: true },
                 { id: 'Variant_Elimination', name: '变型排除', default: false },
-                { id: 'Special_Combination_Region_Elimination', name: '特定组合排除', default: false }
+                { id: 'Special_Combination_Region_Elimination', name: '特定组合排除', default: false },
+                { id: 'Multi_Special_Combination_Region_Elimination', name: '多特定组合排除', default: false }
             ]
         },
         {
