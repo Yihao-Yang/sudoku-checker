@@ -1,5 +1,5 @@
 import { state, set_current_mode } from './state.js';
-import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell } from './core.js';
+import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, add_Extra_Button } from './core.js';
 import { create_technique_panel } from './classic.js';
 import { get_all_regions } from '../solver/solver_tool.js';
 
@@ -29,7 +29,7 @@ export function create_new_sudoku(size) {
         Cell_Elimination: true,
         Brute_Force: false,
     };
-    for (let i = 1; i <= 9; i++) {
+    for (let i = 1; i <= size; i++) {
         state.techniqueSettings[`Cell_Elimination_${i}`] = true;
     }
 

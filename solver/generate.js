@@ -54,12 +54,34 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
             }
         }
 
-        // 4. 验证题目唯一性并显示技巧统计
-        const testBoard = puzzle.map(row => 
-            row.map(cell => cell === 0 ? 
-                [...Array(size)].map((_, n) => n + 1) : cell
-            )
-        );
+        // // 4. 验证题目唯一性并显示技巧统计
+        // const testBoard = puzzle.map(row => 
+        //     row.map(cell => cell === 0 ? 
+        //         [...Array(size)].map((_, n) => n + 1) : cell
+        //     )
+        // );
+        let test_board;
+        if (state.current_mode === 'X_sums') {
+            // X和模式，去掉边界
+            test_board = Array.from({ length: size + 2 }, (_, i) =>
+                Array.from({ length: size + 2 }, (_, j) => {
+                    if (i === 0 || i === size + 1 || j === 0 || j === size + 1) {
+                        return 0; // 边界填充为 0
+                    }
+                    const cell = puzzle[i - 1][j - 1];
+                    return cell === 0
+                        ? [...Array(size)].map((_, n) => n + 1)
+                        : cell;
+                })
+            );
+        } else {
+            test_board = puzzle.map(row =>
+                row.map(cell => cell === 0
+                    ? [...Array(size)].map((_, n) => n + 1)
+                    : cell
+                )
+            );
+        }
         // let is_valid_func;
         // if (state.current_mode === 'multi_diagonal') {
         //     is_valid_func = isValid_multi_diagonal;
@@ -68,7 +90,7 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
         // } else {
         //     is_valid_func = isValid;
         // }
-        result = solve(testBoard, size, isValid, true);
+        result = solve(test_board, size, isValid, true);
 
         // 老分值判断（包含用户输入的下限）
         if (state.solve_stats.total_score < score_lower_limit) {
@@ -121,9 +143,17 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
 // 生成完整数独终盘
 export function generate_solution(sudoku_size, existing_numbers = null, symmetry = 'none') {
     // 初始化为候选数数组
-    const sudoku_board = Array.from({ length: sudoku_size }, () =>
-        Array.from({ length: sudoku_size }, () => [...Array(sudoku_size)].map((_, i) => i + 1))
-    );
+    let sudoku_board;
+    if (state.current_mode === 'X_sums') {
+        // X和模式，去掉边界
+        sudoku_board = Array.from({ length: sudoku_size + 2 }, () =>
+            Array.from({ length: sudoku_size + 2 }, () => [...Array(sudoku_size)].map((_, i) => i + 1))
+        );
+    } else {
+        sudoku_board = Array.from({ length: sudoku_size }, () =>
+            Array.from({ length: sudoku_size }, () => [...Array(sudoku_size)].map((_, i) => i + 1))
+        );
+    }
     // log_process(`初始化候选数盘面: \n${sudoku_board.map(r => r.map(cell => cell.join('/')).join(' ')).join('\n')}`);
     // 主动给数的记录
     let given_numbers = [];
@@ -161,12 +191,22 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
     const MAX_SECOND_BEST = 20; // 新增：备选方案最大数量
 
     // 唯一解检测
-    const test_board = Array.from({ length: sudoku_size }, (_, r) =>
-        Array.from({ length: sudoku_size }, (_, c) => {
-            const found = given_numbers.find(item => item.row === r && item.col === c);
-            return found ? found.num : 0;
-        })
-    );
+    let test_board;
+    if (state.current_mode === 'X_sums') {
+        test_board = Array.from({ length: sudoku_size + 2 }, (_, r) =>
+            Array.from({ length: sudoku_size + 2 }, (_, c) => {
+                const found = given_numbers.find(item => item.row === r && item.col === c);
+                return found ? found.num : 0;
+            })
+        );
+    } else {
+        test_board = Array.from({ length: sudoku_size }, (_, r) =>
+            Array.from({ length: sudoku_size }, (_, c) => {
+                const found = given_numbers.find(item => item.row === r && item.col === c);
+                return found ? found.num : 0;
+            })
+        );
+    }
     const result = solve(
         test_board.map(r => r.map(cell => cell === 0 ? [...Array(sudoku_size)].map((_, n) => n + 1) : cell)),
         sudoku_size,
@@ -270,12 +310,21 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
                 // log_process(`当前主动给数: ${given_numbers.map(item => `[${item.row+1},${item.col+1}]=${item.num}`).join(' ')}`);
 
                 // 构造只包含主动给数的盘面
-                const test_board = Array.from({ length: sudoku_size }, (_, r) =>
-                    Array.from({ length: sudoku_size }, (_, c) => {
-                        const found = given_numbers.find(item => item.row === r && item.col === c);
-                        return found ? found.num : 0;
-                    })
-                );
+                if (state.current_mode === 'X_sums') {
+                    test_board = Array.from({ length: sudoku_size + 2 }, (_, r) =>
+                        Array.from({ length: sudoku_size + 2 }, (_, c) => {
+                            const found = given_numbers.find(item => item.row === r && item.col === c);
+                            return found ? found.num : 0;
+                        })
+                    );
+                } else {
+                    test_board = Array.from({ length: sudoku_size }, (_, r) =>
+                        Array.from({ length: sudoku_size }, (_, c) => {
+                            const found = given_numbers.find(item => item.row === r && item.col === c);
+                            return found ? found.num : 0;
+                        })
+                    );
+                }
 
                 // 唯一解检测
                 const result = solve(
@@ -379,27 +428,34 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
 
     backtrack();
 
-    // 如果所有候选数都尝试过但没有找到更好的解，检查是否有备选方案
-    while (!found_valid && second_best_solution) {
-        // log_process(`所有尝试均未超过最高分值${best_score}，采用备选方案，分值: ${second_best_score}`);
-        best_score = second_best_score;
+    let max_attempt = 20; // 最多尝试次数
+    let attempt = 0;
 
-        for (let i = 0; i < sudoku_size; i++) {
-            for (let j = 0; j < sudoku_size; j++) {
-                if (Array.isArray(second_best_solution[i][j])) {
-                    sudoku_board[i][j] = [...second_best_solution[i][j]];
-                } else {
-                    sudoku_board[i][j] = second_best_solution[i][j];
+    while (attempt < max_attempt) {
+        attempt++;
+
+        // 如果所有候选数都尝试过但没有找到更好的解，检查是否有备选方案
+        if (!found_valid && second_best_solution) {
+            // log_process(`所有尝试均未超过最高分值${best_score}，采用备选方案，分值: ${second_best_score}`);
+            best_score = second_best_score;
+
+            for (let i = 0; i < sudoku_size; i++) {
+                for (let j = 0; j < sudoku_size; j++) {
+                    if (Array.isArray(second_best_solution[i][j])) {
+                        sudoku_board[i][j] = [...second_best_solution[i][j]];
+                    } else {
+                        sudoku_board[i][j] = second_best_solution[i][j];
+                    }
                 }
             }
+            given_numbers = [...second_best_given_numbers];
+            second_best_solution = null;
+            second_best_score = -1;
+            second_best_given_numbers = null;
+            found_valid = false;
+            second_best_count = 0; // 重置计数
+            backtrack(0);
         }
-        given_numbers = [...second_best_given_numbers];
-        second_best_solution = null;
-        second_best_score = -1;
-        second_best_given_numbers = null;
-        found_valid = false;
-        second_best_count = 0; // 重置计数
-        backtrack(0);
     }
 
     const result_board = Array.from({ length: sudoku_size }, (_, r) =>
@@ -449,12 +505,28 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
             positions_to_dig.forEach(([r, c]) => puzzle[r][c] = 0);
     
             // 验证唯一解并计算分值
-            const test_board = puzzle.map(row =>
-                row.map(cell => cell === 0
-                    ? [...Array(size)].map((_, n) => n + 1)
-                    : cell
-                )
-            );
+            let test_board;
+            if (state.current_mode === 'X_sums') {
+                // X和模式，去掉边界
+                test_board = Array.from({ length: size + 2 }, (_, i) =>
+                    Array.from({ length: size + 2 }, (_, j) => {
+                        if (i === 0 || i === size + 1 || j === 0 || j === size + 1) {
+                            return 0; // 边界填充为 0
+                        }
+                        const cell = puzzle[i - 1][j - 1];
+                        return cell === 0
+                            ? [...Array(size)].map((_, n) => n + 1)
+                            : cell;
+                    })
+                );
+            } else {
+                test_board = puzzle.map(row =>
+                    row.map(cell => cell === 0
+                        ? [...Array(size)].map((_, n) => n + 1)
+                        : cell
+                    )
+                );
+            }
 
             solve(test_board, size, isValid, true);
     

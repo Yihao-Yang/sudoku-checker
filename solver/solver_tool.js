@@ -11,6 +11,7 @@ import { apply_odd_even_marks, is_valid_odd_even } from "../modules/odd_even.js"
 import { is_valid_anti_king } from "../modules/anti_king.js";
 import { is_valid_anti_knight } from "../modules/anti_knight.js";
 import { is_valid_palindrome, merge_connected_lines } from "../modules/palindrome.js";
+import { is_valid_X_sums, apply_X_sums_marks } from "../modules/X_sums.js";
 
 /**
  * 从所有相关区域移除指定数字的候选数
@@ -587,6 +588,32 @@ export function get_special_combination_regions(size, mode = 'classic') {
             }
         }
         // log_process(`合并后的回文线段数：${regions.length}`);
+    } else if (mode === 'X_sums') {
+        // X_sums 模式：每行和每列作为一个特定组合区域
+        for (let row = 0; row < size; row++) {
+            const row_cells = [];
+            for (let col = 0; col < size; col++) {
+                row_cells.push([row, col]);
+            }
+            regions.push({
+                type: '特定组合区域',
+                index: `row-${row + 1}`,
+                cells: row_cells,
+                clue_nums: Array.from({ length: size }, (_, n) => n + 1),
+            });
+        }
+        for (let col = 0; col < size; col++) {
+            const col_cells = [];
+            for (let row = 0; row < size; row++) {
+                col_cells.push([row, col]);
+            }
+            regions.push({
+                type: '特定组合区域',
+                index: `col-${col + 1}`,
+                cells: col_cells,
+                clue_nums: Array.from({ length: size }, (_, n) => n + 1),
+            });
+        }
     }
     return regions;
 }
@@ -637,6 +664,8 @@ export function isValid(board, size, row, col, num) {
         return is_valid_anti_knight(board, size, row, col, num);
     } else if (state.current_mode === 'palindrome') {
         return is_valid_palindrome(board, size, row, col, num);
+    } else if (state.current_mode === 'X_sums') {
+        return is_valid_X_sums(board, size, row, col, num);
     } else {
         // 获取当前模式（classic/diagonal/missing/...）
         const mode = state.current_mode || 'classic';
@@ -662,7 +691,28 @@ let size = 0;
 let solution = null;
 // 主求解函数
 export function solve(currentBoard, currentSize, isValid = isValid, silent = false) {
-    
+    // X和模式特殊处理：去掉边界
+    // log_process(
+    //     currentBoard
+    //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
+    //         .join('\n')
+    // );
+    if (state.current_mode === 'X_sums') {
+        apply_X_sums_marks(currentBoard, currentSize);
+    }
+    if (state.current_mode === 'X_sums') {
+        // 转换 board 为去掉边界的形式
+        currentBoard = Array.from({ length: currentSize }, (_, i) =>
+            Array.from({ length: currentSize }, (_, j) => {
+                const cell = currentBoard[i + 1][j + 1];
+                if (Array.isArray(cell)) {
+                    return cell.filter(n => n >= 1 && n <= currentSize);
+                }
+                const val = parseInt(cell);
+                return isNaN(val) ? Array.from({length: currentSize}, (_, n) => n + 1) : val;
+            })
+        );
+    }
     board = currentBoard;
     size = currentSize;
     state.solve_stats.solution_count = 0;
@@ -736,7 +786,7 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
     // 如果逻辑求解未完成，则尝试暴力求解
     if (!logical_result.isSolved) {
         if (state.techniqueSettings.Brute_Force) {
-            solve_By_BruteForce();
+            solve_By_BruteForce(0, 0);
         } else {
             if (state.solve_stats.solution_count === -2) {
                 return {solution_count: state.solve_stats.solution_count};
@@ -803,7 +853,7 @@ function solve_By_Logic() {
 }
 
 // 暴力求解函数
-function solve_By_BruteForce(r = 0, c = 0, isValid = isValid) {
+function solve_By_BruteForce(r = 0, c = 0) {
     const backup = board.map(row => [...row]);
     
     if (state.solve_stats.solution_count >= 2) return;

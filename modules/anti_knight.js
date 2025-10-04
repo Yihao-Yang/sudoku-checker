@@ -29,7 +29,7 @@ export function create_anti_knight_sudoku(size) {
         Cell_Elimination: true,
         Brute_Force: false,
     };
-    for (let i = 1; i <= 9; i++) {
+    for (let i = 1; i <= size; i++) {
         state.techniqueSettings[`Cell_Elimination_${i}`] = true;
     }
 

@@ -30,7 +30,7 @@ export function create_palindrome_sudoku(size) {
         Brute_Force: false,
         Special_Combination_Region_Elimination: true,
     };
-    for (let i = 1; i <= 9; i++) {
+    for (let i = 1; i <= size; i++) {
         state.techniqueSettings[`Cell_Elimination_${i}`] = true;
     }
 

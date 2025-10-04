@@ -36,7 +36,7 @@ export function create_diagonal_sudoku(size) {
         Variant_Hidden_Triple: true
     };
     // 唯余法全部默认开启
-    for (let i = 1; i <= 9; i++) {
+    for (let i = 1; i <= size; i++) {
         state.techniqueSettings[`Cell_Elimination_${i}`] = true;
     }
 

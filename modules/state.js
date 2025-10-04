@@ -48,6 +48,7 @@ export function set_current_mode(mode) {
         'anti_king',
         'anti_knight',
         'palindrome',
+        'X_sums',
         'new'
     ].includes(mode)) {
         state.current_mode = mode;

@@ -17,6 +17,7 @@ import { create_ratio_sudoku } from './ratio.js';
 import { create_odd_sudoku } from './odd.js';
 import { create_odd_even_sudoku, is_valid_odd_even } from './odd_even.js';
 import { create_palindrome_sudoku } from './palindrome.js';
+import { create_X_sums_sudoku } from './X_sums.js';
 import { create_new_sudoku } from './new.js';
 import { state, set_current_mode } from './state.js';
 import { 
@@ -80,7 +81,7 @@ export function create_sudoku_grid(size) {
         Brute_Force: false       
     };
     // 唯余法全部默认开启
-    for (let i = 1; i <= 9; i++) {
+    for (let i = 1; i <= size; i++) {
         state.techniqueSettings[`Cell_Elimination_${i}`] = true;
     }
 
@@ -268,6 +269,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('奇数', () => create_odd_sudoku(4));
         add_Extra_Button('奇偶', () => create_odd_even_sudoku(4));
         add_Extra_Button('回文', () => create_palindrome_sudoku(4));
+        add_Extra_Button('X和', () => create_X_sums_sudoku(4));
         add_Extra_Button('新', () => create_new_sudoku(4));
     } else if (size === 6) {
         add_Extra_Button('乘积', () => show_result('这是六宫乘积的功能！(待实现)'));
@@ -287,6 +289,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('奇数', () => create_odd_sudoku(6));
         add_Extra_Button('奇偶', () => create_odd_even_sudoku(6));
         add_Extra_Button('回文', () => create_palindrome_sudoku(6));
+        add_Extra_Button('X和', () => create_X_sums_sudoku(6));
         add_Extra_Button('新', () => create_new_sudoku(6));
     } else if (size === 9) {
         add_Extra_Button('乘积', () => show_result('这是九宫乘积的功能！(待实现)'));
@@ -309,6 +312,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('奇数', () => create_odd_sudoku(9));
         add_Extra_Button('奇偶', () => create_odd_even_sudoku(9));
         add_Extra_Button('回文', () => create_palindrome_sudoku(9));
+        add_Extra_Button('X和', () => create_X_sums_sudoku(9));
         add_Extra_Button('新', () => create_new_sudoku(9));
     }
 }
@@ -576,26 +580,34 @@ export function check_uniqueness() {
     // 备份当前题目状态
     backup_original_board();
     
-    // 获取当前数独状态，包括候选数信息
-    let board = Array.from({ length: size }, (_, i) =>
-        Array.from({ length: size }, (_, j) => {
-            const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
-            const val = parseInt(input.value);
+        // 获取当前数独状态，包括候选数信息
+    let board;
+    if (state.current_mode === 'X_sums') {
+        // X和模式，去掉边界
+        board = Array.from({ length: size + 2 }, (_, i) =>
+            Array.from({ length: size + 2 }, (_, j) => {
+                const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+                const val = parseInt(input.value);
 
-            // 如果是候选数模式且有候选数，则返回候选数数组，否则返回单个数字或0
-            if (state.is_candidates_mode && input.value.length > 1) {
-                return [...new Set(input.value.split('').map(Number))].filter(n => n >= 1 && n <= size);
-            }
-            return isNaN(val) ? Array.from({length: size}, (_, n) => n + 1) : val;
-        })
-    );
-// 新增：应用排除标记
-    // if (state.current_mode === 'exclusion') {
-    //     apply_exclusion_marks(board, size);
-    // }
-    // log_process('初始数独状态：');
-    // log_process(board.map(row => row.map(cell => Array.isArray(cell) ? `{${cell.join('')}}` : cell).join(' ')).join('\n'));
-    // log_process('-----------------------');
+                if (state.is_candidates_mode && input.value.length > 1) {
+                    return [...new Set(input.value.split('').map(Number))].filter(n => n >= 1 && n <= size);
+                }
+                return isNaN(val) ? Array.from({length: size}, (_, n) => n + 1) : val;
+            })
+        );
+    } else {
+        board = Array.from({ length: size }, (_, i) =>
+            Array.from({ length: size }, (_, j) => {
+                const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+                const val = parseInt(input.value);
+
+                if (state.is_candidates_mode && input.value.length > 1) {
+                    return [...new Set(input.value.split('').map(Number))].filter(n => n >= 1 && n <= size);
+                }
+                return isNaN(val) ? Array.from({length: size}, (_, n) => n + 1) : val;
+            })
+        );
+    }
 
     // 判断当前模式，选择不同的有效性检测函数
     let valid_func = isValid;
@@ -606,6 +618,7 @@ export function check_uniqueness() {
     // 显示结果
     if (state.solve_stats.solution_count === -1) {
         show_result("当前技巧无法解出");
+        show_logical_solution();
     } else if (state.solve_stats.solution_count === 0 || state.solve_stats.solution_count === -2) {
         show_result("当前数独无解！");
     } else if (state.solve_stats.solution_count === 1) {
@@ -614,30 +627,36 @@ export function check_uniqueness() {
         document.getElementById('toggleCandidatesMode').textContent = '进入候选数模式';
         
         // 填充唯一解
-        for (let i = 0; i < size; i++) {
-            for (let j = 0; j < size; j++) {
-                const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
-                const cell = input.parentElement;
-                const candidatesGrid = cell.querySelector('.candidates-grid');
-                
-                // 更新显示状态
-                input.style.display = 'block';
-                input.classList.remove('hide-input-text');
-                if (candidatesGrid) {
-                    candidatesGrid.style.display = 'none';
-                }
-                
-                // 填充答案
-                if (solution[i][j] > 0) {
-                    // 如果是标准数独模式且该格已有数字，则跳过
-                    if (!state.is_candidates_mode && input.value) {
-                        continue;
+            for (let i = 0; i < size; i++) {
+                for (let j = 0; j < size; j++) {
+                    let input;
+                    if (state.current_mode === 'X_sums') {
+                        input = container.querySelector(`input[data-row="${i + 1}"][data-col="${j + 1}"]`);
+                    } else {
+                        input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
                     }
-                    input.value = solution[i][j];
-                    input.classList.add("solution-cell");
+                    if (!input) continue; // 防止input未找到
+                    const cell = input.parentElement;
+                    const candidatesGrid = cell.querySelector('.candidates-grid');
+
+                    // 更新显示状态
+                    input.style.display = 'block';
+                    input.classList.remove('hide-input-text');
+                    if (candidatesGrid) {
+                        candidatesGrid.style.display = 'none';
+                    }
+
+                    // 填充答案
+                    if (solution[i][j] > 0) {
+                        // 如果是标准数独模式且该格已有数字，则跳过
+                        if (!state.is_candidates_mode && input.value) {
+                            continue;
+                        }
+                        input.value = solution[i][j];
+                        input.classList.add("solution-cell");
+                    }
                 }
             }
-        }
         show_result("当前数独恰好有唯一解！已自动填充答案。");
     } else if (state.solve_stats.solution_count > 1) {
         show_result("当前数独有多个解。");
@@ -645,5 +664,5 @@ export function check_uniqueness() {
         show_result(`当前数独有${state.solve_stats.solution_count}个解！`);
     }
 
-    show_logical_solution();
+    // show_logical_solution();
 }

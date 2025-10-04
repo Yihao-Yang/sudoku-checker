@@ -14,115 +14,60 @@ import {
 import { state, set_current_mode } from './state.js';
 import { create_candidates_grid } from './core.js';
 
-/**
- * 创建摩天楼数独网格
- */
+// /**
+//  * 创建摩天楼数独网格
+//  */
 export function create_skyscraper_sudoku(size) {
     set_current_mode('skyscraper');
-    // state.is_skyscraper_mode = true;
-    // state.is_vx_mode = false;
-    // state.is_candidates_mode = false;
+    state.current_grid_size = size;
 
-        // 移除旧的事件监听器
-    const toggleBtn = document.getElementById('toggleCandidatesMode');
-    const newToggleBtn = toggleBtn.cloneNode(true);
-    toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
-    
-    // 使用基础网格创建函数
+    gridDisplay.innerHTML = '';
+    controls.classList.remove('hidden');
+
+    // 技巧设置（如有需要可添加）
+    // state.techniqueSettings = {...};
+
     const { container, grid } = create_base_grid(size, true);
-
-    // 存储所有输入框的引用（包括边线）
     const inputs = Array.from({ length: size + 2 }, () => new Array(size + 2));
 
-    // // 为内部网格创建候选数网格
-    // for (let row = 1; row <= size; row++) {
-    //     for (let col = 1; col <= size; col++) {
-    //         const { cell, input } = create_base_cell(row, col, size, true);
-    //         inputs[row][col] = input;
-            
-    //         // 添加候选数网格(但初始隐藏)
-    //         const candidatesGrid = create_candidates_grid(cell, size);
-    //         cell.appendChild(candidatesGrid);
-    //         candidatesGrid.style.display = 'none';
-            
-    //         // ... 其余单元格初始化代码 ...
-    //     }
-    // }
-
-    // 添加切换候选数模式按钮事件 (保持原状)
-    document.getElementById('toggleCandidatesMode').addEventListener('click', function() {
-        state.is_candidates_mode = !state.is_candidates_mode;
-        this.textContent = state.is_candidates_mode ? '退出候选数模式' : '切换候选数模式';
-
-        change_candidates_mode(inputs, size, state.is_candidates_mode, true);
-    });
-    
     for (let row = 0; row < size + 2; row++) {
         for (let col = 0; col < size + 2; col++) {
-            // 使用基础单元格创建函数
-            const { cell, input } = create_base_cell(row, col, size, true);
-            inputs[row][col] = input;
+            const { cell, main_input, candidates_grid } = create_base_cell(row, col, size, true);
+            cell.appendChild(main_input);
+            cell.appendChild(candidates_grid);
+            grid.appendChild(cell);
+            inputs[row][col] = main_input;
 
-            // 在这里添加候选数网格(仅内部网格)
+            // 内部格子添加候选数网格
             if (row >= 1 && row <= size && col >= 1 && col <= size) {
-                const candidatesGrid = create_candidates_grid(cell, size);
-                cell.appendChild(candidatesGrid);
-                candidatesGrid.style.display = 'none';
+                cell.appendChild(candidates_grid);
             }
 
-            // 摩天楼特有的边线处理
-            if ((row === 0 || row === size + 1 || col === 0 || col === size + 1) &&
-                !(row === 0 && col === 0) &&
-                !(row === 0 && col === size + 1) &&
-                !(row === size + 1 && col === 0) &&
-                !(row === size + 1 && col === size + 1)) {
-                // 这是摩天楼提示区域
-                input.placeholder = '';
-                input.style.backgroundColor = '#eef';
-                input.style.border = 'none';
-                input.style.textAlign = 'center';
-                input.style.fontSize = '24px';
-                cell.style.backgroundColor = 'transparent';
-                cell.style.border = 'none';
-                cell.style.boxShadow = 'none';
-            } 
-            else if ((row === 0 && col === 0) ||
-                     (row === 0 && col === size + 1) ||
-                     (row === size + 1 && col === 0) ||
-                     (row === size + 1 && col === size + 1)) {
-                // 四个角落的空白区域
-                input.placeholder = '';
-                input.style.backgroundColor = 'transparent';
-                input.style.border = 'none';
-                input.style.textAlign = 'center';
-                input.style.fontSize = '24px';
-                cell.style.backgroundColor = 'transparent';
-                cell.style.border = 'none';
-                cell.style.boxShadow = 'none';
-                cell.style.pointerEvents = 'none';
-            }
-            else {
-                // 正常的数独格
-                input.style.backgroundColor = '#fff';
-            }
-
-            // 添加键盘导航
-            input.addEventListener('keydown', (e) => handle_key_navigation(e, row, col, size, inputs));
-            
-            // 添加点击事件，选中时全选文本
-            input.addEventListener('click', function() {
-                this.select();
+            main_input.addEventListener('input', function() {
+                const max_value = size;
+                const regex = new RegExp(`[^1-${max_value}]`, 'g');
+                this.value = this.value.replace(regex, '');
+                if (this.value.length > 1) {
+                    this.value = this.value[this.value.length - 1];
+                }
             });
 
-            cell.appendChild(input);
-            grid.appendChild(cell);
+            // 键盘导航
+            main_input.addEventListener('keydown', function(e) {
+                handle_key_navigation(e, row, col, size + 2, inputs);
+            });
+
+            // 点击全选
+            main_input.addEventListener('click', function() {
+                this.select();
+            });
         }
     }
 
     container.appendChild(grid);
     gridDisplay.appendChild(container);
 
-    // 添加摩天楼专属按钮
+    // 摩天楼专属按钮
     const extraButtons = document.getElementById('extraButtons');
     extraButtons.innerHTML = '';
     add_Extra_Button('一键标记', auto_mark_skyscraper_clues, '#2196F3');

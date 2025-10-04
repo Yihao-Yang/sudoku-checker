@@ -314,7 +314,12 @@ export function show_logical_solution() {
 
     for (let i = 0; i < size; i++) {
         for (let j = 0; j < size; j++) {
-            const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+            let input;
+            if (state.current_mode === 'X_sums') {
+                input = container.querySelector(`input[data-row="${i + 1}"][data-col="${j + 1}"]`);
+            } else {
+                input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+            }
             const cell = input.parentElement;
             const candidatesGrid = cell.querySelector('.candidates-grid');
             
@@ -616,7 +621,7 @@ export function clear_all_inputs() {
     const container = document.querySelector('.sudoku-container');
     if (!container) return;
 
-    const size = state.current_grid_size;
+    const size = 2 * state.current_grid_size;
     
     for (let i = 0; i < size; i++) {
         for (let j = 0; j < size; j++) {
