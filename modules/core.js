@@ -714,7 +714,7 @@ export function import_sudoku_from_string() {
     let index = 0;
     const cells = sudokuString.split(',');
 
-    if (state.is_skyscraper_mode) {
+    if (state.current_mode === 'X_sums') {
         for (let i = 0; i < size && index < sudokuString.length; i++) {
             for (let j = 0; j < size && index < sudokuString.length; j++) {
                 const char = sudokuString[index++];

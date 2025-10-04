@@ -1,5 +1,5 @@
 import { state, set_current_mode } from './state.js';
-import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, add_Extra_Button } from './core.js';
+import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, add_Extra_Button, clear_inner_numbers, clear_outer_clues } from './core.js';
 import { create_technique_panel } from './classic.js';
 import { get_all_regions } from '../solver/solver_tool.js';
 
@@ -95,6 +95,9 @@ export function create_X_sums_sudoku(size) {
     // 摩天楼专属按钮
     const extraButtons = document.getElementById('extraButtons');
     extraButtons.innerHTML = '';
+    add_Extra_Button('清除内部数字', clear_inner_numbers, '#2196F3'); // 添加清除内部数字按钮
+    add_Extra_Button('清除外部提示数', clear_outer_clues, '#2196F3'); // 清除外部提示数
+    add_Extra_Button('标记外部提示数', () => mark_outer_clues(size), '#2196F3'); // 添加标记外部提示数按钮
     add_Extra_Button('自动出题', () => generate_X_sums_puzzle(size), '#2196F3');
     // add_Extra_Button('一键标记', auto_mark_skyscraper_clues, '#2196F3');
     // add_Extra_Button('验证摩天楼唯一性', check_skyscraper_uniqueness, '#2196F3');
@@ -314,6 +317,94 @@ export function apply_X_sums_marks(board, size) {
     }
 }
 
+// 添加标记外部提示数的功能
+function mark_outer_clues(size) {
+    const container = document.querySelector('.sudoku-container');
+    if (!container) return;
+    const grid = container.querySelector('.sudoku-grid');
+    if (!grid) return;
+
+    // 遍历外部提示格子
+    for (let row = 0; row < size + 2; row++) {
+        for (let col = 0; col < size + 2; col++) {
+            if (row === 0 || row === size + 1 || col === 0 || col === size + 1) {
+                const input = grid.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
+                if (input && !input.value) {
+                    let x; // X 表示外部提示对应的格子数
+                    let sum = 0;
+                    let allFilled = true;
+
+                    if (row === 0) {
+                        // 上方提示
+                        const firstCell = grid.querySelector(`input[data-row="1"][data-col="${col}"]`);
+                        if (firstCell && firstCell.value) {
+                            x = parseInt(firstCell.value);
+                            for (let i = 1; i <= x; i++) {
+                                const cell = grid.querySelector(`input[data-row="${i}"][data-col="${col}"]`);
+                                if (cell && cell.value) {
+                                    sum += parseInt(cell.value);
+                                } else {
+                                    allFilled = false;
+                                    break;
+                                }
+                            }
+                        }
+                    } else if (row === size + 1) {
+                        // 下方提示
+                        const firstCell = grid.querySelector(`input[data-row="${size}"][data-col="${col}"]`);
+                        if (firstCell && firstCell.value) {
+                            x = parseInt(firstCell.value);
+                            for (let i = 0; i < x; i++) {
+                                const cell = grid.querySelector(`input[data-row="${size - i}"][data-col="${col}"]`);
+                                if (cell && cell.value) {
+                                    sum += parseInt(cell.value);
+                                } else {
+                                    allFilled = false;
+                                    break;
+                                }
+                            }
+                        }
+                    } else if (col === 0) {
+                        // 左侧提示
+                        const firstCell = grid.querySelector(`input[data-row="${row}"][data-col="1"]`);
+                        if (firstCell && firstCell.value) {
+                            x = parseInt(firstCell.value);
+                            for (let i = 1; i <= x; i++) {
+                                const cell = grid.querySelector(`input[data-row="${row}"][data-col="${i}"]`);
+                                if (cell && cell.value) {
+                                    sum += parseInt(cell.value);
+                                } else {
+                                    allFilled = false;
+                                    break;
+                                }
+                            }
+                        }
+                    } else if (col === size + 1) {
+                        // 右侧提示
+                        const firstCell = grid.querySelector(`input[data-row="${row}"][data-col="${size}"]`);
+                        if (firstCell && firstCell.value) {
+                            x = parseInt(firstCell.value);
+                            for (let i = 0; i < x; i++) {
+                                const cell = grid.querySelector(`input[data-row="${row}"][data-col="${size - i}"]`);
+                                if (cell && cell.value) {
+                                    sum += parseInt(cell.value);
+                                } else {
+                                    allFilled = false;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    // 如果所有格子都已填满，标记提示数
+                    if (allFilled && x) {
+                        input.value = sum;
+                    }
+                }
+            }
+        }
+    }
+}
 /**
  * 验证 X 和数独的有效性
  * @param {Array} board - 数独盘面（不包含提示数）
