@@ -327,6 +327,11 @@ function mark_outer_clues(size) {
     // 遍历外部提示格子
     for (let row = 0; row < size + 2; row++) {
         for (let col = 0; col < size + 2; col++) {
+            // 跳过第一行和最后一行的第一格和最后一格
+            if ((row === 0 || row === size + 1) && (col === 0 || col === size + 1)) {
+                continue;
+            }
+
             if (row === 0 || row === size + 1 || col === 0 || col === size + 1) {
                 const input = grid.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
                 if (input && !input.value) {
@@ -405,6 +410,7 @@ function mark_outer_clues(size) {
         }
     }
 }
+
 /**
  * 验证 X 和数独的有效性
  * @param {Array} board - 数独盘面（不包含提示数）
