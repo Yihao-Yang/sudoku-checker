@@ -589,30 +589,74 @@ export function get_special_combination_regions(size, mode = 'classic') {
         }
         // log_process(`合并后的回文线段数：${regions.length}`);
     } else if (mode === 'X_sums') {
-        // X_sums 模式：每行和每列作为一个特定组合区域
-        for (let row = 0; row < size; row++) {
-            const row_cells = [];
-            for (let col = 0; col < size; col++) {
-                row_cells.push([row, col]);
+        // // X_sums 模式：每行和每列作为一个特定组合区域
+        // for (let row = 0; row < size; row++) {
+        //     const row_cells = [];
+        //     for (let col = 0; col < size; col++) {
+        //         row_cells.push([row, col]);
+        //     }
+        //     regions.push({
+        //         type: '特定组合区域',
+        //         index: `row-${row + 1}`,
+        //         cells: row_cells,
+        //         clue_nums: Array.from({ length: size }, (_, n) => n + 1),
+        //     });
+        // }
+        // for (let col = 0; col < size; col++) {
+        //     const col_cells = [];
+        //     for (let row = 0; row < size; row++) {
+        //         col_cells.push([row, col]);
+        //     }
+        //     regions.push({
+        //         type: '特定组合区域',
+        //         index: `col-${col + 1}`,
+        //         cells: col_cells,
+        //         clue_nums: Array.from({ length: size }, (_, n) => n + 1),
+        //     });
+        // }
+        const container = document.querySelector('.sudoku-container');
+        if (!container) return regions;
+
+        // 遍历每一行，检查行首或行尾是否有外提示数
+        for (let row = 1; row <= size; row++) {
+            const left_clue_input = container.querySelector(`input[data-row="${row}"][data-col="0"]`);
+            const right_clue_input = container.querySelector(`input[data-row="${row}"][data-col="${size + 1}"]`);
+            const left_clue = left_clue_input ? parseInt(left_clue_input.value) : null;
+            const right_clue = right_clue_input ? parseInt(right_clue_input.value) : null;
+
+            if (left_clue || right_clue) {
+                const row_cells = [];
+                for (let col = 1; col <= size; col++) {
+                    row_cells.push([row - 1, col - 1]); // 转换为 0 索引
+                }
+                regions.push({
+                    type: '特定组合区域',
+                    index: `row-${row}`,
+                    cells: row_cells,
+                    clue_nums: Array.from({ length: size }, (_, n) => n + 1),
+                });
             }
-            regions.push({
-                type: '特定组合区域',
-                index: `row-${row + 1}`,
-                cells: row_cells,
-                clue_nums: Array.from({ length: size }, (_, n) => n + 1),
-            });
         }
-        for (let col = 0; col < size; col++) {
-            const col_cells = [];
-            for (let row = 0; row < size; row++) {
-                col_cells.push([row, col]);
+
+        // 遍历每一列，检查列首或列尾是否有外提示数
+        for (let col = 1; col <= size; col++) {
+            const top_clue_input = container.querySelector(`input[data-row="0"][data-col="${col}"]`);
+            const bottom_clue_input = container.querySelector(`input[data-row="${size + 1}"][data-col="${col}"]`);
+            const top_clue = top_clue_input ? parseInt(top_clue_input.value) : null;
+            const bottom_clue = bottom_clue_input ? parseInt(bottom_clue_input.value) : null;
+
+            if (top_clue || bottom_clue) {
+                const col_cells = [];
+                for (let row = 1; row <= size; row++) {
+                    col_cells.push([row - 1, col - 1]); // 转换为 0 索引
+                }
+                regions.push({
+                    type: '特定组合区域',
+                    index: `col-${col}`,
+                    cells: col_cells,
+                    clue_nums: Array.from({ length: size }, (_, n) => n + 1),
+                });
             }
-            regions.push({
-                type: '特定组合区域',
-                index: `col-${col + 1}`,
-                cells: col_cells,
-                clue_nums: Array.from({ length: size }, (_, n) => n + 1),
-            });
         }
     }
     return regions;

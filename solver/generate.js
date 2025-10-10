@@ -44,7 +44,8 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
         // 1. 生成终盘
         solution = generate_solution(size, existing_numbers, symmetry);
         // symmetry = 'none';
-        puzzle = dig_holes(solution, size, 0, symmetry, holes_count);
+        puzzle = solution;
+        // puzzle = dig_holes(solution, size, 0, symmetry, holes_count);
 
         // 计算实际挖洞数
         holesDug = 0;
@@ -82,6 +83,7 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
                 )
             );
         }
+
         // let is_valid_func;
         // if (state.current_mode === 'multi_diagonal') {
         //     is_valid_func = isValid_multi_diagonal;
@@ -110,12 +112,24 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
 
     // 3. 填充到网格
     const container = document.querySelector('.sudoku-container');
-    for (let i = 0; i < size; i++) {
-        for (let j = 0; j < size; j++) {
-            const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
-            input.value = puzzle[i][j] || '';
+
+    // if (state.current_mode === 'X_sums') {
+    //     // X_sums模式，跳过边界
+    //     for (let i = 1; i <= size; i++) {
+    //         for (let j = 1; j <= size; j++) {
+    //             const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+    //             input.value = puzzle[i - 1][j - 1] || '';
+    //         }
+    //     }
+    // } else {
+        // 默认模式
+        for (let i = 0; i < size; i++) {
+            for (let j = 0; j < size; j++) {
+                const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+                input.value = puzzle[i][j] || '';
+            }
         }
-    }
+    // }
 
     backup_original_board();
     show_result(`已生成${size}宫格数独题目`);
@@ -146,9 +160,30 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
     let sudoku_board;
     if (state.current_mode === 'X_sums') {
         // X和模式，去掉边界
-        sudoku_board = Array.from({ length: sudoku_size + 2 }, () =>
-            Array.from({ length: sudoku_size + 2 }, () => [...Array(sudoku_size)].map((_, i) => i + 1))
+        // sudoku_board = Array.from({ length: sudoku_size + 2 }, () =>
+        //     Array.from({ length: sudoku_size + 2 }, () => [...Array(sudoku_size)].map((_, i) => i + 1))
+        //     // Array.from({ length: sudoku_size + 2 }, (_, j) => {
+        //     //     if (i === 0 || i === sudoku_size + 1 || j === 0 || j === sudoku_size + 1) {
+        //     //         return 0; // 边界填充为 0
+        //     //     }
+        //     //     return [...Array(sudoku_size)].map((_, i) => i + 1);
+        //     // })
+        // );
+
+        sudoku_board = Array.from({ length: sudoku_size + 2 }, (_, i) =>
+            Array.from({ length: sudoku_size + 2 }, (_, j) => {
+                if (i === 0 || i === sudoku_size + 1 || j === 0 || j === sudoku_size + 1) {
+                    return 0; // 边界填充为 0
+                }
+                return [...Array(sudoku_size)].map((_, n) => n + 1); // 中间部分填充候选数
+            })
         );
+        
+        // // X和模式，去掉边界 - 只处理内部盘面
+        // sudoku_board = Array.from({ length: sudoku_size }, () =>
+        //     Array.from({ length: sudoku_size }, () => [...Array(sudoku_size)].map((_, i) => i + 1))
+        // );
+
     } else {
         sudoku_board = Array.from({ length: sudoku_size }, () =>
             Array.from({ length: sudoku_size }, () => [...Array(sudoku_size)].map((_, i) => i + 1))

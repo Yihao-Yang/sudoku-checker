@@ -1,7 +1,7 @@
 import { state, set_current_mode } from './state.js';
 import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, add_Extra_Button, clear_inner_numbers, clear_outer_clues } from './core.js';
 import { create_technique_panel } from './classic.js';
-import { get_all_regions } from '../solver/solver_tool.js';
+import { get_all_regions, isValid, solve } from '../solver/solver_tool.js';
 
 // 新数独主入口
 export function create_X_sums_sudoku(size) {
@@ -106,6 +106,9 @@ export function create_X_sums_sudoku(size) {
 
 // 生成多斜线数独题目
 export function generate_X_sums_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
+    size = size + 2;
+    clear_inner_numbers();
+    clear_outer_clues();
     const container = document.querySelector('.sudoku-container');
     if (!container) return;
     const grid = container.querySelector('.sudoku-grid');
@@ -122,13 +125,27 @@ export function generate_X_sums_puzzle(size, score_lower_limit = 0, holes_count 
     ];
     const symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
 
+    // // 添加提示数
+    // const add_clue = (row, col, value) => {
+    //     const input = grid.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
+    //     if (input) {
+    //         input.value = value;
+    //     }
+    // };
+        // 初始化空盘面
+    let board = Array.from({ length: size }, () =>
+        Array.from({ length: size }, () => 0)
+    );
+
     // 添加提示数
     const add_clue = (row, col, value) => {
         const input = grid.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
         if (input) {
             input.value = value;
+            board[row][col] = value; // 同步更新到 board
         }
     };
+
 
     // 获取对称位置
     const get_symmetric_position = (row, col, size, symmetry) => {
@@ -148,20 +165,84 @@ export function generate_X_sums_puzzle(size, score_lower_limit = 0, holes_count 
         }
     };
 
-    // 随机生成提示数
-    const num_clues = Math.floor(Math.random() * (size - 1)) + 1; // 随机生成1到size-1个提示数
-    for (let i = 0; i < num_clues; i++) {
-        const row = Math.floor(Math.random() * size);
-        const col = Math.floor(Math.random() * size);
-        const value = Math.floor(Math.random() * size) + 1; // 提示数值范围为1到size
 
+    // 随机生成提示数，只在首行、首列、尾行、尾列
+    const positions_set = new Set();
+    let marks_added = 0;
+    let try_limit = 1000; // 防止死循环
+    while (try_limit-- > 0) {
+        let row, col;
+
+        // 随机选择提示数位置：首行、首列、尾行、尾列
+        const edge = Math.floor(Math.random() * 4);
+        if (edge === 0) {
+            // 首行，跳过左上角和右上角
+            row = 0;
+            col = Math.floor(Math.random() * (size - 2)) + 1; // 列范围为 [1, size - 2]
+        } else if (edge === 1) {
+            // 尾行，跳过左下角和右下角
+            row = size - 1;
+            col = Math.floor(Math.random() * (size - 2)) + 1; // 列范围为 [1, size - 2]
+        } else if (edge === 2) {
+            // 首列，跳过左上角和左下角
+            row = Math.floor(Math.random() * (size - 2)) + 1; // 行范围为 [1, size - 2]
+            col = 0;
+        } else {
+            // 尾列，跳过右上角和右下角
+            row = Math.floor(Math.random() * (size - 2)) + 1; // 行范围为 [1, size - 2]
+            col = size - 1;
+        }
+
+        const excluded_values = [1, 3, 5, 7, 9, 11, 16, 19, 20, 21]; // 要排除的值
+        let value1, value2;
+        
+        do {
+            value1 = Math.floor(Math.random() * ((size - 2) * (size - 1) / 2)) + 1;
+        } while (size === 8 && excluded_values.includes(value1)); // 如果 size=8 且 value1 在排除列表中，则重新生成
+        
+        do {
+            value2 = Math.floor(Math.random() * ((size - 2) * (size - 1) / 2)) + 1;
+        } while (size === 8 && excluded_values.includes(value2)); // 如果 size=8 且 value2 在排除列表中，则重新生成
+        // const value1 = Math.floor(Math.random() * ((size - 2) * (size - 1) / 2)) + 1; // 提示数值范围为1到size
+        // const value2 = Math.floor(Math.random() * ((size - 2) * (size - 1) / 2)) + 1; // 对称位置的提示数值
         const [sym_row, sym_col] = get_symmetric_position(row, col, size, symmetry);
 
-        add_clue(row, col, value);
-        add_clue(sym_row, sym_col, value);
+        if (positions_set.has(`${row},${col}`) || positions_set.has(`${sym_row},${sym_col}`)) continue;
+
+        // 添加标记
+        add_clue(row, col, value1);
+        add_clue(sym_row, sym_col, value2);
+
+        // // 检查是否有解
+        // let board = [];
+
+        // log_process(`尝试添加提示数 (${row},${col})=${value1} 和 (${sym_row},${sym_col})=${value2}，当前已添加 ${marks_added} 个提示数`);
+        backup_original_board();
+        // const result = solve(board.map(r => r.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), size, isValid, true);
+        const result = solve(board, size - 2, isValid, true);
+
+        if (result.solution_count === 0 || result.solution_count === -2) {
+            log_process(`添加提示数 (${row},${col})=${value1} 和 (${sym_row},${sym_col})=${value2} 后无解，撤销标记`);
+            restore_original_board();
+            // 无解，撤销标记
+            const input1 = grid.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
+            const input2 = grid.querySelector(`input[data-row="${sym_row}"][data-col="${sym_col}"]`);
+            if (input1) input1.value = '';
+            if (input2) input2.value = '';
+            continue;
+        }
+        if (result.solution_count === 1) {
+            positions_set.add(`${row},${col}`);
+            positions_set.add(`${sym_row},${sym_col}`);
+            marks_added += (row === sym_row && col === sym_col) ? 1 : 2;
+            break;
+        }
+        positions_set.add(`${row},${col}`);
+        positions_set.add(`${sym_row},${sym_col}`);
+        marks_added += (row === sym_row && col === sym_col) ? 1 : 2;
     }
 
-    generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+    // generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
 }
 
 export function apply_X_sums_marks(board, size) {
@@ -439,8 +520,12 @@ export function is_valid_X_sums(board, size, row, col, num) {
     // 2. 检查外提示规则
     const left_cell = board[row][0]; // 该行的第一格
     const right_cell = board[row][size - 1]; // 该行的最后一格
-    if (typeof left_cell === 'number' && left_cell > 0) {
-        const x = left_cell; // x = 第一格的数字
+    if ((typeof left_cell === 'number' && left_cell > 0) || col === 0) {
+        let x = left_cell; // x = 第一格的数字
+        if (col === 0) {
+            // 如果是左侧提示，使用第一格的数字
+            x = num;
+        }
 
         // 临时将当前格子视为已填入 num
         const temp_board = board.map((r, i) => r.map((c, j) => (i === row && j === col ? num : c)));
@@ -470,8 +555,12 @@ export function is_valid_X_sums(board, size, row, col, num) {
         }
     }
     // 检查最后一格是否为数字并大于 0
-    if (typeof right_cell === 'number' && right_cell > 0) {
-        const x = right_cell; // x = 最后一格的数字
+    if ((typeof right_cell === 'number' && right_cell > 0) || col === size - 1) {
+        let x = right_cell; // x = 最后一格的数字
+        if (col === size - 1) {
+            // 如果是左侧提示，使用第一格的数字
+            x = num;
+        }
 
         // 临时将当前格子视为已填入 num
         const temp_board = board.map((r, i) => r.map((c, j) => (i === row && j === col ? num : c)));
@@ -503,8 +592,12 @@ export function is_valid_X_sums(board, size, row, col, num) {
     // 检查上方提示规则
     const top_cell = board[0][col]; // 该列的第一格
     const bottom_cell = board[size - 1][col]; // 该列的最后一格
-    if (typeof top_cell === 'number' && top_cell > 0) {
-        const x = top_cell; // x = 第一格的数字
+    if ((typeof top_cell === 'number' && top_cell > 0) || row === 0) {
+        let x = top_cell; // x = 第一格的数字
+        if (row === 0) {
+            // 如果是左侧提示，使用第一格的数字
+            x = num;
+        }
 
         // 临时将当前格子视为已填入 num
         const temp_board = board.map((r, i) => r.map((c, j) => (i === row && j === col ? num : c)));
@@ -534,8 +627,12 @@ export function is_valid_X_sums(board, size, row, col, num) {
         }
     }
     // 检查下方提示规则
-    if (typeof bottom_cell === 'number' && bottom_cell > 0) {
-        const x = bottom_cell; // x = 最后一格的数字
+    if ((typeof bottom_cell === 'number' && bottom_cell > 0) || row === size - 1) {
+        let x = bottom_cell; // x = 最后一格的数字
+        if (row === size - 1) {
+            // 如果是左侧提示，使用第一格的数字
+            x = num;
+        }
 
         // 临时将当前格子视为已填入 num
         const temp_board = board.map((r, i) => r.map((c, j) => (i === row && j === col ? num : c)));
