@@ -5,6 +5,7 @@ import { state } from './state.js';
 import { solve_By_Elimination } from '../solver/Technique.js';
 import { check_uniqueness } from './classic.js';
 import { clear_multi_diagonal_marks } from './multi_diagonal.js'
+import { check_missing_uniqueness } from './missing.js';
 
 // 文件名计数器，记录分值和技巧组合出现次数
 const fileNameCounter = {};
@@ -872,7 +873,11 @@ export function save_sudoku_as_image(is_puzzle = true) {
 
     
     if (is_puzzle) {
-        check_uniqueness();
+        if (state.current_mode === 'missing') {
+            check_missing_uniqueness();
+        } else {
+            check_uniqueness();
+        }
         hide_solution();
     }
 
@@ -974,7 +979,12 @@ export function save_sudoku_as_image(is_puzzle = true) {
 
         // 如果是题目模式，自动解题并保存解答图片
         if (is_puzzle) {
-            check_uniqueness();
+            // check_uniqueness();
+            if (state.current_mode === 'missing') {
+                check_missing_uniqueness();
+            } else {
+                check_uniqueness();
+            }
             setTimeout(() => {
                 save_sudoku_as_image(false);
             }, 500); // 延迟，确保解答已填充
