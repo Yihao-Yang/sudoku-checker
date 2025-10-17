@@ -28,6 +28,7 @@ export function solve_By_Elimination(board, size) {
         "变型区块": 0,
         "特定组合区块": 0,
         "多特定组合排除": 0,
+        "多特定组合区块": 0,
         "宫显性数对": 0,
         "行列显性数对": 0,
         "变型显性数对": 0,
@@ -88,14 +89,15 @@ export function solve_By_Elimination(board, size) {
         "一刀流宫区块": 10,
         "变型区块": 15,
         "特定组合区块": 15,
-        "多特定组合排除": 300,
+        "多特定组合排除": 30,
         "宫隐性数对": 30,
         "变型隐性数对": 40,
-        "宫组合区块": 400,
-        "变型组合区块": 400,
-        "行列区块": 400,
+        "宫组合区块": 40,
+        "变型组合区块": 40,
+        "行列区块": 40,
         "宫隐性三数组": 70,
         "变型隐性三数组": 100,
+        "多特定组合区块": 80,
         "宫显性数对": 80,
         "行列显性数对": 90,
         "变型显性数对": 120,
@@ -125,6 +127,7 @@ export function solve_By_Elimination(board, size) {
         [() => state.techniqueSettings?.Cell_Elimination_1 && check_cell_elimination(board, size, 1)],
         // 第二优先级：余2数的唯余法
         [() => state.techniqueSettings?.Cell_Elimination_2 && check_cell_elimination(board, size, 2)],
+        // 特定组合排除
         [() => state.techniqueSettings?.Special_Combination_Region_Elimination && check_special_combination_region_elimination(board, size)],
         // 第三优先级：宫排除法
     ...Array.from({length: size}, (_, i) => [() => state.techniqueSettings?.Box_Elimination && check_Box_Elimination(board, size, i + 1)]),
@@ -182,6 +185,8 @@ export function solve_By_Elimination(board, size) {
         [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 8)],
         [() => state.techniqueSettings?.Cell_Elimination_9 && check_cell_elimination(board, size, 9)],
         [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 9)],
+        // 多特定组合区块
+        [() => state.current_mode !== 'classic' && state.techniqueSettings?.Multi_Special_Combination_Region_Block && check_multi_special_combination_region_block_elimination(board, size)],
         // 第十二优先级：宫隐性三数组，变型隐性三数组
         [() => state.techniqueSettings?.Box_Hidden_Triple && check_box_hidden_subset_elimination(board, size, 3)],
         [() => state.current_mode !== 'classic' && state.techniqueSettings?.Variant_Hidden_Triple && check_variant_hidden_subset_elimination(board, size, 3)],
@@ -351,6 +356,10 @@ export function solve_By_Elimination(board, size) {
                                     case 'Special_Combination_Region_Block':
                                         chinese_name = "特定组合区块";
                                         score_key = "特定组合区块";
+                                        break;
+                                    case 'Multi_Special_Combination_Region_Block':
+                                        chinese_name = "多特定组合区块";
+                                        score_key = "多特定组合区块";
                                         break;
                                     case 'Box_Naked_Pair':
                                         chinese_name = "宫显性数对";
@@ -2164,6 +2173,69 @@ function check_special_combination_region_block_elimination(board, size) {
         }
     }
     return has_conflict;
+}
+
+/**
+ * 多特定组合区域区块排除
+ * 1. 获取所有特定组合区域
+ * 2. 标记每个区域的格子属于哪些宫/行/列
+ * 3. 找出有共同宫/行/列的两个区域，合并格子和数字，作为一个新的特定组合区域进行区块排除
+ */
+function check_multi_special_combination_region_block_elimination(board, size) {
+    // 1. 获取所有特定组合区域
+    const regions = get_special_combination_regions(size, state.current_mode);
+    if (regions.length < 2) return false;
+
+    // 2. 获取所有宫/行/列区域
+    const all_regions = get_all_regions(size, state.current_mode)
+        .filter(r => r.type === '宫' || r.type === '行' || r.type === '列');
+
+    // 3. 标记每个特定组合区域的格子属于哪些宫/行/列
+    // 结构：region_index -> Set(区域唯一key)
+    const region_area_map = [];
+    for (const region of regions) {
+        const area_set = new Set();
+        for (const [r, c] of region.cells) {
+            for (const area of all_regions) {
+                if (area.cells.some(([ar, ac]) => ar === r && ac === c)) {
+                    area_set.add(`${area.type}_${area.index}`);
+                }
+            }
+        }
+        region_area_map.push(area_set);
+    }
+
+    // 4. 找出有共同宫/行/列的两个特定组合区域
+    for (let i = 0; i < regions.length; i++) {
+        for (let j = i + 1; j < regions.length; j++) {
+            // 判断是否有共同区域
+            const setA = region_area_map[i];
+            const setB = region_area_map[j];
+            const intersection = [...setA].filter(x => setB.has(x));
+            if (intersection.length > 0) {
+                // 5. 合并格子和数字，作为一个新的特定组合区域
+                const merged_cells = [
+                    ...regions[i].cells,
+                    ...regions[j].cells
+                ];
+                const merged_nums = [
+                    ...regions[i].clue_nums,
+                    ...regions[j].clue_nums
+                ];
+                // 6. 调用已有的区块排除函数
+                const changed = special_combination_region_block_elimination(
+                    board,
+                    size,
+                    merged_cells,
+                    merged_nums,
+                    '多特定组合区域',
+                    `${regions[i].index}+${regions[j].index}`
+                );
+                if (changed) return; // 只要有变化就返回
+            }
+        }
+    }
+    return false;
 }
 
 /**

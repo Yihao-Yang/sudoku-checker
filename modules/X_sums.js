@@ -193,7 +193,8 @@ export function generate_X_sums_puzzle(size, score_lower_limit = 0, holes_count 
             col = size - 1;
         }
 
-        const excluded_values = [1, 3, 5, 7, 9, 11, 16, 19, 20, 21]; // 要排除的值
+        // const excluded_values = [1, 3, 4, 5, 7, 9, 11, 16, 19, 20, 21]; // 要排除的值
+        const excluded_values = [4]; // 要排除的值
         let value1, value2;
         
         do {

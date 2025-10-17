@@ -5,8 +5,8 @@ import { get_all_regions, solve } from '../solver/solver_tool.js';
 import { generate_puzzle } from '../solver/generate.js';
 
 // 新数独主入口
-export function create_ratio_sudoku(size) {
-    set_current_mode('ratio');
+export function create_product_sudoku(size) {
+    set_current_mode('product');
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
@@ -74,17 +74,17 @@ export function create_ratio_sudoku(size) {
     gridDisplay.appendChild(container);
 
     // 添加标记功能
-    add_ratio_mark(size);
+    add_product_mark(size);
 
     // 添加新数独专属按钮
     const extra_buttons = document.getElementById('extraButtons');
     extra_buttons.innerHTML = '';
-    add_Extra_Button('自动出题', () => generate_ratio_puzzle(size), '#2196F3');
+    add_Extra_Button('自动出题', () => generate_product_puzzle(size), '#2196F3');
     // 可添加唯一性验证等按钮
 }
 
-// 自动生成比例数独题目（生成圆圈并调用generate_puzzle）
-export function generate_ratio_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
+// 自动生成乘积数独题目（生成圆圈并调用generate_puzzle）
+export function generate_product_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
     clear_all_inputs();
     // 清除已有圆圈
     const container = document.querySelector('.sudoku-container');
@@ -96,6 +96,7 @@ export function generate_ratio_puzzle(size, score_lower_limit = 0, holes_count =
     if (size === 6) { min_marks = 10; max_marks = 12; }
     if (size === 9) { min_marks = 26; max_marks = 28; }
     const num_marks = Math.floor(Math.random() * (max_marks - min_marks + 1)) + min_marks;
+    // log_process(`计划生成圆圈数量：${num_marks}`);
 
     // 选取对称类型
     const SYMMETRY_TYPES = [
@@ -146,7 +147,7 @@ export function generate_ratio_puzzle(size, score_lower_limit = 0, holes_count =
                 return [row, col, type];
         }
     }
-    // log_process(`即将生成比例数独，圆圈数量：${num_marks}，对称类型：${symmetry}`);
+    // log_process(`即将生成乘积数独，圆圈数量：${num_marks}，对称类型：${symmetry}`);
 
     // 随机生成圆圈位置和数字（不贴边线，带对称）
     const positions_set = new Set();
@@ -195,14 +196,15 @@ export function generate_ratio_puzzle(size, score_lower_limit = 0, holes_count =
             }
             // 调用solve
             backup_original_board();
-            const result = solve(board.map(r => r.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), size, is_valid_ratio, true);
-            log_process(`尝试添加圆圈位置：(${row},${col}) 和 (${sym_row},${sym_col})，解的数量：${result.solution_count}`);
+            const result = solve(board.map(r => r.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), size, is_valid_product, true);
+            log_process(`尝试添加圆圈位置：${type}(${row},${col}) 和 ${type}(${sym_row},${sym_col})，解的数量：${result.solution_count}`);
             if (result.solution_count === 0 || result.solution_count === -2) {
                 log_process('当前圆圈位置无解，重新生成');
                 restore_original_board();
-                // 无解，撤销圆圈
+                // // 无解，撤销圆圈
                 // positions_set.delete(`${row},${col}`);
                 // positions_set.delete(`${sym_row},${sym_col}`);
+                // 无解，从positions_set中移除对应的键值
                 positions_set.delete(key);
                 positions_set.delete(sym_key);
                 // 移除最后两个圆圈
@@ -240,15 +242,17 @@ export function generate_ratio_puzzle(size, score_lower_limit = 0, holes_count =
             }
             // 调用solve
             backup_original_board();
-            const result = solve(board.map(r => r.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), size, is_valid_ratio, true);
+            const result = solve(board.map(r => r.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), size, is_valid_product, true);
             log_process(`尝试添加圆圈 at (${row},${col})，解数：${result.solution_count}`);
             if (result.solution_count === 0 || result.solution_count === -2) {
                 log_process('当前圆圈位置无解，重新生成');
                 restore_original_board();
-                // 无解，撤销圆圈
+                // // 无解，撤销圆圈
                 // positions_set.delete(`${row},${col}`);
                 // positions_set.delete(`${sym_row},${sym_col}`);
+                // 无解，从positions_set中移除对应的键值
                 positions_set.delete(key);
+                // positions_set.delete(sym_key);
                 // 移除最后两个圆圈
                 const marks = container.querySelectorAll('.vx-mark');
                 if (marks.length >= 1) {
@@ -272,147 +276,144 @@ export function generate_ratio_puzzle(size, score_lower_limit = 0, holes_count =
     // 生成题目
     generate_puzzle(size, score_lower_limit, holes_count);
 
-// ...existing code...
+    // 辅助函数：添加乘积标记（与add_product_mark一致）
+    function add_circle(row, col, size, container, type) {
+        const grid = container.querySelector('.sudoku-grid');
+        if (!grid) return;
 
-// 辅助函数：添加比例标记（与add_ratio_mark一致）
-function add_circle(row, col, size, container, type) {
-    const grid = container.querySelector('.sudoku-grid');
-    if (!grid) return;
+        const cell_width = grid.offsetWidth / size;
+        const cell_height = grid.offsetHeight / size;
 
-    const cell_width = grid.offsetWidth / size;
-    const cell_height = grid.offsetHeight / size;
-
-    let mark_x, mark_y, key;
-    if (type === 'v') {
-        // 竖线：连接[row, col]和[row, col+1]
-        mark_x = (col + 1) * cell_width;
-        mark_y = row * cell_height + cell_height / 2;
-        key = `v-${row}-${col + 1}`;
-    } else if (type === 'h') {
-        // 横线：连接[row, col]和[row+1, col]
-        mark_x = col * cell_width + cell_width / 2;
-        mark_y = (row + 1) * cell_height;
-        key = `h-${row + 1}-${col}`;
-    } else {
-        return;
-    }
-
-    const grid_offset_left = grid.offsetLeft;
-    const grid_offset_top = grid.offsetTop;
-
-    // 防止重复添加
-    const marks = Array.from(container.querySelectorAll('.vx-mark'));
-    if (marks.some(m => m.dataset.key === key)) {
-        return;
-    }
-
-    const mark = document.createElement('div');
-    mark.className = 'vx-mark';
-    mark.dataset.key = key;
-    mark.style.position = 'absolute';
-    mark.style.left = `${grid_offset_left + mark_x - 18}px`;
-    mark.style.top = `${grid_offset_top + mark_y - 10}px`;
-    mark.style.width = '36px';
-    mark.style.height = '20px';
-
-    // 创建只显示斜杠的输入框
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.maxLength = 3;
-    input.style.width = '38px';
-    input.style.height = '28px';
-    input.style.fontSize = '22px';
-    input.style.textAlign = 'center';
-    input.style.border = 'none';
-    input.style.background = 'transparent';
-    input.style.outline = 'none';
-    input.style.position = 'absolute';
-    input.style.left = '50%';
-    input.style.top = '50%';
-    input.style.transform = 'translate(-50%, -50%)';
-    input.style.color = '#333';
-
-    // 随机生成比例
-    let left, right;
-    do {
-        left = Math.floor(Math.random() * size) + 1;
-        right = Math.floor(Math.random() * size) + 1;
-    } while (left === right);
-    if (left > right) {
-        [left, right] = [right, left];
-    }
-    // 求最大公约数
-    function gcd(a, b) {
-        while (b !== 0) {
-            [a, b] = [b, a % b];
-        }
-        return a;
-    }
-    const divisor = gcd(left, right);
-    left = left / divisor;
-    right = right / divisor;
-    input.value = `${left}/${right}`;
-
-    // 输入时自动格式化为 左/右
-    input.addEventListener('input', function() {
-        const max_value = size;
-        const regex = new RegExp(`[^1-${max_value}]`, 'g');
-        const digits = this.value.replace(regex, '');
-        let l = '', r = '';
-        if (digits.length === 1) {
-            l = '';
-            r = digits[0];
-        } else if (digits.length >= 2) {
-            l = digits[0];
-            r = digits[1];
-        }
-        this.value = l + '/' + r;
-    });
-
-    // 保证光标不能移到/前面
-    input.addEventListener('keydown', function(e) {
-        if ((e.key === 'Backspace' && this.selectionStart === 1) ||
-            (e.key === 'Delete' && this.selectionStart === 0)) {
-            e.preventDefault();
-        }
-        if (e.key.length === 1 && /[0-9]/.test(e.key)) {
-            if (this.selectionStart === 1) {
-                this.setSelectionRange(2, 2);
-            }
-        }
-    });
-
-    input.addEventListener('focus', function() {
-        if (this.value.length <= 1) {
-            this.setSelectionRange(2, 2);
+        let mark_x, mark_y, key;
+        if (type === 'v') {
+            // 竖线：连接[row, col]和[row, col+1]
+            mark_x = (col + 1) * cell_width;
+            mark_y = row * cell_height + cell_height / 2;
+            key = `v-${row}-${col + 1}`;
+        } else if (type === 'h') {
+            // 横线：连接[row, col]和[row+1, col]
+            mark_x = col * cell_width + cell_width / 2;
+            mark_y = (row + 1) * cell_height;
+            key = `h-${row + 1}-${col}`;
         } else {
-            this.setSelectionRange(this.value.length, this.value.length);
+            return;
         }
-    });
 
-    mark.ondblclick = function(e) {
-        e.stopPropagation();
-        mark.remove();
-    };
-    input.ondblclick = function(e) {
-        e.stopPropagation();
-        mark.remove();
-    };
+        const grid_offset_left = grid.offsetLeft;
+        const grid_offset_top = grid.offsetTop;
 
-    mark.appendChild(input);
-    container.appendChild(mark);
-    input.focus();
+        // 防止重复添加
+        const marks = Array.from(container.querySelectorAll('.vx-mark'));
+        if (marks.some(m => m.dataset.key === key)) {
+            return;
+        }
+
+        const mark = document.createElement('div');
+        mark.className = 'vx-mark';
+        mark.dataset.key = key;
+        mark.style.position = 'absolute';
+        mark.style.left = `${grid_offset_left + mark_x - 15}px`;
+        mark.style.top = `${grid_offset_top + mark_y - 10}px`;
+        mark.style.width = '30px';
+        mark.style.height = '20px';
+
+        // 创建只显示斜杠的输入框
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.maxLength = 3;
+        input.style.width = '38px';
+        input.style.height = '28px';
+        input.style.fontSize = '22px';
+        input.style.textAlign = 'center';
+        input.style.border = 'none';
+        input.style.background = 'transparent';
+        input.style.outline = 'none';
+        input.style.position = 'absolute';
+        input.style.left = '50%';
+        input.style.top = '50%';
+        input.style.transform = 'translate(-50%, -50%)';
+        input.style.color = '#333';
+
+        // 随机生成乘积
+        let left, right;
+        do {
+            left = Math.floor(Math.random() * size) + 1;
+            right = Math.floor(Math.random() * size) + 1;
+        } while (left === right);
+        // if (left > right) {
+        //     [left, right] = [right, left];
+        // }
+        // // 求最大公约数
+        // function gcd(a, b) {
+        //     while (b !== 0) {
+        //         [a, b] = [b, a % b];
+        //     }
+        //     return a;
+        // }
+        // const divisor = gcd(left, right);
+        // left = left / divisor;
+        // right = right / divisor;
+        input.value = `${left*right}`;
+
+        // // 输入时自动格式化为 左/右
+        // input.addEventListener('input', function() {
+        //     const max_value = size;
+        //     const regex = new RegExp(`[^1-${max_value}]`, 'g');
+        //     const digits = this.value.replace(regex, '');
+        //     let l = '', r = '';
+        //     if (digits.length === 1) {
+        //         l = '';
+        //         r = digits[0];
+        //     } else if (digits.length >= 2) {
+        //         l = digits[0];
+        //         r = digits[1];
+        //     }
+        //     this.value = l*r;
+        // });
+
+        // // 保证光标不能移到*前面
+        // input.addEventListener('keydown', function(e) {
+        //     if ((e.key === 'Backspace' && this.selectionStart === 1) ||
+        //         (e.key === 'Delete' && this.selectionStart === 0)) {
+        //         e.preventDefault();
+        //     }
+        //     if (e.key.length === 1 && /[0-9]/.test(e.key)) {
+        //         if (this.selectionStart === 1) {
+        //             this.setSelectionRange(2, 2);
+        //         }
+        //     }
+        // });
+
+        // input.addEventListener('focus', function() {
+        //     if (this.value.length <= 1) {
+        //         this.setSelectionRange(2, 2);
+        //     } else {
+        //         this.setSelectionRange(this.value.length, this.value.length);
+        //     }
+        // });
+
+        mark.ondblclick = function(e) {
+            e.stopPropagation();
+            mark.remove();
+        };
+        input.ondblclick = function(e) {
+            e.stopPropagation();
+            mark.remove();
+        };
+
+        mark.appendChild(input);
+        container.appendChild(mark);
+        input.focus();
+    }
+
 }
 
-// ...existing code...
-}
-
-function add_ratio_mark(size) {
+function add_product_mark(size) {
     const grid = document.querySelector('.sudoku-grid');
     if (!grid) return;
 
-    if (grid._ratio_mark_mode) return;
-    grid._ratio_mark_mode = true;
+    if (grid._product_mark_mode) return;
+    grid._product_mark_mode = true;
 
     const container = grid.parentElement;
     container.style.position = 'relative';
@@ -458,9 +459,9 @@ function add_ratio_mark(size) {
         mark.className = 'vx-mark';
         mark.dataset.key = key;
         mark.style.position = 'absolute';
-        mark.style.left = `${grid_offset_left + mark_x - 18}px`;
+        mark.style.left = `${grid_offset_left + mark_x - 15}px`;
         mark.style.top = `${grid_offset_top + mark_y - 10}px`;
-        mark.style.width = '36px';
+        mark.style.width = '30px';
         mark.style.height = '20px';
 
         // 创建只显示斜杠的输入框
@@ -480,50 +481,50 @@ function add_ratio_mark(size) {
         input.style.transform = 'translate(-50%, -50%)';
         input.style.color = '#333';
 
-        // 初始内容为'/'
-        input.value = '/';
+        // // 初始内容为'/'
+        // input.value = '/';
 
-        // 输入时自动格式化为 左/右
-        input.addEventListener('input', function() {
-            // 只保留数字
-            const max_value = size;
-            const regex = new RegExp(`[^1-${max_value}]`, 'g');
-            const digits = this.value.replace(regex, '');
-            let left = '', right = '';
-            if (digits.length === 1) {
-                left = '';
-                right = digits[0];
-            } else if (digits.length >= 2) {
-                left = digits[0];
-                right = digits[1];
-            }
-            this.value = left + '/' + right;
-        });
+        // // 输入时自动格式化为 左/右
+        // input.addEventListener('input', function() {
+        //     // 只保留数字
+        //     const max_value = size;
+        //     const regex = new RegExp(`[^1-${max_value}]`, 'g');
+        //     const digits = this.value.replace(regex, '');
+        //     let left = '', right = '';
+        //     if (digits.length === 1) {
+        //         left = '';
+        //         right = digits[0];
+        //     } else if (digits.length >= 2) {
+        //         left = digits[0];
+        //         right = digits[1];
+        //     }
+        //     this.value = left + '/' + right;
+        // });
 
-        // 保证光标不能移到/前面
-        input.addEventListener('keydown', function(e) {
-            // 禁止删除斜杠
-            if ((e.key === 'Backspace' && this.selectionStart === 1) ||
-                (e.key === 'Delete' && this.selectionStart === 0)) {
-                e.preventDefault();
-            }
-            // 输入时自动跳过斜杠
-            if (e.key.length === 1 && /[0-9]/.test(e.key)) {
-                if (this.selectionStart === 1) {
-                    this.setSelectionRange(2, 2);
-                }
-            }
-        });
+        // // 保证光标不能移到/前面
+        // input.addEventListener('keydown', function(e) {
+        //     // 禁止删除斜杠
+        //     if ((e.key === 'Backspace' && this.selectionStart === 1) ||
+        //         (e.key === 'Delete' && this.selectionStart === 0)) {
+        //         e.preventDefault();
+        //     }
+        //     // 输入时自动跳过斜杠
+        //     if (e.key.length === 1 && /[0-9]/.test(e.key)) {
+        //         if (this.selectionStart === 1) {
+        //             this.setSelectionRange(2, 2);
+        //         }
+        //     }
+        // });
 
-        // 点击时自动跳到斜杠后
-        input.addEventListener('focus', function() {
-            // 如果左侧有数字，光标放在右侧，否则放在右侧
-            if (this.value.length <= 1) {
-                this.setSelectionRange(2, 2);
-            } else {
-                this.setSelectionRange(this.value.length, this.value.length);
-            }
-        });
+        // // 点击时自动跳到斜杠后
+        // input.addEventListener('focus', function() {
+        //     // 如果左侧有数字，光标放在右侧，否则放在右侧
+        //     if (this.value.length <= 1) {
+        //         this.setSelectionRange(2, 2);
+        //     } else {
+        //         this.setSelectionRange(this.value.length, this.value.length);
+        //     }
+        // });
 
         mark.ondblclick = function(e) {
             e.stopPropagation();
@@ -540,10 +541,10 @@ function add_ratio_mark(size) {
     });
 }
 
-// 比例数独有效性检测函数
-export function is_valid_ratio(board, size, row, col, num) {
+// 乘积数独有效性检测函数
+export function is_valid_product(board, size, row, col, num) {
     // 1. 常规区域判断（与普通数独一致）
-    const mode = state.current_mode || 'ratio';
+    const mode = state.current_mode || 'product';
     const regions = get_all_regions(size, mode);
     for (const region of regions) {
         if (region.cells.some(([r, c]) => r === row && c === col)) {
@@ -555,18 +556,20 @@ export function is_valid_ratio(board, size, row, col, num) {
         }
     }
 
-    // 2. 比例标记判断
+    // 2. 乘积标记判断
     const container = document.querySelector('.sudoku-container');
     const marks = container ? container.querySelectorAll('.vx-mark') : [];
     for (const mark of marks) {
         const input = mark.querySelector('input');
         const value = input && input.value.trim();
-        // 只处理形如 "a/b" 的比例
-        if (!value || !/^(\d*)\/(\d*)$/.test(value)) continue;
-        const match = value.match(/^(\d*)\/(\d*)$/);
-        const left_num = match[1] ? parseInt(match[1]) : null;
-        const right_num = match[2] ? parseInt(match[2]) : null;
-        if (!left_num && !right_num) continue;
+        // // 只处理形如 "a/b" 的乘积
+        // if (!value || !/^(\d*)\/(\d*)$/.test(value)) continue;
+        // const match = value.match(/^(\d*)\/(\d*)$/);
+        // const left_num = match[1] ? parseInt(match[1]) : null;
+        // const right_num = match[2] ? parseInt(match[2]) : null;
+        // if (!left_num && !right_num) continue;
+        const product = parseInt(value, 10);
+        if (isNaN(product)) continue;
 
         // 解析标记的唯一key
         const key = mark.dataset.key;
@@ -616,17 +619,9 @@ export function is_valid_ratio(board, size, row, col, num) {
             typeof other_value !== 'number' || other_value <= 0 || Array.isArray(other_value)
         ) continue;
 
-        // 判断比例关系
-        if (left_num && right_num) {
-            // 例如 1/2，A格:1，B格:2 或 A格:2，B格:1
-            if (
-                !(
-                    (this_value * right_num === other_value * left_num) ||
-                    (other_value * right_num === this_value * left_num)
-                )
-            ) {
-                return false;
-            }
+        // 判断乘积关系
+        if (this_value * other_value !== product) {
+            return false;
         }
     }
 

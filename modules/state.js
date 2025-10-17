@@ -41,6 +41,7 @@ export function set_current_mode(mode) {
         'extra_region',
         'exclusion',
         'quadruple',
+        'product',
         'ratio',
         'odd',
         'odd_even',

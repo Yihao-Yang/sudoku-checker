@@ -5,6 +5,7 @@ import { get_all_mark_lines, get_cells_on_line } from "../modules/multi_diagonal
 import { get_extra_region_cells } from '../modules/extra_region.js';
 import { apply_exclusion_marks, is_valid_exclusion } from "../modules/exclusion.js";
 import { apply_quadruple_marks, is_valid_quadruple } from "../modules/quadruple.js";
+import { is_valid_product } from "../modules/product.js";
 import { is_valid_ratio } from "../modules/ratio.js";
 import { apply_odd_marks, is_valid_odd } from "../modules/odd.js";
 import { apply_odd_even_marks, is_valid_odd_even } from "../modules/odd_even.js";
@@ -488,6 +489,62 @@ export function get_special_combination_regions(size, mode = 'classic') {
                 }
             }
         }
+    } else if (mode === 'product') {
+        const container = document.querySelector('.sudoku-container');
+        if (!container) return regions;
+        const marks = container.querySelectorAll('.vx-mark');
+        let region_index = 1;
+        for (const mark of marks) {
+            const input = mark.querySelector('input');
+            const value = input && input.value.trim();
+            // 只处理有效的乘积数字
+            const product = parseInt(value, 10);
+            if (isNaN(product) || product <= 0) continue;
+
+            // 解析标记的唯一key
+            const key = mark.dataset.key;
+            if (!key) continue;
+
+            // 解析标记对应的两格
+            // 竖线：v-row-col，横线：h-row-col
+            let cell_a, cell_b;
+            if (key.startsWith('v-')) {
+                // 竖线，row、col
+                const [_, row_str, col_str] = key.split('-');
+                const r = parseInt(row_str);
+                const c = parseInt(col_str);
+                cell_a = [r, c - 1];
+                cell_b = [r, c];
+            } else if (key.startsWith('h-')) {
+                // 横线，row、col
+                const [_, row_str, col_str] = key.split('-');
+                const r = parseInt(row_str);
+                const c = parseInt(col_str);
+                cell_a = [r - 1, c];
+                cell_b = [r, c];
+            } else {
+                continue;
+            }
+
+            // 计算所有满足乘积的数字组合
+            const clue_nums_set = new Set();
+            for (let a = 1; a <= size; a++) {
+                for (let b = 1; b <= size; b++) {
+                    if (a * b === product) {
+                        clue_nums_set.add(a);
+                        clue_nums_set.add(b);
+                    }
+                }
+            }
+            const clue_nums = Array.from(clue_nums_set).sort((x, y) => x - y);
+
+            regions.push({
+                type: '特定组合区域',
+                index: region_index++,
+                cells: [cell_a, cell_b],
+                clue_nums: clue_nums
+            });
+        }
     } else if (mode === 'ratio') {
         const container = document.querySelector('.sudoku-container');
         if (!container) return regions;
@@ -696,6 +753,8 @@ export function isValid(board, size, row, col, num) {
         return is_valid_exclusion(board, size, row, col, num);
     } else if (state.current_mode === 'quadruple') {
         return is_valid_quadruple(board, size, row, col, num);
+    } else if (state.current_mode === 'product') {
+        return is_valid_product(board, size, row, col, num);
     } else if (state.current_mode === 'ratio') {
         return is_valid_ratio(board, size, row, col, num);
     } else if (state.current_mode === 'odd') {

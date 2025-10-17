@@ -93,8 +93,8 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
 
     // 生成圆圈数量
     let min_marks = 2, max_marks = 4;
-    if (size === 6) { min_marks = 6; max_marks = 12; }
-    if (size === 9) { min_marks = 10; max_marks = 28; }
+    if (size === 6) { min_marks = 10; max_marks = 12; }
+    if (size === 9) { min_marks = 26; max_marks = 28; }
     const num_marks = Math.floor(Math.random() * (max_marks - min_marks + 1)) + min_marks;
 
     // 选取对称类型
@@ -138,19 +138,21 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
             col = Math.floor(Math.random() * (size - 1)); // 1 ~ size-2
         } while (positions_set.has(`${row},${col}`));
 
+        const key = `${row}-${col}`;
         // 计算对称点
         const [sym_row, sym_col] = get_symmetric(row, col, size, symmetry);
+        const sym_key = `${sym_row}-${sym_col}`;
 
         // 两个点都不能重复且都不能贴右/下边线
         if (
             sym_row >= 0 && sym_row < size - 1 &&
             sym_col >= 0 && sym_col < size - 1 &&
-            !positions_set.has(`${row},${col}`) &&
-            !positions_set.has(`${sym_row},${sym_col}`) &&
+            !positions_set.has(key) &&
+            !positions_set.has(sym_key) &&
             !(sym_row === row && sym_col === col)
         ) {
-            positions_set.add(`${row},${col}`);
-            positions_set.add(`${sym_row},${sym_col}`);
+            positions_set.add(key);
+            positions_set.add(sym_key);
             add_circle(row, col, size, container);
             add_circle(sym_row, sym_col, size, container);
             // 检查是否有解
@@ -171,14 +173,15 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
                 log_process('当前圆圈位置无解，重新生成');
                 restore_original_board();
                 // 无解，撤销圆圈
-                positions_set.delete(`${row},${col}`);
-                positions_set.delete(`${sym_row},${sym_col}`);
+                positions_set.delete(key);
+                positions_set.delete(sym_key);
                 // 移除最后两个圆圈
                 const marks = container.querySelectorAll('.vx-mark');
                 if (marks.length >= 2) {
                     marks[marks.length - 1].remove();
                     marks[marks.length - 2].remove();
                 }
+                // marks_added -= 2; // 同步减少计数
                 continue;
             }
             if (result.solution_count === 1) {
@@ -190,9 +193,9 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
         // 如果对称点和主点重合，只添加一次
         else if (
             sym_row === row && sym_col === col &&
-            !positions_set.has(`${row},${col}`)
+            !positions_set.has(key)
         ) {
-            positions_set.add(`${row},${col}`);
+            positions_set.add(key);
             add_circle(row, col, size, container);
             // 检查是否有解
             // 构造当前盘面
@@ -212,13 +215,14 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
                 log_process('当前圆圈位置无解，重新生成');
                 restore_original_board();
                 // 无解，撤销圆圈
-                positions_set.delete(`${row},${col}`);
-                positions_set.delete(`${sym_row},${sym_col}`);
+                positions_set.delete(key);
+                positions_set.delete(sym_key);
                 // 移除最后两个圆圈
                 const marks = container.querySelectorAll('.vx-mark');
                 if (marks.length >= 1) {
                     marks[marks.length - 1].remove();
                 }
+                // marks_added -= 1; // 同步减少计数
                 continue;
             }
             if (result.solution_count === 1) {

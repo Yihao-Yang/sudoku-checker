@@ -13,6 +13,7 @@ import { create_anti_king_sudoku } from './anti_king.js';
 import { create_anti_knight_sudoku } from './anti_knight.js';
 import { create_exclusion_sudoku, apply_exclusion_marks, is_valid_exclusion } from './exclusion.js';
 import { create_quadruple_sudoku, is_valid_quadruple } from './quadruple.js';
+import { create_product_sudoku } from './product.js';
 import { create_ratio_sudoku } from './ratio.js';
 import { create_odd_sudoku } from './odd.js';
 import { create_odd_even_sudoku, is_valid_odd_even } from './odd_even.js';
@@ -253,7 +254,6 @@ export function create_sudoku_grid(size) {
     extraButtons.innerHTML = '';
 
     if (size === 4) {
-        add_Extra_Button('乘积', () => show_result('这是四宫乘积的功能！(待实现)'));
         add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(4));
         add_Extra_Button('候选数', () => create_candidates_sudoku(4));
         add_Extra_Button('对角线', () => create_diagonal_sudoku(4));
@@ -265,6 +265,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('无马', () => create_anti_knight_sudoku(4));
         add_Extra_Button('排除', () => create_exclusion_sudoku(4));
         add_Extra_Button('四格提示', () => create_quadruple_sudoku(4));
+        add_Extra_Button('乘积', () => create_product_sudoku(4));
         add_Extra_Button('比例', () => create_ratio_sudoku(4));
         add_Extra_Button('奇数', () => create_odd_sudoku(4));
         add_Extra_Button('奇偶', () => create_odd_even_sudoku(4));
@@ -272,7 +273,6 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('X和', () => create_X_sums_sudoku(4));
         add_Extra_Button('新', () => create_new_sudoku(4));
     } else if (size === 6) {
-        add_Extra_Button('乘积', () => show_result('这是六宫乘积的功能！(待实现)'));
         add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(6));
         add_Extra_Button('候选数', () => create_candidates_sudoku(6));
         add_Extra_Button('对角线', () => create_diagonal_sudoku(6));
@@ -285,6 +285,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('无马', () => create_anti_knight_sudoku(6));
         add_Extra_Button('排除', () => create_exclusion_sudoku(6));
         add_Extra_Button('四格提示', () => create_quadruple_sudoku(6));
+        add_Extra_Button('乘积', () => create_product_sudoku(6));
         add_Extra_Button('比例', () => create_ratio_sudoku(6));
         add_Extra_Button('奇数', () => create_odd_sudoku(6));
         add_Extra_Button('奇偶', () => create_odd_even_sudoku(6));
@@ -292,7 +293,6 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('X和', () => create_X_sums_sudoku(6));
         add_Extra_Button('新', () => create_new_sudoku(6));
     } else if (size === 9) {
-        add_Extra_Button('乘积', () => show_result('这是九宫乘积的功能！(待实现)'));
         add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(9));
         add_Extra_Button('候选数', () => create_candidates_sudoku(9));
         add_Extra_Button('对角线', () => create_diagonal_sudoku(9));
@@ -308,6 +308,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('无马', () => create_anti_knight_sudoku(9));
         add_Extra_Button('排除', () => create_exclusion_sudoku(9));
         add_Extra_Button('四格提示', () => create_quadruple_sudoku(9));
+        add_Extra_Button('乘积', () => create_product_sudoku(9));
         add_Extra_Button('比例', () => create_ratio_sudoku(9));
         add_Extra_Button('奇数', () => create_odd_sudoku(9));
         add_Extra_Button('奇偶', () => create_odd_even_sudoku(9));
@@ -366,7 +367,8 @@ export function create_technique_panel() {
             { id: 'Variant_Pair_Block', name: '变型组合区块', default: false },
             { id: 'Row_Col_Block', name: '行列区块', default: true },
             { id: 'Variant_Block', name: '变型区块', default: false },
-            { id: 'Special_Combination_Region_Block', name: '特定组合区块', default: false } // 新增特定组合区块
+            { id: 'Special_Combination_Region_Block', name: '特定组合区块', default: false }, // 新增特定组合区块
+            { id: 'Multi_Special_Combination_Region_Block', name: '多特定组合区块', default: false } // 新增多特定组合区块
         ]
         },
         {

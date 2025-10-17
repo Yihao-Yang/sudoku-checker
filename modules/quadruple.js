@@ -1,6 +1,6 @@
 // quadruple.js
 import { state, set_current_mode } from './state.js';
-import { create_base_grid, create_base_cell, add_Extra_Button, log_process, backup_original_board, restore_original_board, handle_key_navigation } from './core.js';
+import { create_base_grid, create_base_cell, add_Extra_Button, log_process, backup_original_board, restore_original_board, handle_key_navigation, clear_all_inputs } from './core.js';
 import { generate_puzzle } from '../solver/generate.js';
 import { get_all_regions, solve } from '../solver/solver_tool.js';
 import { create_technique_panel } from './classic.js';
@@ -90,6 +90,7 @@ export function create_quadruple_sudoku(size) {
 
 // 自动生成四数独题目
 export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
+    clear_all_inputs();
     // 清除已有圆圈
     const container = document.querySelector('.sudoku-container');
     if (!container) return;
@@ -134,7 +135,10 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
     // 随机生成圆圈位置和数字（不贴边线，带对称）
     const positions_set = new Set();
     let marks_added = 0;
-    while (marks_added < num_marks) {
+    let try_count = 0;
+    const MAX_TRY = 1000;
+    while (marks_added < num_marks && try_count < MAX_TRY) {
+        try_count++;
         let row, col;
         // 保证不重复且不贴边线
         do {
@@ -149,12 +153,12 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
         if (
             sym_row >= 0 && sym_row < size - 1 &&
             sym_col >= 0 && sym_col < size - 1 &&
-            !positions_set.has(`${row},${col}`) &&
-            !positions_set.has(`${sym_row},${sym_col}`) &&
+            !positions_set.has(key) &&
+            !positions_set.has(sym_key) &&
             !(sym_row === row && sym_col === col)
         ) {
-            positions_set.add(`${row},${col}`);
-            positions_set.add(`${sym_row},${sym_col}`);
+            positions_set.add(key);
+            positions_set.add(sym_key);
             add_circle(row, col, size, container);
             add_circle(sym_row, sym_col, size, container);
             // 检查是否有解
@@ -175,18 +179,20 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
                 log_process('当前圆圈位置无解，重新生成');
                 restore_original_board();
                 // 无解，撤销圆圈
-                positions_set.delete(`${row},${col}`);
-                positions_set.delete(`${sym_row},${sym_col}`);
+                positions_set.delete(key);
+                positions_set.delete(sym_key);
                 // 移除最后两个圆圈
                 const marks = container.querySelectorAll('.vx-mark');
                 if (marks.length >= 2) {
                     marks[marks.length - 1].remove();
                     marks[marks.length - 2].remove();
                 }
+                // marks_added -= 2; // 同步减少计数
                 continue;
             }
             if (result.solution_count === 1) {
                 marks_added += 2;
+                return;
                 break;
             }
             marks_added += 2;
@@ -194,9 +200,9 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
         // 如果对称点和主点重合，只添加一次
         else if (
             sym_row === row && sym_col === col &&
-            !positions_set.has(`${row},${col}`)
+            !positions_set.has(key)
         ) {
-            positions_set.add(`${row},${col}`);
+            positions_set.add(key);
             add_circle(row, col, size, container);
             // 检查是否有解
             // 构造当前盘面
@@ -216,17 +222,19 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
                 log_process('当前圆圈位置无解，重新生成');
                 restore_original_board();
                 // 无解，撤销圆圈
-                positions_set.delete(`${row},${col}`);
-                positions_set.delete(`${sym_row},${sym_col}`);
+                positions_set.delete(key);
+                positions_set.delete(sym_key);
                 // 移除最后两个圆圈
                 const marks = container.querySelectorAll('.vx-mark');
                 if (marks.length >= 1) {
                     marks[marks.length - 1].remove();
                 }
+                // marks_added -= 1; // 同步减少计数
                 continue;
             }
             if (result.solution_count === 1) {
                 marks_added += 1;
+                return;
                 break;
             }
             marks_added += 1;
