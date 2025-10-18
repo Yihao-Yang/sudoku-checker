@@ -300,11 +300,11 @@ function add_circle(row, col, size, container, type) {
     const grid_offset_left = grid.offsetLeft;
     const grid_offset_top = grid.offsetTop;
 
-    // 防止重复添加
-    const marks = Array.from(container.querySelectorAll('.vx-mark'));
-    if (marks.some(m => m.dataset.key === key)) {
-        return;
-    }
+    // // 防止重复添加
+    // const marks = Array.from(container.querySelectorAll('.vx-mark'));
+    // if (marks.some(m => m.dataset.key === key)) {
+    //     return;
+    // }
 
     const mark = document.createElement('div');
     mark.className = 'vx-mark';

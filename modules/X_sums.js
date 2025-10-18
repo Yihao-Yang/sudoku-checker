@@ -193,19 +193,33 @@ export function generate_X_sums_puzzle(size, score_lower_limit = 0, holes_count 
             col = size - 1;
         }
 
-        // const excluded_values = [1, 3, 4, 5, 7, 9, 11, 16, 19, 20, 21]; // 要排除的值
-        const excluded_values = [4]; // 要排除的值
+        // 根据 size 设置半排除数组
+        let semi_excluded_values = [];
+        if (size === 6) {
+            semi_excluded_values = [1, 3, 5, 8, 9, 10];
+        } else if (size === 8) {
+            semi_excluded_values = [1, 3, 5, 7, 9, 11, 16, 19, 20, 21];
+        } else if (size === 11) {
+            semi_excluded_values = [1, 3, 5, 7, 43, 44, 45];
+        }
+        const excluded_values = [2, 4]; // 要排除的值
         let value1, value2;
         
         do {
             value1 = Math.floor(Math.random() * ((size - 2) * (size - 1) / 2)) + 1;
-        } while (size === 8 && excluded_values.includes(value1)); // 如果 size=8 且 value1 在排除列表中，则重新生成
-        
+            // 完全排除
+            if (excluded_values.includes(value1)) continue;
+            // 半排除
+            if (semi_excluded_values.includes(value1) && Math.random() < 0.5) continue;
+            break;
+        } while (true);
+
         do {
             value2 = Math.floor(Math.random() * ((size - 2) * (size - 1) / 2)) + 1;
-        } while (size === 8 && excluded_values.includes(value2)); // 如果 size=8 且 value2 在排除列表中，则重新生成
-        // const value1 = Math.floor(Math.random() * ((size - 2) * (size - 1) / 2)) + 1; // 提示数值范围为1到size
-        // const value2 = Math.floor(Math.random() * ((size - 2) * (size - 1) / 2)) + 1; // 对称位置的提示数值
+            if (excluded_values.includes(value2)) continue;
+            if (semi_excluded_values.includes(value2) && Math.random() < 0.5) continue;
+            break;
+        } while (true);
         const [sym_row, sym_col] = get_symmetric_position(row, col, size, symmetry);
 
         if (positions_set.has(`${row},${col}`) || positions_set.has(`${sym_row},${sym_col}`)) continue;

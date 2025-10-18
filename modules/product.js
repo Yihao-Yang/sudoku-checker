@@ -135,11 +135,11 @@ export function generate_product_puzzle(size, score_lower_limit = 0, holes_count
                 if (type === 'v') {
                     return [size - 1 - row, col, 'v'];
                 } else {
-                    return [size - row - 2, col, 'h'];
+                    return [size - 2 - row, col, 'h'];
                 }
             case 'vertical':
                 if (type === 'v') {
-                    return [row, size - col - 2, 'v'];
+                    return [row, size - 2 - col, 'v'];
                 } else {
                     return [row, size - 1 - col, 'h'];
                 }
@@ -229,7 +229,7 @@ export function generate_product_puzzle(size, score_lower_limit = 0, holes_count
             !positions_set.has(key)
         ) {
             positions_set.add(key);
-            add_circle(row, col, size, container);
+            add_circle(row, col, size, container, type);
             // 检查是否有解
             // 构造当前盘面
             const grid = container.querySelector('.sudoku-grid');
@@ -302,11 +302,11 @@ export function generate_product_puzzle(size, score_lower_limit = 0, holes_count
         const grid_offset_left = grid.offsetLeft;
         const grid_offset_top = grid.offsetTop;
 
-        // 防止重复添加
-        const marks = Array.from(container.querySelectorAll('.vx-mark'));
-        if (marks.some(m => m.dataset.key === key)) {
-            return;
-        }
+        // // 防止重复添加
+        // const marks = Array.from(container.querySelectorAll('.vx-mark'));
+        // if (marks.some(m => m.dataset.key === key)) {
+        //     return;
+        // }
 
         const mark = document.createElement('div');
         mark.className = 'vx-mark';
@@ -334,26 +334,35 @@ export function generate_product_puzzle(size, score_lower_limit = 0, holes_count
         input.style.transform = 'translate(-50%, -50%)';
         input.style.color = '#333';
 
-        // 随机生成乘积
-        let left, right;
+        // // 随机生成乘积
+        // let left, right;
+        // do {
+        //     left = Math.floor(Math.random() * size) + 1;
+        //     right = Math.floor(Math.random() * size) + 1;
+        // } while (left === right);
+
+        // input.value = `${left*right}`;
+
+        // 根据 size 设置半排除数组
+        let semi_excluded_values = [];
+        if (size === 6) {
+            semi_excluded_values = [2, 3, 4, 5, 8, 9, 10, 15, 16, 18, 20, 24, 25, 30];
+        } else if (size === 9) {
+            semi_excluded_values = [2, 3, 4, 5, 7, 9, 10, 14, 15, 16, 20, 21, 27, 28, 30, 32, 35, 36, 40, 42, 45, 48, 54, 56, 63, 72];
+        }
+        
+        let left, right, product;
         do {
             left = Math.floor(Math.random() * size) + 1;
             right = Math.floor(Math.random() * size) + 1;
-        } while (left === right);
-        // if (left > right) {
-        //     [left, right] = [right, left];
-        // }
-        // // 求最大公约数
-        // function gcd(a, b) {
-        //     while (b !== 0) {
-        //         [a, b] = [b, a % b];
-        //     }
-        //     return a;
-        // }
-        // const divisor = gcd(left, right);
-        // left = left / divisor;
-        // right = right / divisor;
-        input.value = `${left*right}`;
+            if (left === right) continue;
+            product = left * right;
+            // 半排除
+            if (semi_excluded_values.includes(product) && Math.random() < 0.5) continue;
+            break;
+        } while (true);
+
+        input.value = `${product}`;
 
         // // 输入时自动格式化为 左/右
         // input.addEventListener('input', function() {
