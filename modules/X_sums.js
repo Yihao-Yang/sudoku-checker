@@ -67,12 +67,19 @@ export function create_X_sums_sudoku(size) {
                         this.value = this.value[this.value.length - 1];
                     }
                 } else {
-                    // 外部格子：只允许数字，最大为size的阶乘
+                    // 外部格子：只允许数字，范围 1 ~ 最大和(1+...+size)
                     const max_sum = (size * (size + 1)) / 2;
                     regex = /[^\d]/g;
                     this.value = this.value.replace(regex, '');
-                    if (parseInt(this.value) > max_sum) {
+                    // 去除前导零
+                    if (this.value.startsWith('0')) {
+                        this.value = this.value.replace(/^0+/, '');
+                    }
+                    if (this.value !== '' && parseInt(this.value) > max_sum) {
                         this.value = max_sum.toString();
+                    }
+                    if (this.value !== '' && parseInt(this.value) < 1) {
+                        this.value = '1';
                     }
                 }
             });
@@ -109,6 +116,7 @@ export function generate_X_sums_puzzle(size, score_lower_limit = 0, holes_count 
     size = size + 2;
     clear_inner_numbers();
     clear_outer_clues();
+    log_process('', true);
     const container = document.querySelector('.sudoku-container');
     if (!container) return;
     const grid = container.querySelector('.sudoku-grid');
@@ -231,7 +239,7 @@ export function generate_X_sums_puzzle(size, score_lower_limit = 0, holes_count 
         // // 检查是否有解
         // let board = [];
 
-        // log_process(`尝试添加提示数 (${row},${col})=${value1} 和 (${sym_row},${sym_col})=${value2}，当前已添加 ${marks_added} 个提示数`);
+        log_process(`尝试添加提示数 (${row},${col})=${value1} 和 (${sym_row},${sym_col})=${value2}，当前已添加 ${marks_added} 个提示数`);
         backup_original_board();
         // const result = solve(board.map(r => r.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), size, isValid, true);
         const result = solve(board, size - 2, isValid, true);

@@ -13,6 +13,7 @@ import { is_valid_anti_king } from "../modules/anti_king.js";
 import { is_valid_anti_knight } from "../modules/anti_knight.js";
 import { is_valid_palindrome, merge_connected_lines } from "../modules/palindrome.js";
 import { is_valid_X_sums, apply_X_sums_marks } from "../modules/X_sums.js";
+import { is_valid_sandwich } from "../modules/sandwich.js";
 
 /**
  * 从所有相关区域移除指定数字的候选数
@@ -190,6 +191,56 @@ export function get_all_regions(size, mode = 'classic') {
         }
         regions.push({ type: '对角线', index: 1, cells: diag1_cells });
         regions.push({ type: '对角线', index: 2, cells: diag2_cells });
+    }
+    // 井字线
+    if (mode === 'hashtag') {
+        // 根据您绘制的四条线定义井字线区域
+        if (size === 9) {
+            // 第一条线：对应从第1行第1列到第5行最后一列的斜线
+            const line1_cells = [
+                [0, 0], [1, 1], [1, 2], [2, 3], [2, 4], [3, 5], [3, 6], [4, 7], [4, 8]
+            ];
+            regions.push({ type: '井字线', index: 1, cells: line1_cells });
+
+            // 第二条线：第一条线向下平移3.5格
+            const line2_cells = [
+                [4, 0], [4, 1], [5, 2], [5, 3], [6, 4], [6, 5], [7, 6], [7, 7], [8, 8]
+            ];
+            regions.push({ type: '井字线', index: 2, cells: line2_cells });
+
+            // 第三条线：对应从最后1行第1列到第1行第5列的斜线
+            const line3_cells = [
+                [0, 4], [1, 4], [2, 3], [3, 3], [4, 2], [5, 2], [6, 1], [7, 1], [8, 0]
+            ];
+            regions.push({ type: '井字线', index: 3, cells: line3_cells });
+
+            // 第四条线：第三条线向右平移3.5格
+            const line4_cells = [
+                [0, 8], [1, 7], [2, 7], [3, 6], [4, 6], [5, 5], [6, 5], [7, 4], [8, 4]
+            ];
+            regions.push({ type: '井字线', index: 4, cells: line4_cells });
+        } else if (size === 6) {
+            // size 等于 6 的情况（新逻辑）
+            const line1_cells = [
+                [0, 0], [1, 1], [1, 2], [2, 3], [2, 4], [3, 5]
+            ];
+            regions.push({ type: '井字线', index: 1, cells: line1_cells });
+
+            const line2_cells = [
+                [2, 0], [3, 1], [3, 2], [4, 3], [4, 4], [5, 5]
+            ];
+            regions.push({ type: '井字线', index: 2, cells: line2_cells });
+
+            const line3_cells = [
+                [0, 3], [1, 2], [2, 2], [3, 1], [4, 1], [5, 0]
+            ];
+            regions.push({ type: '井字线', index: 3, cells: line3_cells });
+
+            const line4_cells = [
+                [0, 5], [1, 4], [2, 4], [3, 3], [4, 3], [5, 2]
+            ];
+            regions.push({ type: '井字线', index: 4, cells: line4_cells });
+        }
     }
     // 多斜线
     if (mode === 'multi_diagonal') {
@@ -645,43 +696,19 @@ export function get_special_combination_regions(size, mode = 'classic') {
             }
         }
         // log_process(`合并后的回文线段数：${regions.length}`);
-    } else if (mode === 'X_sums') {
-        // // X_sums 模式：每行和每列作为一个特定组合区域
-        // for (let row = 0; row < size; row++) {
-        //     const row_cells = [];
-        //     for (let col = 0; col < size; col++) {
-        //         row_cells.push([row, col]);
-        //     }
-        //     regions.push({
-        //         type: '特定组合区域',
-        //         index: `row-${row + 1}`,
-        //         cells: row_cells,
-        //         clue_nums: Array.from({ length: size }, (_, n) => n + 1),
-        //     });
-        // }
-        // for (let col = 0; col < size; col++) {
-        //     const col_cells = [];
-        //     for (let row = 0; row < size; row++) {
-        //         col_cells.push([row, col]);
-        //     }
-        //     regions.push({
-        //         type: '特定组合区域',
-        //         index: `col-${col + 1}`,
-        //         cells: col_cells,
-        //         clue_nums: Array.from({ length: size }, (_, n) => n + 1),
-        //     });
-        // }
+    } else if (mode === 'X_sums' || mode === 'sandwich') {
         const container = document.querySelector('.sudoku-container');
         if (!container) return regions;
 
         // 遍历每一行，检查行首或行尾是否有外提示数
         for (let row = 1; row <= size; row++) {
             const left_clue_input = container.querySelector(`input[data-row="${row}"][data-col="0"]`);
+            // log_process(`检查行 ${row} 的左侧提示数: ${left_clue_input ? left_clue_input.value : ''}`);
             const right_clue_input = container.querySelector(`input[data-row="${row}"][data-col="${size + 1}"]`);
             const left_clue = left_clue_input ? parseInt(left_clue_input.value) : null;
             const right_clue = right_clue_input ? parseInt(right_clue_input.value) : null;
 
-            if (left_clue || right_clue) {
+            if (left_clue || left_clue === 0 || right_clue || right_clue === 0) {
                 const row_cells = [];
                 for (let col = 1; col <= size; col++) {
                     row_cells.push([row - 1, col - 1]); // 转换为 0 索引
@@ -692,6 +719,7 @@ export function get_special_combination_regions(size, mode = 'classic') {
                     cells: row_cells,
                     clue_nums: Array.from({ length: size }, (_, n) => n + 1),
                 });
+                // log_process(`发现特定组合区域：row-${row}，提示数：${left_clue || ''} ${right_clue || ''}`);
             }
         }
 
@@ -702,7 +730,7 @@ export function get_special_combination_regions(size, mode = 'classic') {
             const top_clue = top_clue_input ? parseInt(top_clue_input.value) : null;
             const bottom_clue = bottom_clue_input ? parseInt(bottom_clue_input.value) : null;
 
-            if (top_clue || bottom_clue) {
+            if (top_clue || top_clue === 0 || bottom_clue || bottom_clue === 0) {
                 const col_cells = [];
                 for (let row = 1; row <= size; row++) {
                     col_cells.push([row - 1, col - 1]); // 转换为 0 索引
@@ -769,6 +797,8 @@ export function isValid(board, size, row, col, num) {
         return is_valid_palindrome(board, size, row, col, num);
     } else if (state.current_mode === 'X_sums') {
         return is_valid_X_sums(board, size, row, col, num);
+    } else if (state.current_mode === 'sandwich') {
+        return is_valid_sandwich(board, size, row, col, num);
     } else {
         // 获取当前模式（classic/diagonal/missing/...）
         const mode = state.current_mode || 'classic';
@@ -803,7 +833,7 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
     if (state.current_mode === 'X_sums') {
         apply_X_sums_marks(currentBoard, currentSize);
     }
-    if (state.current_mode === 'X_sums') {
+    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich') {
         // 转换 board 为去掉边界的形式
         currentBoard = Array.from({ length: currentSize }, (_, i) =>
             Array.from({ length: currentSize }, (_, j) => {

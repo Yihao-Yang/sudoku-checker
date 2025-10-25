@@ -35,6 +35,7 @@ export function set_current_mode(mode) {
         'missing',
         'consecutive',
         'diagonal',
+        'hashtag',
         'multi_diagonal',
         'window',
         'pyramid',
@@ -50,6 +51,7 @@ export function set_current_mode(mode) {
         'anti_knight',
         'palindrome',
         'X_sums',
+        'sandwich',
         'new'
     ].includes(mode)) {
         state.current_mode = mode;

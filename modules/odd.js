@@ -95,7 +95,7 @@ export function generate_odd_puzzle(size, score_lower_limit = 0, holes_count = u
     } else if (size === 6) {
         odd_marks_count = Math.floor(Math.random() * (12 - 6 + 1)) + 6; // 6-12
     } else if (size === 9) {
-        odd_marks_count = Math.floor(Math.random() * (28 - 10 + 1)) + 10; // 10-28
+        odd_marks_count = Math.floor(Math.random() * (22 - 12 + 1)) + 12; // 12-22
     } else {
         odd_marks_count = Math.max(2, Math.floor(size * size / 5));
     }

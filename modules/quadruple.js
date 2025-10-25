@@ -153,12 +153,12 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
         if (
             sym_row >= 0 && sym_row < size - 1 &&
             sym_col >= 0 && sym_col < size - 1 &&
-            !positions_set.has(key) &&
-            !positions_set.has(sym_key) &&
+            !positions_set.has(`${row},${col}`) &&
+            !positions_set.has(`${sym_row},${sym_col}`) &&
             !(sym_row === row && sym_col === col)
         ) {
-            positions_set.add(key);
-            positions_set.add(sym_key);
+            positions_set.add(`${row},${col}`);
+            positions_set.add(`${sym_row},${sym_col}`);
             add_circle(row, col, size, container);
             add_circle(sym_row, sym_col, size, container);
             // 检查是否有解
@@ -179,8 +179,8 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
                 log_process('当前圆圈位置无解，重新生成');
                 restore_original_board();
                 // 无解，撤销圆圈
-                positions_set.delete(key);
-                positions_set.delete(sym_key);
+                positions_set.delete(`${row},${col}`);
+                positions_set.delete(`${sym_row},${sym_col}`);
                 // 移除最后两个圆圈
                 const marks = container.querySelectorAll('.vx-mark');
                 if (marks.length >= 2) {
@@ -200,9 +200,9 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
         // 如果对称点和主点重合，只添加一次
         else if (
             sym_row === row && sym_col === col &&
-            !positions_set.has(key)
+            !positions_set.has(`${row},${col}`)
         ) {
-            positions_set.add(key);
+            positions_set.add(`${row},${col}`);
             add_circle(row, col, size, container);
             // 检查是否有解
             // 构造当前盘面
@@ -222,8 +222,8 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
                 log_process('当前圆圈位置无解，重新生成');
                 restore_original_board();
                 // 无解，撤销圆圈
-                positions_set.delete(key);
-                positions_set.delete(sym_key);
+                positions_set.delete(`${row},${col}`);
+                positions_set.delete(`${sym_row},${sym_col}`);
                 // 移除最后两个圆圈
                 const marks = container.querySelectorAll('.vx-mark');
                 if (marks.length >= 1) {

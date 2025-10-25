@@ -1317,28 +1317,66 @@ function special_combination_region_elimination(board, size, region_cells, clue_
     }
     // log_process(`[${region_type}候选排除] 检查第${region_index}${region_type}，数字${clue_nums.join('、')}，已知数${known_nums.join('、')}，待填数${nums_to_fill.join('、')}`);
 
-    function* valid_assignments(depth, used, path) {
-        if (depth === unknown_indices.length) {
-            yield [...path];
-            return;
-        }
-        const cell_idx = unknown_indices[depth];
-        for (let i = 0; i < nums_to_fill.length; i++) {
-            if (used[i]) continue;
-            const num = nums_to_fill[i];
-            if (!cell_candidates[cell_idx].includes(num)) continue;
-            path.push(num);
-            used[i] = true;
-            yield* valid_assignments(depth + 1, used, path);
-            path.pop();
-            used[i] = false;
-        }
+
+    function* valid_assignments(depth, used, path, board_copy) {
+    if (depth === unknown_indices.length) {
+        yield [...path];
+        return;
     }
+    const cell_idx = unknown_indices[depth];
+    const [r, c] = region_cells[cell_idx];
+    for (let i = 0; i < nums_to_fill.length; i++) {
+        if (used[i]) continue;
+        const num = nums_to_fill[i];
+        if (!cell_candidates[cell_idx].includes(num)) continue;
+
+        // 填入当前数字
+        board_copy[r][c] = num;
+
+        // 剪枝：立即判断当前填入是否合法
+        if (!isValid(board_copy, size, r, c, num)) {
+            board_copy[r][c] = Array.isArray(board[r][c]) ? [...board[r][c]] : board[r][c]; // 回溯恢复
+            continue;
+        }
+
+        path.push(num);
+        used[i] = true;
+        yield* valid_assignments(depth + 1, used, path, board_copy);
+        path.pop();
+        used[i] = false;
+
+        // 回溯恢复
+        board_copy[r][c] = Array.isArray(board[r][c]) ? [...board[r][c]] : board[r][c];
+    }
+}
+    // function* valid_assignments(depth, used, path) {
+    //     if (depth === unknown_indices.length) {
+    //         yield [...path];
+    //         return;
+    //     }
+    //     const cell_idx = unknown_indices[depth];
+    //     for (let i = 0; i < nums_to_fill.length; i++) {
+    //         if (used[i]) continue;
+    //         const num = nums_to_fill[i];
+    //         if (!cell_candidates[cell_idx].includes(num)) continue;
+    //         path.push(num);
+    //         used[i] = true;
+    //         yield* valid_assignments(depth + 1, used, path);
+    //         path.pop();
+    //         used[i] = false;
+    //     }
+    // }
 
     // 4. 检查每种分配下每个格子的数字是否合法（先模拟整体填入）
     const valid_nums_for_cell = region_cells.map(() => new Set());
     const seen = new Set(); // 新增：用于去重
-    for (const assignment of valid_assignments(0, Array(nums_to_fill.length).fill(false), [])) {
+    for (const assignment of valid_assignments(
+    0,
+    Array(nums_to_fill.length).fill(false),
+    [],
+    board.map(row => row.map(cell => Array.isArray(cell) ? [...cell] : cell))
+)) {
+    // for (const assignment of valid_assignments(0, Array(nums_to_fill.length).fill(false), [])) {
         // 对 assignment 排序后转字符串，作为唯一标识
         const key = assignment.join(',');
         if (seen.has(key)) continue;
@@ -1382,6 +1420,64 @@ function special_combination_region_elimination(board, size, region_cells, clue_
         }
     }
 
+    // // === 新增 sandwich 模式特殊逻辑 ===
+    // if (state.current_mode === 'sandwich') {
+    //     // 只允许某一格候选数唯一时删数，否则不删
+    //     let unique_idx = null;
+    //     for (let idx of unknown_indices) {
+    //         if (valid_nums_for_cell[idx].size === 1) {
+    //             unique_idx = idx;
+    //             break;
+    //         }
+    //     }
+    //     if (unique_idx === null) {
+    //         return false; // 没有唯一确定的格子，不删数
+    //     }
+    //     // 只对唯一确定的格子删数，其他未定格子不删数
+    //     for (let idx of unknown_indices) {
+    //         if (idx !== unique_idx) continue;
+    //         const [r, c] = region_cells[idx];
+    //         if (!Array.isArray(board[r][c])) continue;
+    //         const before_arr = board[r][c];
+    //         const before = board[r][c].length;
+    //         board[r][c] = board[r][c].filter(n => valid_nums_for_cell[idx].has(n));
+    //         const deleted = before_arr.filter(n => !board[r][c].includes(n));
+    //         if (board[r][c].length < before) {
+    //             changed = true;
+    //             if (!state.silentMode) {
+    //                 log_process(`[${region_type}候选排除] 第${region_index}${region_type}的${getRowLetter(r+1)}${c+1}删去${deleted.join('、')}`);
+    //             }
+    //         }
+    //         // 如果只剩一个候选数，直接确定
+    //         if (Array.isArray(board[r][c]) && board[r][c].length === 1) {
+    //             const num = board[r][c][0];
+    //             board[r][c] = num;
+    //             eliminate_candidates(board, size, r, c, num);
+    //             changed = true;
+    //             if (!state.silentMode) {
+    //                 log_process(`[${region_type}候选排除] 第${region_index}${region_type}的${getRowLetter(r+1)}${c+1}唯一可填${num}，直接确定`);
+    //             }
+    //         }
+    //     }
+    //     return changed;
+    // }
+
+    // // === 新增 sandwich 模式特殊逻辑 ===
+    // if (state.current_mode === 'sandwich') {
+    //     // 只允许某一格候选数唯一时删数，否则不删
+    //     let unique_found = false;
+    //     for (let idx of unknown_indices) {
+    //         if (valid_nums_for_cell[idx].size === 1) {
+    //             unique_found = true;
+    //             break;
+    //         }
+    //     }
+    //     if (!unique_found) {
+    //         return false; // 没有唯一确定的格子，不删数
+    //     }
+    // }
+    // // === 结束 sandwich 模式特殊逻辑 ===
+
     // 5. 对每个未定格子，删去不在所有合法分配下都能填的数字
     for (let idx of unknown_indices) {
         const [r, c] = region_cells[idx];
@@ -1392,7 +1488,9 @@ function special_combination_region_elimination(board, size, region_cells, clue_
         // 记录被删去的数字
         const deleted = before_arr.filter(n => !board[r][c].includes(n));
         if (board[r][c].length < before) {
-            changed = true;
+            // if (mode !== 'sandwich') {
+                changed = true;
+            // }
             if (!state.silentMode) {
                 log_process(`[${region_type}候选排除] 第${region_index}${region_type}的${getRowLetter(r+1)}${c+1}删去${deleted.join('、')}`);
             }
@@ -1413,6 +1511,7 @@ function special_combination_region_elimination(board, size, region_cells, clue_
 
 // 变型特定组合区域排除
 function check_special_combination_region_elimination(board, size) {
+    // log_process(`[特定组合区域区块排除] 检查特定组合区域`);
     let has_conflict = false;
     const regions = get_special_combination_regions(size, state.current_mode);
     for (const region of regions) {

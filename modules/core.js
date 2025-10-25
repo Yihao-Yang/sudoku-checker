@@ -316,7 +316,7 @@ export function show_logical_solution() {
     for (let i = 0; i < size; i++) {
         for (let j = 0; j < size; j++) {
             let input;
-            if (state.current_mode === 'X_sums') {
+            if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich') {
                 input = container.querySelector(`input[data-row="${i + 1}"][data-col="${j + 1}"]`);
             } else {
                 input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
@@ -715,7 +715,7 @@ export function import_sudoku_from_string() {
     let index = 0;
     const cells = sudokuString.split(',');
 
-    if (state.current_mode === 'X_sums') {
+    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich') {
         for (let i = 0; i < size && index < sudokuString.length; i++) {
             for (let j = 0; j < size && index < sudokuString.length; j++) {
                 const char = sudokuString[index++];

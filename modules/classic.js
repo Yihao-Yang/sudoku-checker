@@ -2,6 +2,7 @@ import { create_skyscraper_sudoku } from './skyscraper.js';
 import { create_vx_sudoku } from './vx.js';
 import { create_candidates_sudoku } from './candidates.js';
 import { create_diagonal_sudoku } from './diagonal.js';
+import { create_hashtag_sudoku } from './hashtag.js';
 import { create_multi_diagonal_sudoku } from './multi_diagonal.js';
 import { create_consecutive_sudoku } from './consecutive.js';
 import { create_missing_sudoku } from './missing.js';
@@ -19,6 +20,7 @@ import { create_odd_sudoku } from './odd.js';
 import { create_odd_even_sudoku, is_valid_odd_even } from './odd_even.js';
 import { create_palindrome_sudoku } from './palindrome.js';
 import { create_X_sums_sudoku } from './X_sums.js';
+import { create_sandwich_sudoku } from './sandwich.js';
 import { create_new_sudoku } from './new.js';
 import { state, set_current_mode } from './state.js';
 import { 
@@ -257,6 +259,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(4));
         add_Extra_Button('候选数', () => create_candidates_sudoku(4));
         add_Extra_Button('对角线', () => create_diagonal_sudoku(4));
+        // add_Extra_Button('斜井', () => create_hashtag_sudoku(4));
         add_Extra_Button('斜线', () => create_multi_diagonal_sudoku(4));
         add_Extra_Button('连续', () => create_consecutive_sudoku(4));
         add_Extra_Button('缺一门', () => create_missing_sudoku(4));
@@ -271,11 +274,13 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('奇偶', () => create_odd_even_sudoku(4));
         add_Extra_Button('回文', () => create_palindrome_sudoku(4));
         add_Extra_Button('X和', () => create_X_sums_sudoku(4));
+        add_Extra_Button('三明治', () => create_sandwich_sudoku(4));
         add_Extra_Button('新', () => create_new_sudoku(4));
     } else if (size === 6) {
         add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(6));
         add_Extra_Button('候选数', () => create_candidates_sudoku(6));
         add_Extra_Button('对角线', () => create_diagonal_sudoku(6));
+        add_Extra_Button('斜井', () => create_hashtag_sudoku(6));
         add_Extra_Button('斜线', () => create_multi_diagonal_sudoku(6));
         add_Extra_Button('连续', () => create_consecutive_sudoku(6));
         add_Extra_Button('缺一门', () => create_missing_sudoku(6));
@@ -291,11 +296,13 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('奇偶', () => create_odd_even_sudoku(6));
         add_Extra_Button('回文', () => create_palindrome_sudoku(6));
         add_Extra_Button('X和', () => create_X_sums_sudoku(6));
+        add_Extra_Button('三明治', () => create_sandwich_sudoku(6));
         add_Extra_Button('新', () => create_new_sudoku(6));
     } else if (size === 9) {
         add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(9));
         add_Extra_Button('候选数', () => create_candidates_sudoku(9));
         add_Extra_Button('对角线', () => create_diagonal_sudoku(9));
+        add_Extra_Button('斜井', () => create_hashtag_sudoku(9));
         add_Extra_Button('斜线', () => create_multi_diagonal_sudoku(9));
         add_Extra_Button('VX', () => create_vx_sudoku(9));
         add_Extra_Button('连续', () => create_consecutive_sudoku(9));
@@ -314,6 +321,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('奇偶', () => create_odd_even_sudoku(9));
         add_Extra_Button('回文', () => create_palindrome_sudoku(9));
         add_Extra_Button('X和', () => create_X_sums_sudoku(9));
+        add_Extra_Button('三明治', () => create_sandwich_sudoku(9));
         add_Extra_Button('新', () => create_new_sudoku(9));
     }
 }
@@ -570,6 +578,8 @@ export function create_technique_panel() {
  * 验证数独的唯一解
  */
 export function check_uniqueness() {
+    // 记录开始时间
+    const start_time = performance.now();
     // 清空之前的日志
     log_process('', true);
     state.candidate_elimination_score = {};
@@ -584,7 +594,7 @@ export function check_uniqueness() {
     
         // 获取当前数独状态，包括候选数信息
     let board;
-    if (state.current_mode === 'X_sums') {
+    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich') {
         // X和模式，去掉边界
         board = Array.from({ length: size + 2 }, (_, i) =>
             Array.from({ length: size + 2 }, (_, j) => {
@@ -616,13 +626,16 @@ export function check_uniqueness() {
     const { solution_count, solution } = solve(board, size, valid_func); // 调用主求解函数
     state.solve_stats.solution_count = solution_count;
 
+    // 记录结束时间
+    const end_time = performance.now();
+    const elapsed = ((end_time - start_time) / 1000).toFixed(3); // 秒，保留三位小数
 
     // 显示结果
     if (state.solve_stats.solution_count === -1) {
-        show_result("当前技巧无法解出");
+        show_result(`当前技巧无法解出（用时${elapsed}秒）`);
         show_logical_solution();
     } else if (state.solve_stats.solution_count === 0 || state.solve_stats.solution_count === -2) {
-        show_result("当前数独无解！");
+        show_result(`当前数独无解！（用时${elapsed}秒）`);
     } else if (state.solve_stats.solution_count === 1) {
         // 退出候选数模式
         state.is_candidates_mode = false;
@@ -632,7 +645,7 @@ export function check_uniqueness() {
             for (let i = 0; i < size; i++) {
                 for (let j = 0; j < size; j++) {
                     let input;
-                    if (state.current_mode === 'X_sums') {
+                    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich') {
                         input = container.querySelector(`input[data-row="${i + 1}"][data-col="${j + 1}"]`);
                     } else {
                         input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
@@ -659,11 +672,11 @@ export function check_uniqueness() {
                     }
                 }
             }
-        show_result("当前数独恰好有唯一解！已自动填充答案。");
+        show_result(`当前数独恰好有唯一解！已自动填充答案。（用时${elapsed}秒）`);
     } else if (state.solve_stats.solution_count > 1) {
-        show_result("当前数独有多个解。");
+        show_result(`当前数独有多个解。（用时${elapsed}秒）`);
     } else {
-        show_result(`当前数独有${state.solve_stats.solution_count}个解！`);
+        show_result(`当前数独有${state.solve_stats.solution_count}个解！（用时${elapsed}秒）`);
     }
 
     // show_logical_solution();
