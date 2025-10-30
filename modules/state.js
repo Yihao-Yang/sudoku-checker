@@ -35,6 +35,7 @@ export function set_current_mode(mode) {
         'missing',
         'consecutive',
         'diagonal',
+        'anti_diagonal',
         'hashtag',
         'multi_diagonal',
         'window',

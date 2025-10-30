@@ -29,8 +29,12 @@ export function create_multi_diagonal_sudoku(size) {
         All_Quad: false,         // 
         Cell_Elimination: true,  // 
         Brute_Force: false,
+        Variant_Elimination: true,
+        Variant_Block: true,
         Variant_Naked_Pair: true,
+        Variant_Hidden_Pair: true,
         Variant_Naked_Triple: true,
+        Variant_Hidden_Triple: true
     };
     // 唯余法全部默认开启
     for (let i = 1; i <= size; i++) {

@@ -539,9 +539,9 @@ function region_elimination(board, size, region_cells, region_type, region_index
             eliminate_candidates(board, size, row, col, num);
             return;
         } else if (positions.length === 0) {
-            has_conflict = true;
-            if (!state.silentMode) log_process(`[冲突] ${region_type}${region_index ? region_index : ''}中数字${num}无可填入位置，无解`);
-            return true;
+            // has_conflict = true;
+            // if (!state.silentMode) log_process(`[冲突] ${region_type}${region_index ? region_index : ''}中数字${num}无可填入位置，无解`);
+            // return true;
         }
     }
     return has_conflict;
@@ -766,7 +766,24 @@ function check_Variant_Elimination(board, size, nat = 1) {
     // 用统一区域生成方式处理对角线
     const regions = get_all_regions(size, state.current_mode);
     for (const region of regions) {
-        if (region.type !== '宫' && region.type !== '行' && region.type !== '列' && region.type !== '斜线') {
+        if (region.type !== '宫' && region.type !== '行' && region.type !== '列') {
+            // // 新增：只有当该变型区域的格子数恰好等于 size 时才进行变型区域排除
+            // if (!Array.isArray(region.cells) || region.cells.length !== size) continue;
+            // 统计该区域所有格子中“可能出现”的数字并集（包括已定数字与候选数），跳过黑格
+            const unionSet = new Set();
+            for (const [r, c] of region.cells) {
+                const cell = board[r][c];
+                if (cell === -1) continue; // 黑格
+                if (typeof cell === 'number') {
+                    if (cell !== -1) unionSet.add(cell);
+                } else if (Array.isArray(cell)) {
+                    for (const n of cell) unionSet.add(n);
+                }
+            }
+
+            // 只有当并集大小等于 size 时，说明该变型区域覆盖了所有数字范围，才进行变型区域排除
+            // log_process(`[变型排除] 检查${region.type}${region.index}，数字并集大小=${unionSet.size}`);
+            if (unionSet.size !== region.cells.length) continue;
             if (region_elimination(board, size, region.cells, region.type, region.index, nat)) return true;
         }
     }
@@ -2084,7 +2101,22 @@ function check_Variant_Block_Elimination(board, size) {
     // 用统一区域生成方式处理变型区块
     const regions = get_all_regions(size, state.current_mode);
     for (const region of regions) {
-        if (region.type !== '宫' && region.type !== '行' && region.type !== '列' && region.type !== '斜线') {
+        if (region.type !== '宫' && region.type !== '行' && region.type !== '列') {
+            // 统计该区域所有格子中“可能出现”的数字并集（包括已定数字与候选数），跳过黑格
+            const unionSet = new Set();
+            for (const [r, c] of region.cells) {
+                const cell = board[r][c];
+                if (cell === -1) continue; // 黑格
+                if (typeof cell === 'number') {
+                    if (cell !== -1) unionSet.add(cell);
+                } else if (Array.isArray(cell)) {
+                    for (const n of cell) unionSet.add(n);
+                }
+            }
+
+            // 只有当并集大小等于 size 时，说明该变型区域覆盖了所有数字范围，才进行变型区域排除
+            // log_process(`[变型排除] 检查${region.type}${region.index}，数字并集大小=${unionSet.size}`);
+            if (unionSet.size !== region.cells.length) continue;
             if (region_block_elimination(board, size, region.cells, region.type, region.index)) return;
         }
     }
@@ -2549,11 +2581,44 @@ function check_box_pair_block_elimination(board, size) {
  */
 function check_variant_pair_block_elimination(board, size) {
     let has_conflict = false;
-    // 获取所有非宫/行/列的区域（即变型区域）
+    // 获取所有非行/列的区域（即变型区域）
     const regions = get_all_regions(size, state.current_mode)
         .filter(r => r.type !== '行' && r.type !== '列');
     for (let i = 0; i < regions.length; i++) {
+        const regA = regions[i];
+        // 区域必须为数组且格子数恰好等于 size
+        if (!Array.isArray(regA.cells) || regA.cells.length !== size) continue;
+        // 统计区域A可能出现的数字并集（跳过黑格）
+        const unionA = new Set();
+        for (const [r, c] of regA.cells) {
+            const cell = board[r][c];
+            if (cell === -1) continue;
+            if (typeof cell === 'number') {
+                if (cell !== -1) unionA.add(cell);
+            } else if (Array.isArray(cell)) {
+                for (const n of cell) unionA.add(n);
+            }
+        }
+        // 并集大小必须等于区域格子数（即覆盖所有数字范围）
+        if (unionA.size !== regA.cells.length) continue;
+
         for (let j = i + 1; j < regions.length; j++) {
+            const regB = regions[j];
+            // 区域必须为数组且格子数恰好等于 size
+            if (!Array.isArray(regB.cells) || regB.cells.length !== size) continue;
+            // 统计区域B可能出现的数字并集（跳过黑格）
+            const unionB = new Set();
+            for (const [r, c] of regB.cells) {
+                const cell = board[r][c];
+                if (cell === -1) continue;
+                if (typeof cell === 'number') {
+                    if (cell !== -1) unionB.add(cell);
+                } else if (Array.isArray(cell)) {
+                    for (const n of cell) unionB.add(n);
+                }
+            }
+            // 并集大小必须等于区域格子数（即覆盖所有数字范围）
+            if (unionB.size !== regB.cells.length) continue;
             // 限制条件：两个区域的候选格不能有重叠
             const set1 = new Set(regions[i].cells.map(([r, c]) => `${r},${c}`));
             const set2 = new Set(regions[j].cells.map(([r, c]) => `${r},${c}`));
@@ -3182,7 +3247,22 @@ function check_variant_hidden_subset_elimination(board, size, subset_size = 2) {
     // 用统一区域生成方式处理所有非宫/行/列的区域
     const regions = get_all_regions(size, state.current_mode);
     for (const region of regions) {
-        if (region.type !== '宫' && region.type !== '行' && region.type !== '列' && region.type !== '斜线') {
+        if (region.type !== '宫' && region.type !== '行' && region.type !== '列') {
+            // 统计该区域所有格子中“可能出现”的数字并集（包括已定数字与候选数），跳过黑格
+            const unionSet = new Set();
+            for (const [r, c] of region.cells) {
+                const cell = board[r][c];
+                if (cell === -1) continue; // 黑格
+                if (typeof cell === 'number') {
+                    if (cell !== -1) unionSet.add(cell);
+                } else if (Array.isArray(cell)) {
+                    for (const n of cell) unionSet.add(n);
+                }
+            }
+
+            // 只有当并集大小等于 size 时，说明该变型区域覆盖了所有数字范围，才进行变型区域排除
+            // log_process(`[变型排除] 检查${region.type}${region.index}，数字并集大小=${unionSet.size}`);
+            if (unionSet.size !== region.cells.length) continue;
             if (region_hidden_subset_elimination(board, size, region.cells, subset_size, region.type, region.index)) return;
         }
     }

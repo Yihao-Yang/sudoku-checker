@@ -11,6 +11,7 @@ import { apply_odd_marks, is_valid_odd } from "../modules/odd.js";
 import { apply_odd_even_marks, is_valid_odd_even } from "../modules/odd_even.js";
 import { is_valid_anti_king } from "../modules/anti_king.js";
 import { is_valid_anti_knight } from "../modules/anti_knight.js";
+// import { is_valid_anti_diagonal } from "../modules/anti_diagonal.js";
 import { is_valid_palindrome, merge_connected_lines } from "../modules/palindrome.js";
 import { is_valid_X_sums, apply_X_sums_marks } from "../modules/X_sums.js";
 import { is_valid_sandwich } from "../modules/sandwich.js";
@@ -192,8 +193,176 @@ export function get_all_regions(size, mode = 'classic') {
         regions.push({ type: '对角线', index: 1, cells: diag1_cells });
         regions.push({ type: '对角线', index: 2, cells: diag2_cells });
     }
+    // 新增反对角区域
+    else if (mode === 'anti_diagonal') {
+        if (size === 6) {
+            const extra_region_1 = [
+                // 一宫在对角线上的格子
+                [0, 0], [1, 1],
+                // 六宫不在对角线上的格子
+                [4, 3], [4, 5], [5, 3], [5, 4]
+            ];
+            regions.push({ type: '主反对角', index: 1, cells: extra_region_1 });
+            const extra_region_2 = [
+                // 六宫在对角线上的格子
+                [4, 4], [5, 5],
+                // 一宫不在对角线上的格子
+                [0, 1], [0, 2], [1, 0], [1, 2]
+            ];
+            regions.push({ type: '主反对角', index: 2, cells: extra_region_2 });
+            const extra_region_3 = [
+                // 三宫在对角线上的格子
+                [2, 2],
+                // 一宫不在对角线上的格子
+                [0, 1], [0, 2], [1, 0], [1, 2]
+            ];
+            regions.push({ type: '主反对角', index: 3, cells: extra_region_3 });
+            const extra_region_4 = [
+                // 四宫在对角线上的格子
+                [3, 3],
+                // 一宫不在对角线上的格子
+                [0, 1], [0, 2], [1, 0], [1, 2]
+            ];
+            regions.push({ type: '主反对角', index: 4, cells: extra_region_4 });
+            const extra_region_5 = [
+                // 三宫在对角线上的格子
+                [2, 2],
+                // 六宫不在对角线上的格子
+                [4, 3], [4, 5], [5, 3], [5, 4]
+            ];
+            regions.push({ type: '主反对角', index: 5, cells: extra_region_5 });
+            const extra_region_6 = [
+                // 四宫在对角线上的格子
+                [3, 3],
+                // 六宫不在对角线上的格子
+                [4, 3], [4, 5], [5, 3], [5, 4]
+            ];
+            regions.push({ type: '主反对角', index: 6, cells: extra_region_6 });
+            // 以下为副反对角（左下到右上）对应的镜像区域（size = 6）
+            const anti_extra_region_1 = [
+                // 对应主对角 [0,0],[1,1] -> 镜像为 [0,5],[1,4]
+                [0, 5], [1, 4],
+                // 对应主对角的其他格子镜像
+                [4, 2], [4, 0], [5, 2], [5, 1]
+            ];
+            regions.push({ type: '副反对角', index: 1, cells: anti_extra_region_1 });
+
+            const anti_extra_region_2 = [
+                // 对应主对角 [4,4],[5,5] -> 镜像为 [4,1],[5,0]
+                [4, 1], [5, 0],
+                // 对应主对角的一宫不在对角线上的格子镜像
+                [0, 4], [0, 3], [1, 5], [1, 3]
+            ];
+            regions.push({ type: '副反对角', index: 2, cells: anti_extra_region_2 });
+
+            const anti_extra_region_3 = [
+                // 对应主对角 [2,2] -> 镜像为 [2,3]
+                [2, 3],
+                // 一宫不在对角线上的格子镜像
+                [0, 4], [0, 3], [1, 5], [1, 3]
+            ];
+            regions.push({ type: '副反对角', index: 3, cells: anti_extra_region_3 });
+
+            const anti_extra_region_4 = [
+                // 对应主对角 [3,3] -> 镜像为 [3,2]
+                [3, 2],
+                // 一宫不在对角线上的格子镜像
+                [0, 4], [0, 3], [1, 5], [1, 3]
+            ];
+            regions.push({ type: '副反对角', index: 4, cells: anti_extra_region_4 });
+
+            const anti_extra_region_5 = [
+                // 对应主对角 [2,2] -> 镜像为 [2,3]
+                [2, 3],
+                // 对应主对角的六宫不在对角线上的格子镜像
+                [4, 2], [4, 0], [5, 2], [5, 1]
+            ];
+            regions.push({ type: '副反对角', index: 5, cells: anti_extra_region_5 });
+
+            const anti_extra_region_6 = [
+                // 对应主对角 [3,3] -> 镜像为 [3,2]
+                [3, 2],
+                // 对应主对角的六宫不在对角线上的格子镜像
+                [4, 2], [4, 0], [5, 2], [5, 1]
+            ];
+            regions.push({ type: '副反对角', index: 6, cells: anti_extra_region_6 });
+        } else if (size === 9) {
+            const extra_region_1 = [
+                // 一宫在对角线上的格子
+                [0, 0], [1, 1], [2, 2],
+                // 五宫不在对角线上的格子
+                [3, 4], [3, 5], [4, 3], [4, 5], [5, 3], [5, 4]
+            ];
+            regions.push({ type: '主反对角', index: 1, cells: extra_region_1 });
+            // 第二个反对角区域
+            const extra_region_2 = [
+                [0, 0], [1, 1], [2, 2], // 一宫在对角线上的格子
+                [6, 7], [6, 8], [7, 8], [7, 6], [8, 6], [8, 7] // 九宫不在对角线上的格子
+            ];
+            regions.push({ type: '主反对角', index: 2, cells: extra_region_2 });
+            const extra_region_3 = [
+                [3, 3], [4, 4], [5, 5], // 五宫在对角线上的格子
+                [0, 1], [0, 2], [1, 0], [1, 2], [2, 0], [2, 1] // 一宫不在对角线上的格子
+            ];
+            regions.push({ type: '主反对角', index: 3, cells: extra_region_3 });
+            const extra_region_4 = [
+                [3, 3], [4, 4], [5, 5], // 五宫在对角线上的格子
+                [6, 7], [6, 8], [7, 8], [7, 6], [8, 6], [8, 7] // 九宫不在对角线上的格子
+            ];
+            regions.push({ type: '主反对角', index: 4, cells: extra_region_4 });
+            const extra_region_5 = [
+                [6, 6], [7, 7], [8, 8], // 九宫在对角线上的格子
+                [0, 1], [0, 2], [1, 0], [1, 2], [2, 0], [2, 1] // 一宫不在对角线上的格子
+            ];
+            regions.push({ type: '主反对角', index: 5, cells: extra_region_5 });
+            const extra_region_6 = [
+                [6, 6], [7, 7], [8, 8], // 九宫在对角线上的格子
+                [3, 4], [3, 5], [4, 3], [4, 5], [5, 3], [5, 4] // 五宫不在对角线上的格子
+            ];
+            regions.push({ type: '主反对角', index: 6, cells: extra_region_6 });
+            // 左下到右上的副对角线区域
+            const extra_region_7 = [
+                // 一宫在副对角线上的格子
+                [0, 8], [1, 7], [2, 6],
+                // 五宫不在副对角线上的格子
+                [3, 3], [3, 4], [4, 3], [4, 5], [5, 4], [5, 5]
+            ];
+            regions.push({ type: '副反对角', index: 1, cells: extra_region_7 });
+
+            // 第二个副对角区域
+            const extra_region_8 = [
+                [0, 8], [1, 7], [2, 6], // 一宫在副对角线上的格子
+                [6, 1], [6, 0], [7, 0], [7, 2], [8, 2], [8, 1] // 九宫不在副对角线上的格子
+            ];
+            regions.push({ type: '副反对角', index: 2, cells: extra_region_8 });
+
+            const extra_region_9 = [
+                [3, 5], [4, 4], [5, 3], // 五宫在副对角线上的格子
+                [0, 6], [0, 7], [1, 6], [1, 8], [2, 7], [2, 8] // 一宫不在副对角线上的格子
+            ];
+            regions.push({ type: '副反对角', index: 3, cells: extra_region_9 });
+
+            const extra_region_10 = [
+                [3, 5], [4, 4], [5, 3], // 五宫在副对角线上的格子
+                [6, 1], [6, 0], [7, 0], [7, 2], [8, 2], [8, 1] // 九宫不在副对角线上的格子
+            ];
+            regions.push({ type: '副反对角', index: 4, cells: extra_region_10 });
+
+            const extra_region_11 = [
+                [6, 2], [7, 1], [8, 0], // 九宫在副对角线上的格子
+                [0, 6], [0, 7], [1, 6], [1, 8], [2, 7], [2, 8] // 一宫不在副对角线上的格子
+            ];
+            regions.push({ type: '副反对角', index: 5, cells: extra_region_11 });
+
+            const extra_region_12 = [
+                [6, 2], [7, 1], [8, 0], // 九宫在副对角线上的格子
+                [3, 3], [3, 4], [4, 3], [4, 5], [5, 4], [5, 5] // 五宫不在副对角线上的格子
+            ];
+            regions.push({ type: '副反对角', index: 6, cells: extra_region_12 });
+        }
+    }
     // 井字线
-    if (mode === 'hashtag') {
+    else if (mode === 'hashtag') {
         // 根据您绘制的四条线定义井字线区域
         if (size === 9) {
             // 第一条线：对应从第1行第1列到第5行最后一列的斜线
@@ -243,7 +412,7 @@ export function get_all_regions(size, mode = 'classic') {
         }
     }
     // 多斜线
-    if (mode === 'multi_diagonal') {
+    else if (mode === 'multi_diagonal') {
         const mark_lines = get_all_mark_lines();
         let lineIndex = 1;
         for (const [start, end] of mark_lines) {
@@ -252,7 +421,7 @@ export function get_all_regions(size, mode = 'classic') {
         }
     }
     // 窗口数独四个窗口区域
-    if (mode === 'window' && size === 9) {
+    else if (mode === 'window' && size === 9) {
         // 左上窗口
         const window1 = [];
         for (let r = 1; r <= 3; r++) {
@@ -344,7 +513,7 @@ export function get_all_regions(size, mode = 'classic') {
         regions.push({ type: '隐藏宫', index: 5, cells: hidden_box5 });
     }
     // 金字塔数独四个金字塔区域
-    if (mode === 'pyramid' && size === 9) {
+    else if (mode === 'pyramid' && size === 9) {
         // 金字塔1：第0列的第1~5行，第1列的第2~4行，第2列的第3行
         const pyramid1 = [];
         for (let r = 1; r <= 5; r++) {
@@ -389,7 +558,7 @@ export function get_all_regions(size, mode = 'classic') {
         pyramid4.push([6, 3]);
         regions.push({ type: '金字塔', index: 4, cells: pyramid4 });
     }
-    if (mode === 'isomorphic') {
+    else if (mode === 'isomorphic') {
         // 获取所有宫格
         const box_size = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
         const boxes = [];
@@ -414,7 +583,7 @@ export function get_all_regions(size, mode = 'classic') {
         }
     }
     // 额外区域数独：将手动标记的格子作为一个额外区域
-    if (mode === 'extra_region' && typeof get_extra_region_cells === 'function') {
+    else if (mode === 'extra_region' && typeof get_extra_region_cells === 'function') {
         const extra_region_cells = get_extra_region_cells();
         // if (extra_region_cells && extra_region_cells.length > 0) {
         //     regions.push({ type: '额外区域', index: 1, cells: extra_region_cells });
@@ -435,7 +604,7 @@ export function get_all_regions(size, mode = 'classic') {
         }
     }
     // 新增：四格提示数独的圆圈区域
-    if (mode === 'quadruple') {
+    else if (mode === 'quadruple') {
         const container = document.querySelector('.sudoku-container');
         let idx = 1;
         if (container) {
@@ -490,6 +659,41 @@ export function get_all_regions(size, mode = 'classic') {
 // 获取所有特定组合区域（如四格提示区域）
 export function get_special_combination_regions(size, mode = 'classic') {
     const regions = [];
+    // // 对角线
+    // if (mode === 'anti_diagonal') {
+    //     const diag1_cells = [];
+    //     const diag2_cells = [];
+    //     for (let i = 0; i < size; i++) {
+    //         diag1_cells.push([i, i]);
+    //         diag2_cells.push([i, size - 1 - i]);
+    //     }
+
+    //     // 定义 clue_nums 为三套 1-size
+    //     const clue_nums = Array.from({ length: size }, (_, n) => n + 1);
+
+    //     // 将 diag1_cells 平均拆成三个特定组合区域
+    //     const group_size = size / 3;
+    //     for (let g = 0; g < 3; g++) {
+    //         const group_cells = diag1_cells.slice(g * group_size, (g + 1) * group_size);
+    //         regions.push({
+    //             type: '特定组合区域',
+    //             index: g + 1,
+    //             cells: group_cells,
+    //             clue_nums
+    //         });
+    //     }
+
+    //     // 副对角线也可以类似拆分
+    //     for (let g = 0; g < 3; g++) {
+    //         const group_cells = diag2_cells.slice(g * group_size, (g + 1) * group_size);
+    //         regions.push({
+    //             type: '特定组合区域',
+    //             index: g + 4, // 副对角线的 index 从 4 开始
+    //             cells: group_cells,
+    //             clue_nums
+    //         });
+    //     }
+    // } else 
     if (mode === 'quadruple') {
         const container = document.querySelector('.sudoku-container');
         if (container) {
@@ -793,6 +997,8 @@ export function isValid(board, size, row, col, num) {
         return is_valid_anti_king(board, size, row, col, num);
     } else if (state.current_mode === 'anti_knight') {
         return is_valid_anti_knight(board, size, row, col, num);
+    // } else if (state.current_mode === 'anti_diagonal') {
+    //     return is_valid_anti_diagonal(board, size, row, col, num);
     } else if (state.current_mode === 'palindrome') {
         return is_valid_palindrome(board, size, row, col, num);
     } else if (state.current_mode === 'X_sums') {

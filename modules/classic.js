@@ -2,6 +2,7 @@ import { create_skyscraper_sudoku } from './skyscraper.js';
 import { create_vx_sudoku } from './vx.js';
 import { create_candidates_sudoku } from './candidates.js';
 import { create_diagonal_sudoku } from './diagonal.js';
+import { create_anti_diagonal_sudoku } from './anti_diagonal.js';
 import { create_hashtag_sudoku } from './hashtag.js';
 import { create_multi_diagonal_sudoku } from './multi_diagonal.js';
 import { create_consecutive_sudoku } from './consecutive.js';
@@ -280,6 +281,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(6));
         add_Extra_Button('候选数', () => create_candidates_sudoku(6));
         add_Extra_Button('对角线', () => create_diagonal_sudoku(6));
+        add_Extra_Button('反对角', () => create_anti_diagonal_sudoku(6));
         add_Extra_Button('斜井', () => create_hashtag_sudoku(6));
         add_Extra_Button('斜线', () => create_multi_diagonal_sudoku(6));
         add_Extra_Button('连续', () => create_consecutive_sudoku(6));
@@ -302,6 +304,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(9));
         add_Extra_Button('候选数', () => create_candidates_sudoku(9));
         add_Extra_Button('对角线', () => create_diagonal_sudoku(9));
+        add_Extra_Button('反对角', () => create_anti_diagonal_sudoku(9));
         add_Extra_Button('斜井', () => create_hashtag_sudoku(9));
         add_Extra_Button('斜线', () => create_multi_diagonal_sudoku(9));
         add_Extra_Button('VX', () => create_vx_sudoku(9));
