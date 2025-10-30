@@ -695,7 +695,21 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
     let changed;
 
     // 获取所有区域并计算每个格子所属的区域数量
-    const regions = get_all_regions(size, state.current_mode);
+    // const regions = get_all_regions(size, state.current_mode);
+    let regions = get_all_regions(size, state.current_mode);
+    // 如果是反对角线模式，仅返回两条对角线区域
+    if (state.current_mode === 'anti_diagonal') {
+        const diag1_cells = [];
+        const diag2_cells = [];
+        for (let i = 0; i < size; i++) {
+            diag1_cells.push([i, i]);
+            diag2_cells.push([i, size - 1 - i]);
+        }
+        regions = [
+            { type: '对角线', index: 1, cells: diag1_cells },
+            { type: '对角线', index: 2, cells: diag2_cells }
+        ];
+    }
     const region_counts = Array.from({ length: size }, () => Array(size).fill(0));
     for (const region of regions) {
         for (const [r, c] of region.cells) {
