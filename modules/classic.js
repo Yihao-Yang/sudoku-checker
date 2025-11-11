@@ -15,6 +15,7 @@ import { create_anti_king_sudoku } from './anti_king.js';
 import { create_anti_knight_sudoku } from './anti_knight.js';
 import { create_exclusion_sudoku, apply_exclusion_marks, is_valid_exclusion } from './exclusion.js';
 import { create_quadruple_sudoku, is_valid_quadruple } from './quadruple.js';
+import { create_add_sudoku } from './add.js';
 import { create_product_sudoku } from './product.js';
 import { create_ratio_sudoku } from './ratio.js';
 import { create_odd_sudoku } from './odd.js';
@@ -269,6 +270,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('无马', () => create_anti_knight_sudoku(4));
         add_Extra_Button('排除', () => create_exclusion_sudoku(4));
         add_Extra_Button('四格提示', () => create_quadruple_sudoku(4));
+        add_Extra_Button('加法', () => create_add_sudoku(4));
         add_Extra_Button('乘积', () => create_product_sudoku(4));
         add_Extra_Button('比例', () => create_ratio_sudoku(4));
         add_Extra_Button('奇数', () => create_odd_sudoku(4));
@@ -292,6 +294,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('无马', () => create_anti_knight_sudoku(6));
         add_Extra_Button('排除', () => create_exclusion_sudoku(6));
         add_Extra_Button('四格提示', () => create_quadruple_sudoku(6));
+        add_Extra_Button('加法', () => create_add_sudoku(6));
         add_Extra_Button('乘积', () => create_product_sudoku(6));
         add_Extra_Button('比例', () => create_ratio_sudoku(6));
         add_Extra_Button('奇数', () => create_odd_sudoku(6));
@@ -318,6 +321,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('无马', () => create_anti_knight_sudoku(9));
         add_Extra_Button('排除', () => create_exclusion_sudoku(9));
         add_Extra_Button('四格提示', () => create_quadruple_sudoku(9));
+        add_Extra_Button('加法', () => create_add_sudoku(9));
         add_Extra_Button('乘积', () => create_product_sudoku(9));
         add_Extra_Button('比例', () => create_ratio_sudoku(9));
         add_Extra_Button('奇数', () => create_odd_sudoku(9));

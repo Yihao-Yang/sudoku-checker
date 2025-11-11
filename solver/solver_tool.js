@@ -5,6 +5,7 @@ import { get_all_mark_lines, get_cells_on_line } from "../modules/multi_diagonal
 import { get_extra_region_cells } from '../modules/extra_region.js';
 import { apply_exclusion_marks, is_valid_exclusion } from "../modules/exclusion.js";
 import { apply_quadruple_marks, is_valid_quadruple } from "../modules/quadruple.js";
+import { is_valid_add } from "../modules/add.js";
 import { is_valid_product } from "../modules/product.js";
 import { is_valid_ratio } from "../modules/ratio.js";
 import { apply_odd_marks, is_valid_odd } from "../modules/odd.js";
@@ -744,6 +745,155 @@ export function get_special_combination_regions(size, mode = 'classic') {
                 }
             }
         }
+    } else if (mode === 'add') {
+        const container = document.querySelector('.sudoku-container');
+        if (!container) return regions;
+        const marks = container.querySelectorAll('.vx-mark');
+        let region_index = 1;
+        for (const mark of marks) {
+            const input = mark.querySelector('input');
+            const value = input && input.value.trim();
+            // 只处理有效的和数字
+            const sum = parseInt(value, 10);
+            if (isNaN(sum) || sum <= 0) continue;
+
+            // 解析标记的唯一key（v-/h- 表示两格；无 key 表示交点四格）
+            const key = mark.dataset.key;
+
+            // ----- 两格提示（竖/横线） -----
+            if (key && (key.startsWith('v-') || key.startsWith('h-'))) {
+                let cell_a, cell_b;
+                if (key.startsWith('v-')) {
+                    const [_, row_str, col_str] = key.split('-');
+                    const r = parseInt(row_str, 10);
+                    const c = parseInt(col_str, 10);
+                    cell_a = [r, c - 1];
+                    cell_b = [r, c];
+                } else {
+                    const [_, row_str, col_str] = key.split('-');
+                    const r = parseInt(row_str, 10);
+                    const c = parseInt(col_str, 10);
+                    cell_a = [r - 1, c];
+                    cell_b = [r, c];
+                }
+
+                if (
+                    !cell_a || !cell_b ||
+                    cell_a.some(n => !Number.isInteger(n)) ||
+                    cell_b.some(n => !Number.isInteger(n)) ||
+                    cell_a[0] < 0 || cell_a[0] >= size || cell_a[1] < 0 || cell_a[1] >= size ||
+                    cell_b[0] < 0 || cell_b[0] >= size || cell_b[1] < 0 || cell_b[1] >= size
+                ) continue;
+
+                const clue_nums_set = new Set();
+                for (let a = 1; a <= size; a++) {
+                    for (let b = 1; b <= size; b++) {
+                        if (a + b === sum) {
+                            clue_nums_set.add(a);
+                            clue_nums_set.add(b);
+                        }
+                    }
+                }
+                const clue_nums = Array.from(clue_nums_set).sort((x, y) => x - y);
+
+                regions.push({
+                    type: '特定组合区域',
+                    index: region_index++,
+                    cells: [cell_a, cell_b],
+                    clue_nums
+                });
+                continue;
+            }
+
+            // ----- 四格交点提示 -----
+            let row_mark, col_mark;
+            if (key && key.startsWith('x-')) {
+                const [_, row_str, col_str] = key.split('-');
+                row_mark = parseInt(row_str, 10);
+                col_mark = parseInt(col_str, 10);
+                if (!Number.isInteger(row_mark) || !Number.isInteger(col_mark)) continue;
+            } else {
+                if (!grid) continue;
+                const grid_offset_left = grid.offsetLeft;
+                const grid_offset_top = grid.offsetTop;
+                const cell_width = grid.offsetWidth / size;
+                const cell_height = grid.offsetHeight / size;
+
+                const left = parseInt(mark.style.left, 10);
+                const top = parseInt(mark.style.top, 10);
+                if (isNaN(left) || isNaN(top)) continue;
+
+                row_mark = Math.round((top - grid_offset_top + 15) / cell_height);
+                col_mark = Math.round((left - grid_offset_left + 15) / cell_width);
+            }
+
+            const cells = [
+                [row_mark - 1, col_mark - 1],
+                [row_mark - 1, col_mark],
+                [row_mark, col_mark - 1],
+                [row_mark, col_mark]
+            ].filter(([r, c]) => r >= 0 && r < size && c >= 0 && c < size);
+
+            // 只有完整四格才作为四格提示处理
+            if (cells.length !== 4) continue;
+
+            // 计算所有满足四数和为 sum 的组合（允许数字相同，但任一数字在组合中最多出现两次）
+            // 枚举非递减四元组 a <= b <= c <= d，统计每个数字在任一合法组合中的最大出现次数（0/1/2）
+            const maxCount = new Array(size + 1).fill(0); // 下标 1..size
+            let foundCombo = false;
+
+            for (let n = 1; n <= size; n++) {
+                // 该数字出现2次：剩余两数和为 remain2 = sum - 2n
+                const remain2 = sum - 2 * n;
+                if (remain2 >= 2 && remain2 <= 2 * size) {
+                    // 检查是否存在两个数 a, b (1 <= a, b <= size) 使得 a + b = remain2
+                    // 条件：remain2 <= 2*size 且 remain2 >= 2
+                    // 简化：只要 2 <= remain2 <= 2*size 就一定有解
+                    foundCombo = true;
+                    maxCount[n] = 2;
+                    continue;
+                }
+                
+                // 该数字出现1次：剩余三数和为 remain1 = sum - n
+                const remain1 = sum - n;
+                if (remain1 >= 3 && remain1 <= 3 * size) {
+                    // 检查是否存在三个数 a, b, c (1 <= a,b,c <= size) 使得 a+b+c = remain1
+                    // 可以允许重复，所以条件简化为：3 <= remain1 <= 3*size
+                    foundCombo = true;
+                    maxCount[n] = Math.max(maxCount[n], 1);
+                    continue;
+                }
+                
+                // 该数字出现0次：四数和为 sum，且都不等于 n
+                // 最小和：4个1（或4个最小可用数）
+                // 最大和：4个size（或4个最大可用数）
+                const minSum = (n === 1) ? 8 : 4; // 如果排除1，最小和是4*2=8
+                const maxSum = (n === size) ? 4 * (size - 1) : 4 * size;
+                if (sum >= minSum && sum <= maxSum) {
+                    foundCombo = true;
+                    maxCount[n] = Math.max(maxCount[n], 0);
+                }
+            }
+
+            if (!foundCombo) continue; // 没有合法四元组合则跳过
+
+            // 构造 clue_nums：按数字从小到大，把每个数字重复 maxCount 次（0/1/2）
+            const clue_nums = [];
+            for (let n = 1; n <= size; n++) {
+                for (let t = 0; t < maxCount[n]; t++) {
+                    clue_nums.push(n);
+                }
+            }
+            if (clue_nums.length === 0) continue;
+
+            const hasDuplicate = maxCount.some((c, idx) => idx >= 1 && c > 1);
+            regions.push({
+                type: '特定组合区域',
+                index: region_index++,
+                cells,
+                clue_nums
+            });
+        }
     } else if (mode === 'product') {
         const container = document.querySelector('.sudoku-container');
         if (!container) return regions;
@@ -864,24 +1014,11 @@ export function get_special_combination_regions(size, mode = 'classic') {
         }
     } else if (mode === 'palindrome') {
         // const mark_lines = get_all_mark_lines();
-        // // 合并首尾相接的线段
-        // // 先把每条线段扩展为经过的所有格子
-        // const size = state.current_grid_size || size;
-        // const expanded_lines = mark_lines.map(line => get_cells_on_line(size, line[0], line[1]));
-        // // 合并线段
-        // const merged_lines = merge_connected_lines(expanded_lines);
-        // let lineIndex = 1;
-        // for (const cells of merged_lines) {
-        //     let clue_nums = [];
-        //     for (let i = 0; i < cells.length; i++) {
-        //         clue_nums = clue_nums.concat(Array.from({length: size}, (_, n) => n + 1));
-        //     }
-        //     regions.push({ type: '特定组合区域', index: lineIndex++, cells, clue_nums });
-        // }
-        const mark_lines = get_all_mark_lines();
         // 合并首尾相接的线段
+        // 先把每条线段扩展为经过的所有格子
         const size = state.current_grid_size || size;
         const expanded_lines = mark_lines.map(line => get_cells_on_line(size, line[0], line[1]));
+        // 合并线段
         const merged_lines = merge_connected_lines(expanded_lines);
         let regionIndex = 1;
         for (const cells of merged_lines) {
@@ -985,6 +1122,8 @@ export function isValid(board, size, row, col, num) {
         return is_valid_exclusion(board, size, row, col, num);
     } else if (state.current_mode === 'quadruple') {
         return is_valid_quadruple(board, size, row, col, num);
+    } else if (state.current_mode === 'add') {
+        return is_valid_add(board, size, row, col, num);
     } else if (state.current_mode === 'product') {
         return is_valid_product(board, size, row, col, num);
     } else if (state.current_mode === 'ratio') {
