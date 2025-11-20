@@ -688,6 +688,39 @@ export function generate_solution_old(size) {
     return board; // 全部填完返回终盘
 }
 
+// 备用方法：暴力生成终盘
+export function generate_solved_board_brute_force(size) {
+    // 这是一个简化的暴力生成方法，实际可能需要更复杂的实现
+    const board = Array(size).fill().map(() => Array(size).fill(0));
+    
+    function backtrack(row, col) {
+        if (row === size) return true;
+        
+        const nextCol = (col + 1) % size;
+        const nextRow = nextCol === 0 ? row + 1 : row;
+        
+        const numbers = [...Array(size)].map((_, i) => i + 1);
+        // 随机打乱数字顺序
+        for (let i = numbers.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+        }
+        
+        for (const num of numbers) {
+            if (isValid(board, size, row, col, num)) {
+                board[row][col] = num;
+                if (backtrack(nextRow, nextCol)) {
+                    return true;
+                }
+                board[row][col] = 0;
+            }
+        }
+        return false;
+    }
+    
+    return backtrack(0, 0) ? board : null;
+}
+
 // 挖洞，返回题目盘
 function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined) {
     const puzzle = solution.map(row => [...row]);

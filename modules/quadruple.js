@@ -1,7 +1,7 @@
 // quadruple.js
 import { state, set_current_mode } from './state.js';
-import { create_base_grid, create_base_cell, add_Extra_Button, log_process, backup_original_board, restore_original_board, handle_key_navigation, clear_all_inputs } from './core.js';
-import { generate_puzzle } from '../solver/generate.js';
+import { show_result, create_base_grid, create_base_cell, add_Extra_Button, log_process, backup_original_board, restore_original_board, handle_key_navigation, clear_all_inputs, clear_marks } from './core.js';
+import { generate_solved_board_brute_force } from '../solver/generate.js';
 import { get_all_regions, solve } from '../solver/solver_tool.js';
 import { create_technique_panel } from './classic.js';
 
@@ -85,35 +85,145 @@ export function create_quadruple_sudoku(size) {
     // 四数独专属按钮
     const extra_buttons = document.getElementById('extraButtons');
     extra_buttons.innerHTML = '';
+    add_Extra_Button('清除标记', clear_marks);
     add_Extra_Button('自动出题', () => generate_quadruple_puzzle(size), '#2196F3');
 }
 
 // 自动生成四数独题目
 export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
+    const start_time = performance.now();
     clear_all_inputs();
-    // 清除已有圆圈
+    log_process('', true);
+
     const container = document.querySelector('.sudoku-container');
     if (!container) return;
     Array.from(container.querySelectorAll('.vx-mark')).forEach(mark => mark.remove());
 
-    // 生成圆圈数量
-    let min_marks = 2, max_marks = 4;
-    if (size === 6) { min_marks = 10; max_marks = 12; }
-    if (size === 9) { min_marks = 26; max_marks = 28; }
-    const num_marks = Math.floor(Math.random() * (max_marks - min_marks + 1)) + min_marks;
+    log_process('第一步：生成四数独终盘...');
+    const solvedBoard = generate_solved_board_brute_force(size);
+    if (!solvedBoard) {
+        log_process('生成终盘失败！');
+        return;
+    }
 
-    // 选取对称类型
+    log_process('第二步：开始添加对称提示标记...');
     const SYMMETRY_TYPES = [
         'central','central','central','central','central',
         'diagonal','diagonal',
         'anti-diagonal','anti-diagonal',
         'horizontal',
-        'vertical',
-        // 'none'
+        'vertical'
     ];
     const symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
+    log_process(`使用对称类型: ${symmetry}`);
 
-    // 获取对称点
+    const MAX_MARKS = (size - 1) * (size - 1);
+    const MAX_TRY = 200;
+
+    let marks_added = 0;
+    let try_count = 0;
+    let unique_found = false;
+
+    while (try_count < MAX_TRY && marks_added < MAX_MARKS && !unique_found) {
+        try_count++;
+
+        const row = Math.floor(Math.random() * (size - 1));
+        const col = Math.floor(Math.random() * (size - 1));
+
+        const [sym_row, sym_col] = get_symmetric(row, col, size, symmetry);
+
+        if (
+            !is_valid_position(row, col, size) ||
+            !is_valid_position(sym_row, sym_col, size) ||
+            is_mark_exists(row, col, container) ||
+            is_mark_exists(sym_row, sym_col, container)
+        ) {
+            continue;
+        }
+
+        const addedMarks = [];
+        const mainDigits = calculate_quadruple_from_solved(row, col, solvedBoard);
+        if (!mainDigits) continue;
+
+        const mainMark = add_quadruple_mark_with_value(row, col, size, container, mainDigits);
+        if (!mainMark) continue;
+        addedMarks.push(mainMark);
+
+        const symmetric_is_same = row === sym_row && col === sym_col;
+        if (!symmetric_is_same) {
+            const symDigits = calculate_quadruple_from_solved(sym_row, sym_col, solvedBoard);
+            if (!symDigits) {
+                remove_marks(addedMarks);
+                continue;
+            }
+            const symMark = add_quadruple_mark_with_value(sym_row, sym_col, size, container, symDigits);
+            if (!symMark) {
+                remove_marks(addedMarks);
+                continue;
+            }
+            addedMarks.push(symMark);
+        }
+
+        marks_added += addedMarks.length;
+
+        backup_original_board();
+        const result = solve(create_solver_board(size), size, is_valid_quadruple, true);
+        restore_original_board();
+
+        if (result.solution_count === 1) {
+            unique_found = true;
+            log_process(`✓ 找到唯一解！共添加 ${marks_added} 个标记`);
+            optimize_marks(container, size, symmetry);
+            break;
+        }
+
+        if (result.solution_count === 0 || result.solution_count === -2) {
+            log_process('✗ 无解，移除最后添加的标记');
+            remove_marks(addedMarks);
+            marks_added -= addedMarks.length;
+        } else {
+            log_process(`当前解数：${result.solution_count}，继续添加标记...`);
+        }
+    }
+
+    const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
+    show_result(`四数独提示生成完成（${unique_found ? '唯一解' : '未验证唯一'}，耗时${elapsed}秒）`);
+
+    if (!unique_found) {
+        if (try_count >= MAX_TRY) {
+            log_process('自动出题失败：达到最大尝试次数');
+        } else {
+            log_process('自动出题完成（可能非唯一解）');
+        }
+    }
+
+    function create_solver_board(size) {
+        return Array.from({ length: size }, () =>
+            Array.from({ length: size }, () => [...Array(size)].map((_, n) => n + 1))
+        );
+    }
+
+    function remove_marks(list) {
+        for (const mark of list) {
+            if (mark && mark.parentNode) {
+                mark.remove();
+            }
+        }
+    }
+
+    function get_mark_key(row, col) {
+        return `x-${row + 1}-${col + 1}`;
+    }
+
+    function is_mark_exists(row, col, container) {
+        const key = get_mark_key(row, col);
+        return !!container.querySelector(`.vx-mark[data-key="${key}"]`);
+    }
+
+    function is_valid_position(row, col, size) {
+        return row >= 0 && row < size - 1 && col >= 0 && col < size - 1;
+    }
+
     function get_symmetric(row, col, size, symmetry) {
         switch (symmetry) {
             case 'central':
@@ -127,127 +237,30 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
             case 'vertical':
                 return [row, size - 2 - col];
             default:
-                return null;
-        }
-    }
-    log_process(`即将生成排除数独，圆圈数量：${num_marks}，对称类型：${symmetry}`);
-
-    // 随机生成圆圈位置和数字（不贴边线，带对称）
-    const positions_set = new Set();
-    let marks_added = 0;
-    let try_count = 0;
-    const MAX_TRY = 1000;
-    while (marks_added < num_marks && try_count < MAX_TRY) {
-        try_count++;
-        let row, col;
-        // 保证不重复且不贴边线
-        do {
-            row = Math.floor(Math.random() * (size - 1)); // 1 ~ size-2
-            col = Math.floor(Math.random() * (size - 1)); // 1 ~ size-2
-        } while (positions_set.has(`${row},${col}`));
-
-        // 计算对称点
-        const [sym_row, sym_col] = get_symmetric(row, col, size, symmetry);
-
-        // 两个点都不能重复且都不能贴右/下边线
-        if (
-            sym_row >= 0 && sym_row < size - 1 &&
-            sym_col >= 0 && sym_col < size - 1 &&
-            !positions_set.has(`${row},${col}`) &&
-            !positions_set.has(`${sym_row},${sym_col}`) &&
-            !(sym_row === row && sym_col === col)
-        ) {
-            positions_set.add(`${row},${col}`);
-            positions_set.add(`${sym_row},${sym_col}`);
-            add_circle(row, col, size, container);
-            add_circle(sym_row, sym_col, size, container);
-            // 检查是否有解
-            // 构造当前盘面
-            const grid = container.querySelector('.sudoku-grid');
-            let board = [];
-            for (let r = 0; r < size; r++) {
-                board[r] = [];
-                for (let c = 0; c < size; c++) {
-                    board[r][c] = 0;
-                }
-            }
-            // 调用solve
-            backup_original_board();
-            const result = solve(board.map(r => r.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), size, is_valid_quadruple, true);
-            log_process(`尝试添加圆圈位置：(${row},${col}) 和 (${sym_row},${sym_col})，解的数量：${result.solution_count}`);
-            if (result.solution_count === 0 || result.solution_count === -2) {
-                log_process('当前圆圈位置无解，重新生成');
-                restore_original_board();
-                // 无解，撤销圆圈
-                positions_set.delete(`${row},${col}`);
-                positions_set.delete(`${sym_row},${sym_col}`);
-                // 移除最后两个圆圈
-                const marks = container.querySelectorAll('.vx-mark');
-                if (marks.length >= 2) {
-                    marks[marks.length - 1].remove();
-                    marks[marks.length - 2].remove();
-                }
-                // marks_added -= 2; // 同步减少计数
-                continue;
-            }
-            if (result.solution_count === 1) {
-                marks_added += 2;
-                return;
-                break;
-            }
-            marks_added += 2;
-        }
-        // 如果对称点和主点重合，只添加一次
-        else if (
-            sym_row === row && sym_col === col &&
-            !positions_set.has(`${row},${col}`)
-        ) {
-            positions_set.add(`${row},${col}`);
-            add_circle(row, col, size, container);
-            // 检查是否有解
-            // 构造当前盘面
-            const grid = container.querySelector('.sudoku-grid');
-            let board = [];
-            for (let r = 0; r < size; r++) {
-                board[r] = [];
-                for (let c = 0; c < size; c++) {
-                    board[r][c] = 0;
-                }
-            }
-            // 调用solve
-            backup_original_board();
-            const result = solve(board.map(r => r.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), size, is_valid_quadruple, true);
-            log_process(`尝试添加圆圈 at (${row},${col})，解数：${result.solution_count}`);
-            if (result.solution_count === 0 || result.solution_count === -2) {
-                log_process('当前圆圈位置无解，重新生成');
-                restore_original_board();
-                // 无解，撤销圆圈
-                positions_set.delete(`${row},${col}`);
-                positions_set.delete(`${sym_row},${sym_col}`);
-                // 移除最后两个圆圈
-                const marks = container.querySelectorAll('.vx-mark');
-                if (marks.length >= 1) {
-                    marks[marks.length - 1].remove();
-                }
-                // marks_added -= 1; // 同步减少计数
-                continue;
-            }
-            if (result.solution_count === 1) {
-                marks_added += 1;
-                return;
-                break;
-            }
-            marks_added += 1;
+                return [row, col];
         }
     }
 
-    // 生成题目
-    generate_puzzle(size, score_lower_limit, holes_count);
+    function calculate_quadruple_from_solved(row, col, solvedBoard) {
+        const cells = [
+            [row, col],
+            [row, col + 1],
+            [row + 1, col],
+            [row + 1, col + 1]
+        ];
+        const values = [];
+        for (const [r, c] of cells) {
+            const val = solvedBoard[r]?.[c];
+            if (!val) return null;
+            values.push(val);
+        }
+        return values.sort((a, b) => a - b);
+    }
 
-    // 辅助函数：添加圆圈
-    function add_circle(row, col, size, container) {
+    function add_quadruple_mark_with_value(row, col, size, container, digits) {
         const grid = container.querySelector('.sudoku-grid');
-        if (!grid) return;
+        if (!grid) return null;
+
         const cellWidth = grid.offsetWidth / size;
         const cellHeight = grid.offsetHeight / size;
         const gridOffsetLeft = grid.offsetLeft;
@@ -257,6 +270,7 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
 
         const mark = document.createElement('div');
         mark.className = 'vx-mark';
+        mark.dataset.key = get_mark_key(row, col);
         mark.style.position = 'absolute';
         mark.style.left = `${gridOffsetLeft + crossX - 30}px`;
         mark.style.top = `${gridOffsetTop + crossY - 15}px`;
@@ -265,7 +279,7 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
         const input = document.createElement('input');
         input.type = 'text';
         input.maxLength = 4;
-        input.value = Math.floor(Math.random() * size) + 1;
+        input.value = digits.join('');
         input.style.width = '60px';
         input.style.height = '28px';
         input.style.fontSize = '22px';
@@ -279,27 +293,95 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
         input.style.transform = 'translate(-50%, -50%)';
         input.style.color = '#333';
 
-        // 随机生成4个数字，可以重复，但每个数字最多出现两次
-        let nums = [];
-        let count_map = {};
-        for (let i = 0; i < 4; i++) {
-            let pool = [];
-            for (let n = 1; n <= size; n++) {
-                if (!count_map[n] || count_map[n] < 2) {
-                    pool.push(n);
-                }
-            }
-            let idx = Math.floor(Math.random() * pool.length);
-            let chosen = pool[idx];
-            nums.push(chosen);
-            count_map[chosen] = (count_map[chosen] || 0) + 1;
-        }
-        // 新增：排序
-        nums.sort((a, b) => a - b);
-        input.value = nums.join('');
-
         mark.appendChild(input);
+        mark.ondblclick = function(e) {
+            e.stopPropagation();
+            mark.remove();
+        };
+        input.ondblclick = function(e) {
+            e.stopPropagation();
+            mark.remove();
+        };
         container.appendChild(mark);
+        return mark;
+    }
+
+    function optimize_marks(container, size, symmetry) {
+        log_process('开始优化标记，删除无用条件...');
+        const groups = group_marks_by_symmetry(container, size, symmetry);
+        let removed = 0;
+        for (const group of groups) {
+            const removedMarks = temporarily_remove_marks(container, group.keys);
+            backup_original_board();
+            const result = solve(create_solver_board(size), size, is_valid_quadruple, true);
+            restore_original_board();
+            if (result.solution_count === 1) {
+                permanently_remove_marks(removedMarks);
+                removed += removedMarks.length;
+            } else {
+                restore_marks(container, removedMarks);
+            }
+        }
+        log_process(`优化完成，共删除 ${removed} 个标记`);
+    }
+
+    function group_marks_by_symmetry(container, size, symmetry) {
+        const marks = Array.from(container.querySelectorAll('.vx-mark[data-key^="x-"]'));
+        const groups = [];
+        const visited = new Set();
+        for (const mark of marks) {
+            const key = mark.dataset.key;
+            if (visited.has(key)) continue;
+            const [, rowStr, colStr] = key.split('-');
+            const baseRow = parseInt(rowStr, 10) - 1;
+            const baseCol = parseInt(colStr, 10) - 1;
+            const [symRow, symCol] = get_symmetric(baseRow, baseCol, size, symmetry);
+            if (symRow < 0 || symRow >= size - 1 || symCol < 0 || symCol >= size - 1) {
+                groups.push({ keys: [key] });
+                visited.add(key);
+                continue;
+            }
+            const symKey = get_mark_key(symRow, symCol);
+            if (symKey && symKey !== key && marks.some(m => m.dataset.key === symKey) && !visited.has(symKey)) {
+                groups.push({ keys: [key, symKey] });
+                visited.add(symKey);
+            } else {
+                groups.push({ keys: [key] });
+            }
+            visited.add(key);
+        }
+        return groups;
+    }
+
+    function temporarily_remove_marks(container, keys = []) {
+        const removed = [];
+        for (const key of keys.filter(Boolean)) {
+            const mark = container.querySelector(`.vx-mark[data-key="${key}"]`);
+            if (!mark) continue;
+            const placeholder = document.createElement('div');
+            placeholder.style.display = 'none';
+            placeholder.className = 'vx-mark-placeholder';
+            mark.parentNode.insertBefore(placeholder, mark);
+            removed.push({ element: mark, placeholder });
+            mark.remove();
+        }
+        return removed;
+    }
+
+    function restore_marks(container, removedMarks) {
+        for (const info of removedMarks) {
+            if (info.placeholder && info.placeholder.parentNode) {
+                info.placeholder.parentNode.replaceChild(info.element, info.placeholder);
+            }
+        }
+    }
+
+    function permanently_remove_marks(removedMarks) {
+        for (const info of removedMarks) {
+            if (info.placeholder && info.placeholder.parentNode) {
+                info.placeholder.remove();
+            }
+        }
     }
 }
 
@@ -336,6 +418,11 @@ function add_quadruple_mark(size) {
 
         const gridOffsetLeft = grid.offsetLeft;
         const gridOffsetTop = grid.offsetTop;
+        const key = `x-${row}-${col}`;
+
+        if (container.querySelector(`.vx-mark[data-key="${key}"]`)) {
+            return;
+        }
 
         // 防止重复添加同一交点标记
         const marks = Array.from(container.querySelectorAll('.vx-mark'));
@@ -346,6 +433,7 @@ function add_quadruple_mark(size) {
 
         const mark = document.createElement('div');
         mark.className = 'vx-mark';
+        mark.dataset.key = key;
         mark.style.position = 'absolute';
         mark.style.left = `${gridOffsetLeft + crossX - 30}px`;
         mark.style.top = `${gridOffsetTop + crossY - 15}px`;

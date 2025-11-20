@@ -1,5 +1,5 @@
 import { state, set_current_mode } from './state.js';
-import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, clear_all_inputs } from './core.js';
+import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, clear_all_inputs, clear_marks } from './core.js';
 import { solve, isValid, get_all_regions } from '../solver/solver_tool.js';
 import { create_technique_panel } from './classic.js';
 import { generate_puzzle } from '../solver/generate.js';
@@ -80,6 +80,7 @@ export function create_exclusion_sudoku(size) {
     // 排除数独专属按钮
     const extra_buttons = document.getElementById('extraButtons');
     extra_buttons.innerHTML = '';
+    add_Extra_Button('清除标记', clear_marks);
     add_Extra_Button('自动出题', () => generate_exclusion_puzzle(size), '#2196F3');
     // add_Extra_Button('隐藏答案', restore_original_board, '#2196F3');
 }

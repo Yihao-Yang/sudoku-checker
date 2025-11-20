@@ -1,8 +1,8 @@
 import { state, set_current_mode } from './state.js';
-import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, add_Extra_Button, clear_all_inputs } from './core.js';
+import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, add_Extra_Button, clear_all_inputs, clear_marks } from './core.js';
 import { create_technique_panel } from './classic.js';
 import { get_all_regions, solve } from '../solver/solver_tool.js';
-import { generate_puzzle } from '../solver/generate.js';
+import { generate_solved_board_brute_force } from '../solver/generate.js';
 
 // 新数独主入口
 export function create_ratio_sudoku(size) {
@@ -79,332 +79,351 @@ export function create_ratio_sudoku(size) {
     // 添加新数独专属按钮
     const extra_buttons = document.getElementById('extraButtons');
     extra_buttons.innerHTML = '';
+    add_Extra_Button('清除标记', clear_marks);
     add_Extra_Button('自动出题', () => generate_ratio_puzzle(size), '#2196F3');
     // 可添加唯一性验证等按钮
 }
 
 // 自动生成比例数独题目（生成圆圈并调用generate_puzzle）
 export function generate_ratio_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
+    const start_time = performance.now();
     clear_all_inputs();
-    // 清除已有圆圈
+    log_process('', true);
+
     const container = document.querySelector('.sudoku-container');
     if (!container) return;
     Array.from(container.querySelectorAll('.vx-mark')).forEach(mark => mark.remove());
 
-    // 生成圆圈数量
-    let min_marks = 2, max_marks = 4;
-    if (size === 6) { min_marks = 10; max_marks = 12; }
-    if (size === 9) { min_marks = 26; max_marks = 28; }
-    const num_marks = Math.floor(Math.random() * (max_marks - min_marks + 1)) + min_marks;
+    log_process('第一步：生成比例数独终盘...');
+    const solvedBoard = generate_solved_board_brute_force(size);
+    if (!solvedBoard) {
+        log_process('生成终盘失败！');
+        return;
+    }
 
-    // 选取对称类型
+    log_process('第二步：开始添加对称提示标记...');
     const SYMMETRY_TYPES = [
         'central','central','central','central','central',
         'diagonal','diagonal',
         'anti-diagonal','anti-diagonal',
         'horizontal',
-        'vertical',
-        // 'none'
+        'vertical'
     ];
     const symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
+    log_process(`使用对称类型: ${symmetry}`);
 
-    // 获取对称点
+    const MAX_MARKS = size * (size - 1);
+    const MAX_TRY = 200;
+
+    let marks_added = 0;
+    let try_count = 0;
+    let unique_found = false;
+
+    while (try_count < MAX_TRY && marks_added < MAX_MARKS && !unique_found) {
+        try_count++;
+
+        const type = Math.random() < 0.5 ? 'v' : 'h';
+        const row = type === 'v' ? Math.floor(Math.random() * size) : Math.floor(Math.random() * (size - 1));
+        const col = type === 'v' ? Math.floor(Math.random() * (size - 1)) : Math.floor(Math.random() * size);
+
+        if (!is_valid_position(row, col, size, type)) continue;
+
+        const [sym_row, sym_col, sym_type] = get_symmetric(row, col, size, symmetry, type);
+        if (!is_valid_position(sym_row, sym_col, size, sym_type)) continue;
+
+        if (is_mark_exists(row, col, type, container) || is_mark_exists(sym_row, sym_col, sym_type, container)) {
+            continue;
+        }
+
+        const addedMarks = [];
+        const mainRatio = calculate_ratio_from_solved(row, col, type, solvedBoard);
+        if (!mainRatio) continue;
+
+        const mainMark = add_ratio_mark_with_value(row, col, size, container, type, mainRatio);
+        if (!mainMark) continue;
+        addedMarks.push(mainMark);
+
+        const symmetric_is_same = row === sym_row && col === sym_col && type === sym_type;
+        if (!symmetric_is_same) {
+            const symRatio = calculate_ratio_from_solved(sym_row, sym_col, sym_type, solvedBoard);
+            if (!symRatio) {
+                remove_marks(addedMarks);
+                continue;
+            }
+            const symMark = add_ratio_mark_with_value(sym_row, sym_col, size, container, sym_type, symRatio);
+            if (!symMark) {
+                remove_marks(addedMarks);
+                continue;
+            }
+            addedMarks.push(symMark);
+        }
+
+        marks_added += addedMarks.length;
+
+        backup_original_board();
+        const result = solve(create_solver_board(size), size, is_valid_ratio, true);
+        restore_original_board();
+
+        if (result.solution_count === 1) {
+            unique_found = true;
+            log_process(`✓ 找到唯一解！共添加 ${marks_added} 个标记`);
+            optimize_marks(container, size, symmetry);
+            break;
+        }
+
+        if (result.solution_count === 0 || result.solution_count === -2) {
+            log_process('✗ 无解，移除最后添加的标记');
+            remove_marks(addedMarks);
+            marks_added -= addedMarks.length;
+        } else {
+            log_process(`当前解数：${result.solution_count}，继续添加标记...`);
+        }
+    }
+
+    const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
+    show_result(`比例数独提示生成完成（${unique_found ? '唯一解' : '未验证唯一'}，耗时${elapsed}秒）`);
+
+    if (!unique_found) {
+        if (try_count >= MAX_TRY) {
+            log_process('自动出题失败：达到最大尝试次数');
+        } else {
+            log_process('自动出题完成（可能非唯一解）');
+        }
+    }
+
+    function create_solver_board(size) {
+        return Array.from({ length: size }, () =>
+            Array.from({ length: size }, () => [...Array(size)].map((_, n) => n + 1))
+        );
+    }
+
+    function remove_marks(list) {
+        for (const mark of list) {
+            if (mark && mark.parentNode) {
+                mark.remove();
+            }
+        }
+    }
+
+    function get_mark_key(row, col, type) {
+        return type === 'v' ? `v-${row}-${col + 1}` : `h-${row + 1}-${col}`;
+    }
+
+    function is_mark_exists(row, col, type, container) {
+        const key = get_mark_key(row, col, type);
+        return !!container.querySelector(`.vx-mark[data-key="${key}"]`);
+    }
+
+    function is_valid_position(row, col, size, type) {
+        if (type === 'v') {
+            return row >= 0 && row < size && col >= 0 && col < size - 1;
+        }
+        return row >= 0 && row < size - 1 && col >= 0 && col < size;
+    }
+
     function get_symmetric(row, col, size, symmetry, type) {
-        // type: 'v' 竖线，'h' 横线
         switch (symmetry) {
             case 'central':
-                if (type === 'v') {
-                    return [size - 1 - row, size - 2 - col, 'v'];
-                } else {
-                    return [size - 2 - row, size - 1 - col, 'h'];
-                }
+                return type === 'v'
+                    ? [size - 1 - row, size - 2 - col, 'v']
+                    : [size - 2 - row, size - 1 - col, 'h'];
             case 'diagonal':
-                if (type === 'v') {
-                    return [col, row, 'h'];
-                } else {
-                    return [col, row, 'v'];
-                }
+                return type === 'v'
+                    ? [col, row, 'h']
+                    : [col, row, 'v'];
             case 'anti-diagonal':
-                if (type === 'v') {
-                    return [size - 2 - col, size - 1 - row, 'h'];
-                } else {
-                    return [size - 1 - col, size - 2 - row, 'v'];
-                }
+                return type === 'v'
+                    ? [size - 2 - col, size - 1 - row, 'h']
+                    : [size - 1 - col, size - 2 - row, 'v'];
             case 'horizontal':
-                if (type === 'v') {
-                    return [size - 1 - row, col, 'v'];
-                } else {
-                    return [size - row - 2, col, 'h'];
-                }
+                return type === 'v'
+                    ? [size - 1 - row, col, 'v']
+                    : [size - 2 - row, col, 'h'];
             case 'vertical':
-                if (type === 'v') {
-                    return [row, size - col - 2, 'v'];
-                } else {
-                    return [row, size - 1 - col, 'h'];
-                }
+                return type === 'v'
+                    ? [row, size - 2 - col, 'v']
+                    : [row, size - 1 - col, 'h'];
             default:
                 return [row, col, type];
         }
     }
-    // log_process(`即将生成比例数独，圆圈数量：${num_marks}，对称类型：${symmetry}`);
 
-    // 随机生成圆圈位置和数字（不贴边线，带对称）
-    const positions_set = new Set();
-    let marks_added = 0;
-    let try_count = 0;
-    const MAX_TRY = 1000;
-    while (marks_added < num_marks && try_count < MAX_TRY) {
-        try_count++;
-        // 随机决定横线还是竖线
-        let type = Math.random() < 0.5 ? 'v' : 'h';
-        let row, col;
+    function calculate_ratio_from_solved(row, col, type, solvedBoard) {
+        let a, b;
         if (type === 'v') {
-            row = Math.floor(Math.random() * size);
-            col = Math.floor(Math.random() * (size - 1));
+            a = solvedBoard[row]?.[col];
+            b = solvedBoard[row]?.[col + 1];
         } else {
-            row = Math.floor(Math.random() * (size - 1));
-            col = Math.floor(Math.random() * size);
+            a = solvedBoard[row]?.[col];
+            b = solvedBoard[row + 1]?.[col];
         }
-        const key = `${type}-${row}-${col}`;
-        if (positions_set.has(key)) continue;
+        if (!a || !b) return null;
 
-        // 计算对称点
-        const [sym_row, sym_col, sym_type] = get_symmetric(row, col, size, symmetry, type);
-        const sym_key = `${sym_type}-${sym_row}-${sym_col}`;
+        const small = Math.min(a, b);
+        const big = Math.max(a, b);
+        if (small === big) return null;
 
-        // 两个点都不能重复且都不能贴右/下边线
-        if (
-            sym_row >= 0 && sym_row < size && sym_col >= 0 && sym_col < size &&
-            ((type === 'v' && col < size - 1) || (type === 'h' && row < size - 1)) &&
-            ((sym_type === 'v' && sym_col < size - 1) || (sym_type === 'h' && sym_row < size - 1)) &&
-            !positions_set.has(key) && !positions_set.has(sym_key)
-        ) {
-            positions_set.add(key);
-            positions_set.add(sym_key);
-            add_circle(row, col, size, container, type);
-            add_circle(sym_row, sym_col, size, container, sym_type);
-            // 检查是否有解
-            // 构造当前盘面
-            const grid = container.querySelector('.sudoku-grid');
-            let board = [];
-            for (let r = 0; r < size; r++) {
-                board[r] = [];
-                for (let c = 0; c < size; c++) {
-                    board[r][c] = 0;
-                }
-            }
-            // 调用solve
-            backup_original_board();
-            const result = solve(board.map(r => r.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), size, is_valid_ratio, true);
-            log_process(`尝试添加圆圈位置：(${row},${col}) 和 (${sym_row},${sym_col})，解的数量：${result.solution_count}`);
-            if (result.solution_count === 0 || result.solution_count === -2) {
-                log_process('当前圆圈位置无解，重新生成');
-                restore_original_board();
-                // 无解，撤销圆圈
-                // positions_set.delete(`${row},${col}`);
-                // positions_set.delete(`${sym_row},${sym_col}`);
-                positions_set.delete(key);
-                positions_set.delete(sym_key);
-                // 移除最后两个圆圈
-                const marks = container.querySelectorAll('.vx-mark');
-                if (marks.length >= 2) {
-                    marks[marks.length - 1].remove();
-                    marks[marks.length - 2].remove();
-                }
-                // marks_added -= 2; // 同步减少计数
-                continue;
-            }
-            if (result.solution_count === 1) {
-                marks_added += 2;
-                return;
-                break;
-            }
-            marks_added += 2;
-        }
-        // 如果对称点和主点重合，只添加一次
-        else if (
-            sym_row === row && sym_col === col &&
-            !positions_set.has(key)
-        ) {
-            positions_set.add(key);
-            add_circle(row, col, size, container);
-            // 检查是否有解
-            // 构造当前盘面
-            const grid = container.querySelector('.sudoku-grid');
-            let board = [];
-            for (let r = 0; r < size; r++) {
-                board[r] = [];
-                for (let c = 0; c < size; c++) {
-                    board[r][c] = 0;
-                }
-            }
-            // 调用solve
-            backup_original_board();
-            const result = solve(board.map(r => r.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), size, is_valid_ratio, true);
-            log_process(`尝试添加圆圈 at (${row},${col})，解数：${result.solution_count}`);
-            if (result.solution_count === 0 || result.solution_count === -2) {
-                log_process('当前圆圈位置无解，重新生成');
-                restore_original_board();
-                // 无解，撤销圆圈
-                // positions_set.delete(`${row},${col}`);
-                // positions_set.delete(`${sym_row},${sym_col}`);
-                positions_set.delete(key);
-                // 移除最后两个圆圈
-                const marks = container.querySelectorAll('.vx-mark');
-                if (marks.length >= 1) {
-                    marks[marks.length - 1].remove();
-                }
-                // marks_added -= 1; // 同步减少计数
-                continue;
-            }
-            if (result.solution_count === 1) {
-                marks_added += 1;
-                return;
-                break;
-            }
-            marks_added += 1;
-        }
-    }
-    if (try_count >= MAX_TRY) {
-        log_process('自动出题失败，请重试或减少圆圈数量！');
+        const divisor = gcd(small, big);
+        const numerator = small / divisor;
+        const denominator = big / divisor;
+        if (numerator >= denominator) return null;
+
+        return `${numerator}/${denominator}`;
     }
 
-    // 生成题目
-    generate_puzzle(size, score_lower_limit, holes_count);
-
-// ...existing code...
-
-// 辅助函数：添加比例标记（与add_ratio_mark一致）
-function add_circle(row, col, size, container, type) {
-    const grid = container.querySelector('.sudoku-grid');
-    if (!grid) return;
-
-    const cell_width = grid.offsetWidth / size;
-    const cell_height = grid.offsetHeight / size;
-
-    let mark_x, mark_y, key;
-    if (type === 'v') {
-        // 竖线：连接[row, col]和[row, col+1]
-        mark_x = (col + 1) * cell_width;
-        mark_y = row * cell_height + cell_height / 2;
-        key = `v-${row}-${col + 1}`;
-    } else if (type === 'h') {
-        // 横线：连接[row, col]和[row+1, col]
-        mark_x = col * cell_width + cell_width / 2;
-        mark_y = (row + 1) * cell_height;
-        key = `h-${row + 1}-${col}`;
-    } else {
-        return;
-    }
-
-    const grid_offset_left = grid.offsetLeft;
-    const grid_offset_top = grid.offsetTop;
-
-    // // 防止重复添加
-    // const marks = Array.from(container.querySelectorAll('.vx-mark'));
-    // if (marks.some(m => m.dataset.key === key)) {
-    //     return;
-    // }
-
-    const mark = document.createElement('div');
-    mark.className = 'vx-mark';
-    mark.dataset.key = key;
-    mark.style.position = 'absolute';
-    mark.style.left = `${grid_offset_left + mark_x - 18}px`;
-    mark.style.top = `${grid_offset_top + mark_y - 10}px`;
-    mark.style.width = '36px';
-    mark.style.height = '20px';
-
-    // 创建只显示斜杠的输入框
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.maxLength = 3;
-    input.style.width = '38px';
-    input.style.height = '28px';
-    input.style.fontSize = '22px';
-    input.style.textAlign = 'center';
-    input.style.border = 'none';
-    input.style.background = 'transparent';
-    input.style.outline = 'none';
-    input.style.position = 'absolute';
-    input.style.left = '50%';
-    input.style.top = '50%';
-    input.style.transform = 'translate(-50%, -50%)';
-    input.style.color = '#333';
-
-    // 随机生成比例
-    let left, right;
-    do {
-        left = Math.floor(Math.random() * size) + 1;
-        right = Math.floor(Math.random() * size) + 1;
-    } while (left === right);
-    if (left > right) {
-        [left, right] = [right, left];
-    }
-    // 求最大公约数
     function gcd(a, b) {
         while (b !== 0) {
             [a, b] = [b, a % b];
         }
         return a;
     }
-    const divisor = gcd(left, right);
-    left = left / divisor;
-    right = right / divisor;
-    input.value = `${left}/${right}`;
 
-    // 输入时自动格式化为 左/右
-    input.addEventListener('input', function() {
-        const max_value = size;
-        const regex = new RegExp(`[^1-${max_value}]`, 'g');
-        const digits = this.value.replace(regex, '');
-        let l = '', r = '';
-        if (digits.length === 1) {
-            l = '';
-            r = digits[0];
-        } else if (digits.length >= 2) {
-            l = digits[0];
-            r = digits[1];
-        }
-        this.value = l + '/' + r;
-    });
+    function add_ratio_mark_with_value(row, col, size, container, type, ratio) {
+        const grid = container.querySelector('.sudoku-grid');
+        if (!grid) return null;
 
-    // 保证光标不能移到/前面
-    input.addEventListener('keydown', function(e) {
-        if ((e.key === 'Backspace' && this.selectionStart === 1) ||
-            (e.key === 'Delete' && this.selectionStart === 0)) {
-            e.preventDefault();
+        const cell_width = grid.offsetWidth / size;
+        const cell_height = grid.offsetHeight / size;
+
+        let mark_x, mark_y, key;
+        if (type === 'v') {
+            mark_x = (col + 1) * cell_width;
+            mark_y = row * cell_height + cell_height / 2;
+            key = get_mark_key(row, col, type);
+        } else {
+            mark_x = col * cell_width + cell_width / 2;
+            mark_y = (row + 1) * cell_height;
+            key = get_mark_key(row, col, type);
         }
-        if (e.key.length === 1 && /[0-9]/.test(e.key)) {
-            if (this.selectionStart === 1) {
-                this.setSelectionRange(2, 2);
+
+        const grid_offset_left = grid.offsetLeft;
+        const grid_offset_top = grid.offsetTop;
+
+        const mark = document.createElement('div');
+        mark.className = 'vx-mark';
+        mark.dataset.key = key;
+        mark.style.position = 'absolute';
+        mark.style.left = `${grid_offset_left + mark_x - 18}px`;
+        mark.style.top = `${grid_offset_top + mark_y - 10}px`;
+        mark.style.width = '36px';
+        mark.style.height = '20px';
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.maxLength = 5;
+        input.value = ratio;
+        input.style.width = '38px';
+        input.style.height = '28px';
+        input.style.fontSize = '22px';
+        input.style.textAlign = 'center';
+        input.style.border = 'none';
+        input.style.background = 'transparent';
+        input.style.outline = 'none';
+        input.style.position = 'absolute';
+        input.style.left = '50%';
+        input.style.top = '50%';
+        input.style.transform = 'translate(-50%, -50%)';
+        input.style.color = '#333';
+
+        mark.appendChild(input);
+        mark.ondblclick = function(e) {
+            e.stopPropagation();
+            mark.remove();
+        };
+        input.ondblclick = function(e) {
+            e.stopPropagation();
+            mark.remove();
+        };
+        container.appendChild(mark);
+        return mark;
+    }
+
+    function optimize_marks(container, size, symmetry) {
+        log_process('开始优化标记，删除无用条件...');
+        const groups = group_marks_by_symmetry(container, size, symmetry);
+        let removed = 0;
+        for (const group of groups) {
+            const removedMarks = temporarily_remove_marks(container, group.keys);
+            backup_original_board();
+            const result = solve(create_solver_board(size), size, is_valid_ratio, true);
+            restore_original_board();
+            if (result.solution_count === 1) {
+                permanently_remove_marks(removedMarks);
+                removed += removedMarks.length;
+            } else {
+                restore_marks(container, removedMarks);
             }
         }
-    });
+        log_process(`优化完成，共删除 ${removed} 个标记`);
+    }
 
-    input.addEventListener('focus', function() {
-        if (this.value.length <= 1) {
-            this.setSelectionRange(2, 2);
-        } else {
-            this.setSelectionRange(this.value.length, this.value.length);
+    function group_marks_by_symmetry(container, size, symmetry) {
+        const marks = Array.from(container.querySelectorAll('.vx-mark[data-key]'))
+            .filter(m => /^v-/.test(m.dataset.key) || /^h-/.test(m.dataset.key));
+        const groups = [];
+        const visited = new Set();
+        for (const mark of marks) {
+            const key = mark.dataset.key;
+            if (visited.has(key)) continue;
+            const [type, rowStr, colStr] = key.split('-');
+            let baseRow, baseCol, baseType;
+            if (type === 'v') {
+                baseRow = parseInt(rowStr, 10);
+                baseCol = parseInt(colStr, 10) - 1;
+                baseType = 'v';
+            } else {
+                baseRow = parseInt(rowStr, 10) - 1;
+                baseCol = parseInt(colStr, 10);
+                baseType = 'h';
+            }
+            const [symRow, symCol, symType] = get_symmetric(baseRow, baseCol, size, symmetry, baseType);
+            if (!is_valid_position(symRow, symCol, size, symType)) {
+                groups.push({ keys: [key] });
+                visited.add(key);
+                continue;
+            }
+            const symKey = get_mark_key(symRow, symCol, symType);
+            if (symKey && symKey !== key && marks.some(m => m.dataset.key === symKey) && !visited.has(symKey)) {
+                groups.push({ keys: [key, symKey] });
+                visited.add(symKey);
+            } else {
+                groups.push({ keys: [key] });
+            }
+            visited.add(key);
         }
-    });
+        return groups;
+    }
 
-    mark.ondblclick = function(e) {
-        e.stopPropagation();
-        mark.remove();
-    };
-    input.ondblclick = function(e) {
-        e.stopPropagation();
-        mark.remove();
-    };
+    function temporarily_remove_marks(container, keys = []) {
+        const removed = [];
+        for (const key of keys.filter(Boolean)) {
+            const mark = container.querySelector(`.vx-mark[data-key="${key}"]`);
+            if (!mark) continue;
+            const placeholder = document.createElement('div');
+            placeholder.style.display = 'none';
+            placeholder.className = 'vx-mark-placeholder';
+            mark.parentNode.insertBefore(placeholder, mark);
+            removed.push({ element: mark, placeholder });
+            mark.remove();
+        }
+        return removed;
+    }
 
-    mark.appendChild(input);
-    container.appendChild(mark);
-    input.focus();
-}
+    function restore_marks(container, removedMarks) {
+        for (const info of removedMarks) {
+            if (info.placeholder && info.placeholder.parentNode) {
+                info.placeholder.parentNode.replaceChild(info.element, info.placeholder);
+            }
+        }
+    }
 
-// ...existing code...
+    function permanently_remove_marks(removedMarks) {
+        for (const info of removedMarks) {
+            if (info.placeholder && info.placeholder.parentNode) {
+                info.placeholder.remove();
+            }
+        }
+    }
 }
 
 function add_ratio_mark(size) {
@@ -485,19 +504,34 @@ function add_ratio_mark(size) {
 
         // 输入时自动格式化为 左/右
         input.addEventListener('input', function() {
-            // 只保留数字
             const max_value = size;
             const regex = new RegExp(`[^1-${max_value}]`, 'g');
             const digits = this.value.replace(regex, '');
-            let left = '', right = '';
+
+            let left = '';
+            let right = '';
+
             if (digits.length === 1) {
-                left = '';
                 right = digits[0];
             } else if (digits.length >= 2) {
-                left = digits[0];
-                right = digits[1];
+                const first = parseInt(digits[0], 10);
+                const second = parseInt(digits[1], 10);
+                if (first !== second) {
+                    const [minVal, maxVal] = first < second ? [first, second] : [second, first];
+                    left = String(minVal);
+                    right = String(maxVal);
+                }
             }
-            this.value = left + '/' + right;
+
+            if (left && right) {
+                this.value = `${left}/${right}`;
+            } else if (left) {
+                this.value = `${left}/`;
+            } else if (right) {
+                this.value = `/${right}`;
+            } else {
+                this.value = '/';
+            }
         });
 
         // 保证光标不能移到/前面

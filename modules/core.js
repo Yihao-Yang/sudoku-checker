@@ -695,6 +695,11 @@ export function clear_outer_clues() {
     show_result("已清除所有外部提示数字！", 'info');
 }
 
+export function clear_marks() {
+    const container = document.querySelector('.sudoku-container');
+    if (!container) return;
+    container.querySelectorAll('.vx-mark').forEach(mark => mark.remove());
+}
 
 export function import_sudoku_from_string() {
     const sudokuString = document.getElementById('sudokuString').value.trim();
