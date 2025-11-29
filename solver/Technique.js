@@ -1,5 +1,5 @@
-import { state } from '../modules/state.js';
-import { show_result, log_process, backup_original_board, restore_original_board, } from '../modules/core.js';
+import { state } from './state.js';
+import { show_result, log_process, backup_original_board, restore_original_board, } from './core.js';
 import { eliminate_candidates, isEqual, getCombinations, getRowLetter, get_all_regions, get_special_combination_regions, isValid } from './solver_tool.js';
 import { get_all_mark_lines, get_cells_on_line } from "../modules/multi_diagonal.js";
 import { is_valid_quadruple } from '../modules/quadruple.js';

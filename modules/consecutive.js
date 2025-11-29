@@ -11,8 +11,8 @@ import {
     fill_solution,
     log_process,
     backup_original_board
-} from './core.js';
-import { state, set_current_mode } from './state.js';
+} from '../solver/core.js';
+import { state, set_current_mode } from '../solver/state.js';
 import { solve } from '../solver/solver_tool.js';
 import { shuffle, get_symmetric_positions, generate_solution } from '../solver/generate.js';
 

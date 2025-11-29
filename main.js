@@ -7,7 +7,7 @@ import {
     restore_original_board,
     save_sudoku_as_image,
     change_candidates_mode
-} from './modules/core.js';
+} from './solver/core.js';
 
 import { 
     create_sudoku_grid, check_uniqueness
@@ -20,8 +20,9 @@ import {
 import {
     generate_puzzle, fill_puzzle_to_grid
 } from './solver/generate.js'
-import { state } from './modules/state.js';
-import { generate_multi_diagonal_puzzle } from './modules/multi_diagonal.js'; 
+import { state } from './solver/state.js';
+import { generate_multi_diagonal_puzzle } from './modules/multi_diagonal.js';
+import { generate_vx_puzzle } from './modules/vx.js';
 import { generate_extra_region_puzzle } from './modules/extra_region.js';
 import { generate_exclusion_puzzle } from './modules/exclusion.js';
 import { generate_quadruple_puzzle } from './modules/quadruple.js';
@@ -171,12 +172,15 @@ document.addEventListener('input', function(e) {
         const count = parseInt(batchInput.value, 10);
         const score_lower_limit = parseInt(scoreInput.value, 10) || 0;
         const size = state.current_grid_size;
+        // 从 cluesInput 读取用户输入的提示数，和单次生成保持一致
+        const cluesCount = parseInt(cluesInput.value, 10) || 0;
         const holes_count = size * size - (isNaN(cluesCount) ? 0 : cluesCount);
         if (isNaN(count) || count < 1) return;
         for (let i = 0; i < count; i++) {
             if (state.current_mode === 'multi_diagonal') {
-                // 如果是多斜线模式，调用对应的生成函数
                 generate_multi_diagonal_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+            } else if (state.current_mode === 'VX') {
+                generate_vx_puzzle(state.current_grid_size, score_lower_limit, holes_count);
             } else if (state.current_mode === 'extra_region') {
                 generate_extra_region_puzzle(state.current_grid_size, score_lower_limit, holes_count);
             } else if (state.current_mode === 'exclusion') {

@@ -1,5 +1,6 @@
 import { create_skyscraper_sudoku } from './skyscraper.js';
 import { create_vx_sudoku } from './vx.js';
+import { create_kropki_sudoku } from './kropki.js';
 import { create_candidates_sudoku } from './candidates.js';
 import { create_diagonal_sudoku } from './diagonal.js';
 import { create_anti_diagonal_sudoku } from './anti_diagonal.js';
@@ -13,6 +14,7 @@ import { create_isomorphic_sudoku } from './isomorphic.js';
 import { create_extra_region_sudoku } from './extra_region.js';
 import { create_anti_king_sudoku } from './anti_king.js';
 import { create_anti_knight_sudoku } from './anti_knight.js';
+import { create_anti_elephant_sudoku } from './anti_elephant.js';
 import { create_exclusion_sudoku, apply_exclusion_marks, is_valid_exclusion } from './exclusion.js';
 import { create_quadruple_sudoku, is_valid_quadruple } from './quadruple.js';
 import { create_add_sudoku } from './add.js';
@@ -24,7 +26,7 @@ import { create_palindrome_sudoku } from './palindrome.js';
 import { create_X_sums_sudoku } from './X_sums.js';
 import { create_sandwich_sudoku } from './sandwich.js';
 import { create_new_sudoku } from './new.js';
-import { state, set_current_mode } from './state.js';
+import { state, set_current_mode } from '../solver/state.js';
 import { 
     show_result, 
     clear_result, 
@@ -41,7 +43,7 @@ import {
     backup_original_board,
     change_candidates_mode,
     show_logical_solution
-} from './core.js';
+} from '../solver/core.js';
 import { solve, isValid, eliminate_candidates } from '../solver/solver_tool.js';
 
 // 最关键的创建数独函数
@@ -263,11 +265,13 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('对角线', () => create_diagonal_sudoku(4));
         // add_Extra_Button('斜井', () => create_hashtag_sudoku(4));
         add_Extra_Button('斜线', () => create_multi_diagonal_sudoku(4));
+        add_Extra_Button('黑白点', () => create_kropki_sudoku(4));
         add_Extra_Button('连续', () => create_consecutive_sudoku(4));
         add_Extra_Button('缺一门', () => create_missing_sudoku(4));
         add_Extra_Button('同位', () => create_isomorphic_sudoku(4));
         add_Extra_Button('额外区域', () => create_extra_region_sudoku(4));
         add_Extra_Button('无马', () => create_anti_knight_sudoku(4));
+        add_Extra_Button('无象', () => create_anti_elephant_sudoku(4));
         add_Extra_Button('排除', () => create_exclusion_sudoku(4));
         add_Extra_Button('四格提示', () => create_quadruple_sudoku(4));
         add_Extra_Button('加法', () => create_add_sudoku(4));
@@ -286,12 +290,14 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('反对角', () => create_anti_diagonal_sudoku(6));
         add_Extra_Button('斜井', () => create_hashtag_sudoku(6));
         add_Extra_Button('斜线', () => create_multi_diagonal_sudoku(6));
+        add_Extra_Button('黑白点', () => create_kropki_sudoku(6));
         add_Extra_Button('连续', () => create_consecutive_sudoku(6));
         add_Extra_Button('缺一门', () => create_missing_sudoku(6));
         add_Extra_Button('同位', () => create_isomorphic_sudoku(6));
         add_Extra_Button('额外区域', () => create_extra_region_sudoku(6));
         add_Extra_Button('无缘', () => create_anti_king_sudoku(6));
         add_Extra_Button('无马', () => create_anti_knight_sudoku(6));
+        add_Extra_Button('无象', () => create_anti_elephant_sudoku(6));
         add_Extra_Button('排除', () => create_exclusion_sudoku(6));
         add_Extra_Button('四格提示', () => create_quadruple_sudoku(6));
         add_Extra_Button('加法', () => create_add_sudoku(6));
@@ -311,6 +317,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('斜井', () => create_hashtag_sudoku(9));
         add_Extra_Button('斜线', () => create_multi_diagonal_sudoku(9));
         add_Extra_Button('VX', () => create_vx_sudoku(9));
+        add_Extra_Button('黑白点', () => create_kropki_sudoku(9));
         add_Extra_Button('连续', () => create_consecutive_sudoku(9));
         add_Extra_Button('缺一门', () => create_missing_sudoku(9));
         add_Extra_Button('窗口', () => create_window_sudoku(9));
@@ -319,6 +326,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('额外区域', () => create_extra_region_sudoku(9));
         add_Extra_Button('无缘', () => create_anti_king_sudoku(9));
         add_Extra_Button('无马', () => create_anti_knight_sudoku(9));
+        add_Extra_Button('无象', () => create_anti_elephant_sudoku(9));
         add_Extra_Button('排除', () => create_exclusion_sudoku(9));
         add_Extra_Button('四格提示', () => create_quadruple_sudoku(9));
         add_Extra_Button('加法', () => create_add_sudoku(9));
@@ -601,7 +609,7 @@ export function check_uniqueness() {
     
         // 获取当前数独状态，包括候选数信息
     let board;
-    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich') {
+    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
         // X和模式，去掉边界
         board = Array.from({ length: size + 2 }, (_, i) =>
             Array.from({ length: size + 2 }, (_, j) => {
@@ -652,7 +660,7 @@ export function check_uniqueness() {
             for (let i = 0; i < size; i++) {
                 for (let j = 0; j < size; j++) {
                     let input;
-                    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich') {
+                    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
                         input = container.querySelector(`input[data-row="${i + 1}"][data-col="${j + 1}"]`);
                     } else {
                         input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);

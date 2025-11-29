@@ -1,6 +1,6 @@
-import { solve, isValid, eliminate_candidates, get_all_regions } from './solver_tool.js';
-import { log_process,backup_original_board,show_result, restore_original_board, clear_all_inputs} from '../modules/core.js';
-import { state } from '../modules/state.js';
+import { solve, isValid, eliminate_candidates, get_all_regions, get_special_combination_regions } from './solver_tool.js';
+import { log_process,backup_original_board,show_result, restore_original_board, clear_all_inputs, clear_inner_numbers} from './core.js';
+import { state } from './state.js';
 import { is_valid_exclusion } from '../modules/exclusion.js';
 import { is_valid_quadruple } from '../modules/quadruple.js';
 // import { isValid_multi_diagonal } from '../modules/multi_diagonal.js';
@@ -8,11 +8,16 @@ import { is_valid_quadruple } from '../modules/quadruple.js';
 
 
 // 自动生成标准数独题目
-export function generate_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
+export function generate_puzzle(size, score_lower_limit = 0, holes_count = undefined, pre_solved_board = null) {
+    
     // 记录开始时间
     const startTime = performance.now();
     // 清除之前的结果
-    clear_all_inputs();
+    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
+        clear_inner_numbers();
+    } else {
+        clear_all_inputs();
+    }
     log_process('', true);
 
     let puzzle, solution, result, holesDug, symmetry;
@@ -41,12 +46,24 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
             return null;
         }
 
-        // 2. 随机选择对称模式并挖洞
+        // 随机选择对称模式
         symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
-        // 1. 生成终盘
-        solution = generate_solution(size, existing_numbers, symmetry);
-        // symmetry = 'none';
-        // puzzle = solution;
+
+        // 如果外部提供了已生成的终盘，则直接使用，避免重复生成
+        if (pre_solved_board && Array.isArray(pre_solved_board) && pre_solved_board.length === size) {
+            solution = pre_solved_board;
+            log_process('使用外部传入的终盘（跳过终盘生成）...');
+        } else {
+            // 生成终盘
+            solution = generate_solution(size, existing_numbers, symmetry);
+            // solution = generate_solution_old(size, existing_numbers, symmetry);
+            if (!solution) {
+                log_process('生成终盘失败，重试...');
+                continue;
+            }
+        }
+
+        // 挖洞得到题目
         puzzle = dig_holes(solution, size, 0, symmetry, holes_count);
 
         // 计算实际挖洞数
@@ -57,14 +74,9 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
             }
         }
 
-        // // 4. 验证题目唯一性并显示技巧统计
-        // const testBoard = puzzle.map(row => 
-        //     row.map(cell => cell === 0 ? 
-        //         [...Array(size)].map((_, n) => n + 1) : cell
-        //     )
-        // );
+        // 构建用于唯一性检测的 test_board
         let test_board;
-        if (state.current_mode === 'X_sums') {
+        if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
             // X和模式，去掉边界
             test_board = Array.from({ length: size + 2 }, (_, i) =>
                 Array.from({ length: size + 2 }, (_, j) => {
@@ -86,52 +98,36 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
             );
         }
 
-        // let is_valid_func;
-        // if (state.current_mode === 'multi_diagonal') {
-        //     is_valid_func = isValid_multi_diagonal;
-        // } else if (state.current_mode === 'diagonal') {
-        //     is_valid_func = isValid_diagonal;
-        // } else {
-        //     is_valid_func = isValid;
-        // }
         result = solve(test_board, size, isValid, true);
 
         // 老分值判断（包含用户输入的下限）
         if (state.solve_stats.total_score < score_lower_limit) {
             log_process(`题目分值为${state.solve_stats.total_score}，低于下限${score_lower_limit}，重新生成...`);
+            // 如果 pre_solved_board 是外部传入的，跳出重试循环（因为无法改变外部终盘），返回当前结果或继续下一 symmetry？
+            if (pre_solved_board) {
+                log_process('外部传入终盘未达分值要求，停止进一步尝试。');
+                break;
+            }
             continue;
         }
-        // // 新分值判断（包含用户输入的下限）
-        // if (state.total_score_sum < score_lower_limit) {
-        //     log_process(`题目分值为${state.total_score_sum}，低于下限${score_lower_limit}，重新生成...`);
-        //     continue;
-        // }
         break;
     }
 
     log_process(`${size}宫格${difficulty}难度数独生成成功，提示数: ${size*size-holesDug}，对称模式: ${symmetry}`);
-    // log_process(`生成${size}宫格数独，提示数: ${size*size-holesDug}，对称模式: ${symmetry}`);
 
     // 3. 填充到网格
     const container = document.querySelector('.sudoku-container');
-
-    // if (state.current_mode === 'X_sums') {
-    //     // X_sums模式，跳过边界
-    //     for (let i = 1; i <= size; i++) {
-    //         for (let j = 1; j <= size; j++) {
-    //             const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
-    //             input.value = puzzle[i - 1][j - 1] || '';
-    //         }
-    //     }
-    // } else {
-        // 默认模式
-        for (let i = 0; i < size; i++) {
-            for (let j = 0; j < size; j++) {
-                const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+    const isBorderedMode = ['X_sums', 'sandwich', 'skyscraper'].includes(state.current_mode);
+    for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
+            const row = isBorderedMode ? i + 1 : i;
+            const col = isBorderedMode ? j + 1 : j;
+            const input = container.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
+            if (input) {
                 input.value = puzzle[i][j] || '';
             }
         }
-    // }
+    }
 
     // 记录结束时间
     const endTime = performance.now();
@@ -140,7 +136,7 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
     backup_original_board();
     show_result(`已生成${size}宫格数独题目（不加标记部分用时${elapsed}秒）`);
 
-    if (result.technique_counts) {
+    if (result && result.technique_counts) {
         log_process("\n=== 技巧使用统计 ===");
         for (const [technique, count] of Object.entries(result.technique_counts)) {
             if (count > 0) {
@@ -170,7 +166,7 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
 
     // 初始化为候选数数组
     let sudoku_board;
-    if (state.current_mode === 'X_sums') {
+    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
         // X和模式，去掉边界
         // sudoku_board = Array.from({ length: sudoku_size + 2 }, () =>
         //     Array.from({ length: sudoku_size + 2 }, () => [...Array(sudoku_size)].map((_, i) => i + 1))
@@ -239,7 +235,7 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
 
     // 唯一解检测
     let test_board;
-    if (state.current_mode === 'X_sums') {
+    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
         test_board = Array.from({ length: sudoku_size + 2 }, (_, r) =>
             Array.from({ length: sudoku_size + 2 }, (_, c) => {
                 const found = given_numbers.find(item => item.row === r && item.col === c);
@@ -357,7 +353,7 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
                 // log_process(`当前主动给数: ${given_numbers.map(item => `[${item.row+1},${item.col+1}]=${item.num}`).join(' ')}`);
 
                 // 构造只包含主动给数的盘面
-                if (state.current_mode === 'X_sums') {
+                if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
                     test_board = Array.from({ length: sudoku_size + 2 }, (_, r) =>
                         Array.from({ length: sudoku_size + 2 }, (_, c) => {
                             const found = given_numbers.find(item => item.row === r && item.col === c);
@@ -705,15 +701,20 @@ export function generate_solved_board_brute_force(size) {
             const j = Math.floor(Math.random() * (i + 1));
             [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
         }
-        
-        for (const num of numbers) {
-            if (isValid(board, size, row, col, num)) {
-                board[row][col] = num;
-                if (backtrack(nextRow, nextCol)) {
-                    return true;
+        const prev_mode = state.current_mode;
+        state.current_mode = 'classic';
+        try {
+            for (const num of numbers) {
+                if (isValid(board, size, row, col, num)) {
+                    board[row][col] = num;
+                    if (backtrack(nextRow, nextCol)) {
+                        return true;
+                    }
+                    board[row][col] = 0;
                 }
-                board[row][col] = 0;
             }
+        } finally {
+            state.current_mode = prev_mode;
         }
         return false;
     }
@@ -727,8 +728,11 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
     let holes_dug = 0;
     let changed;
 
+    // 在这些模式下跳过分值比较，直接以唯一解为准进行挖洞
+    const SKIP_SCORE_MODES = new Set(['VX', 'kropki']);
+    const skipScore = SKIP_SCORE_MODES.has(state.current_mode);
+
     // 获取所有区域并计算每个格子所属的区域数量
-    // const regions = get_all_regions(size, state.current_mode);
     let regions = get_all_regions(size, state.current_mode);
     // 如果是反对角线模式，仅返回两条对角线区域
     if (state.current_mode === 'anti_diagonal') {
@@ -743,6 +747,10 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
             { type: '对角线', index: 2, cells: diag2_cells }
         ];
     }
+    const special_regions = get_special_combination_regions(size, state.current_mode);
+    if (Array.isArray(special_regions) && special_regions.length > 0) {
+        regions = regions.concat(special_regions);
+    }
     const region_counts = Array.from({ length: size }, () => Array(size).fill(0));
     for (const region of regions) {
         for (const [r, c] of region.cells) {
@@ -752,103 +760,67 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
 
     do {
         if (holes_limit !== undefined && holes_dug >= holes_limit) break; // 挖洞数量达到上限，停止
-        
+
         changed = false;
         let best_region_count = -1;
         let best_score = -1;
-        let best_candidates = []; // 用于存储所有最高分方案
-    
-        // 遍历所有可挖位置，寻找分值最高的方案
+        let best_candidates = []; // 用于存储所有最高分或最优区域方案
+
+        // 遍历所有可挖位置，寻找最优方案
         for (let pos = 0; pos < size * size; pos++) {
             let row = Math.floor(pos / size);
             let col = pos % size;
             if (puzzle[row][col] === 0) continue;
 
-            // // 检查行、列、宫是否已挖满4个洞
-            // const { row_holes, col_holes, block_holes } = count_holes(puzzle, size, row, col);
-            // if (row_holes >= 5 || col_holes >= 5 || block_holes >= 5) continue;
-    
-            // 获取对称位置
             const symmetric_positions = get_symmetric_positions(row, col, size, symmetry);
             const positions_to_dig = [ [row, col], ...symmetric_positions ];
-    
+
             // 跳过已挖过的格子
             if (positions_to_dig.some(([r, c]) => puzzle[r][c] === 0)) continue;
-    
+
             // 临时保存所有位置的数字
             const temp_values = positions_to_dig.map(([r, c]) => puzzle[r][c]);
-    
+
             // 预挖洞
             positions_to_dig.forEach(([r, c]) => puzzle[r][c] = 0);
-    
+
             // 验证唯一解并计算分值
             let test_board;
-            if (state.current_mode === 'X_sums') {
-                // X和模式，去掉边界
+            if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
                 test_board = Array.from({ length: size + 2 }, (_, i) =>
                     Array.from({ length: size + 2 }, (_, j) => {
                         if (i === 0 || i === size + 1 || j === 0 || j === size + 1) {
-                            return 0; // 边界填充为 0
+                            return 0;
                         }
                         const cell = puzzle[i - 1][j - 1];
-                        return cell === 0
-                            ? [...Array(size)].map((_, n) => n + 1)
-                            : cell;
+                        return cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell;
                     })
                 );
             } else {
                 test_board = puzzle.map(row =>
-                    row.map(cell => cell === 0
-                        ? [...Array(size)].map((_, n) => n + 1)
-                        : cell
-                    )
+                    row.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)
                 );
             }
 
             solve(test_board, size, isValid, true);
-    
-            // // 仅考虑唯一解的情况，老分值系统
-            // if (state.solve_stats.solution_count === 1 && state.solve_stats.total_score !== undefined) {
-            //     if (state.solve_stats.total_score > best_score) {
-            //         best_score = state.solve_stats.total_score;
-            //         best_candidates = [{
-            //             positions: positions_to_dig.map(([r, c]) => [r, c]),
-            //             temp_values: [...temp_values]
-            //         }];
-            //     } else if (state.solve_stats.total_score === best_score) {
-            //         best_candidates.push({
-            //             positions: positions_to_dig.map(([r, c]) => [r, c]),
-            //             temp_values: [...temp_values]
-            //         });
-            //     }
-            // }
 
-            // 仅考虑唯一解的情况
-            if (state.solve_stats.solution_count === 1 && state.solve_stats.total_score !== undefined) {
+            // 只要有唯一解即可作为候选；是否比较分值由 skipScore 控制
+            if (state.solve_stats.solution_count === 1) {
                 const current_region_count = Math.max(...positions_to_dig.map(([r, c]) => region_counts[r][c]));
-                const current_score = state.solve_stats.total_score;
-                
-                // 优先比较区域数量
-                if (current_region_count > best_region_count) {
-                    best_region_count = current_region_count;
-                    best_score = current_score;
-                    best_candidates = [{
-                        positions: positions_to_dig.map(([r, c]) => [r, c]),
-                        temp_values: [...temp_values],
-                        region_count: current_region_count,
-                        score: current_score
-                    }];
-                } else if (current_region_count === best_region_count) {
-                    // 区域数量相同时，比较分值
-                    if (current_score > best_score) {
-                        best_score = current_score;
+                const current_score = state.solve_stats.total_score !== undefined ? state.solve_stats.total_score : -1;
+
+                if (skipScore) {
+                    // 仅按区域数量优先选择，若相同则随机收集
+                    if (current_region_count > best_region_count) {
+                        best_region_count = current_region_count;
+                        best_score = -1;
                         best_candidates = [{
                             positions: positions_to_dig.map(([r, c]) => [r, c]),
                             temp_values: [...temp_values],
                             region_count: current_region_count,
                             score: current_score
                         }];
-                    } else if (current_score === best_score) {
+                    } else if (current_region_count === best_region_count) {
                         best_candidates.push({
                             positions: positions_to_dig.map(([r, c]) => [r, c]),
                             temp_values: [...temp_values],
@@ -856,26 +828,52 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
                             score: current_score
                         });
                     }
+                } else {
+                    // 原逻辑：先比较区域数量，再比较分值
+                    if (current_region_count > best_region_count) {
+                        best_region_count = current_region_count;
+                        best_score = current_score;
+                        best_candidates = [{
+                            positions: positions_to_dig.map(([r, c]) => [r, c]),
+                            temp_values: [...temp_values],
+                            region_count: current_region_count,
+                            score: current_score
+                        }];
+                    } else if (current_region_count === best_region_count) {
+                        if (current_score > best_score) {
+                            best_score = current_score;
+                            best_candidates = [{
+                                positions: positions_to_dig.map(([r, c]) => [r, c]),
+                                temp_values: [...temp_values],
+                                region_count: current_region_count,
+                                score: current_score
+                            }];
+                        } else if (current_score === best_score) {
+                            best_candidates.push({
+                                positions: positions_to_dig.map(([r, c]) => [r, c]),
+                                temp_values: [...temp_values],
+                                region_count: current_region_count,
+                                score: current_score
+                            });
+                        }
+                    }
                 }
             }
-    
+
             // 恢复数字
             positions_to_dig.forEach(([r, c], idx) => puzzle[r][c] = temp_values[idx]);
         }
-    
+
         // 如果本轮有最优挖洞方案，则随机选择一个实际挖洞
         if (best_candidates.length > 0) {
             const chosen = best_candidates[Math.floor(Math.random() * best_candidates.length)];
-            // 对称组大小
             const group_size = chosen.positions.length;
-            // 如果剩余可挖洞数量小于对称组大小，则不挖，直接结束
             if (holes_limit !== undefined && holes_dug + group_size > holes_limit) {
                 break;
             }
             chosen.positions.forEach(([r, c]) => puzzle[r][c] = 0);
             holes_dug += group_size;
             changed = group_size > 0;
-            // log_process(`挖洞位置: ${chosen.positions.map(([r, c]) => `[${r+1},${c+1}]`).join(' ')}，当前已挖洞数: ${holes_dug}`);
         }
     } while (changed && (holes_limit === undefined || holes_dug < holes_limit));
 
@@ -952,9 +950,12 @@ export function fill_puzzle_to_grid(puzzle) {
     
     for (let i = 0; i < size; i++) {
         for (let j = 0; j < size; j++) {
-            const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
-            input.value = puzzle[i][j] || '';
-            // input.readOnly = puzzle[i][j] !== 0;
+            const row = isBorderedMode ? i + 1 : i;
+            const col = isBorderedMode ? j + 1 : j;
+            const input = container.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
+            if (input) {
+                input.value = puzzle[i][j] || '';
+            }
         }
     }
     

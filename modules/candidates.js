@@ -1,5 +1,5 @@
-import { state, set_current_mode } from './state.js';
-import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, show_logical_solution } from './core.js';
+import { state, set_current_mode } from '../solver/state.js';
+import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, show_logical_solution } from '../solver/core.js';
 import { eliminate_candidates, getRowLetter, isValid } from '../solver/solver_tool.js';
 import { solve_By_Elimination } from '../solver/Technique.js';
 

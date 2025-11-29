@@ -1,5 +1,5 @@
-import { state, set_current_mode } from './state.js';
-import { bold_border, create_base_grid, handle_key_navigation, add_Extra_Button, log_process, create_base_cell } from './core.js';
+import { state, set_current_mode } from '../solver/state.js';
+import { bold_border, create_base_grid, handle_key_navigation, add_Extra_Button, log_process, create_base_cell } from '../solver/core.js';
 import { create_technique_panel } from './classic.js';
 import { generate_puzzle } from '../solver/generate.js';
 

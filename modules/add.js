@@ -1,5 +1,5 @@
-import { state, set_current_mode } from './state.js';
-import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, add_Extra_Button, clear_all_inputs, clear_marks } from './core.js';
+import { state, set_current_mode } from '../solver/state.js';
+import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, add_Extra_Button, clear_all_inputs, clear_marks } from '../solver/core.js';
 import { create_technique_panel } from './classic.js';
 import { get_all_regions, solve } from '../solver/solver_tool.js';
 import { generate_puzzle, generate_solution, generate_solution_old, generate_solved_board_brute_force } from '../solver/generate.js';
@@ -451,8 +451,8 @@ export function generate_add_puzzle(size, score_lower_limit = 0, holes_count = u
 
     // 第一步：生成终盘
     log_process("第一步：生成加法数独终盘...");
-    // const solvedBoard = generate_solution_old(size);
-    const solvedBoard = generate_solved_board_brute_force(size);
+    const solvedBoard = generate_solution_old(size);
+    // const solvedBoard = generate_solved_board_brute_force(size);
     if (!solvedBoard) {
         log_process("生成终盘失败！");
         return;

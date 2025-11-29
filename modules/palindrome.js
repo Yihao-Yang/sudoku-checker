@@ -1,5 +1,5 @@
-import { state, set_current_mode } from './state.js';
-import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, add_Extra_Button } from './core.js';
+import { state, set_current_mode } from '../solver/state.js';
+import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, add_Extra_Button } from '../solver/core.js';
 import { create_technique_panel } from './classic.js';
 import { get_all_regions } from '../solver/solver_tool.js';
 
