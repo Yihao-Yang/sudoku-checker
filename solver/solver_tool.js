@@ -38,7 +38,7 @@ export function eliminate_candidates(board, size, i, j, num, calc_score = true) 
     for (const region of related_regions) {
         // 针对有重复四格提示区域，特殊处理
         if (region.type === '有重复四格提示' && Array.isArray(region.clue_nums)) {
-            // log_process(`处理特定组合区域 ${region.index} (${region.type}) 的候选数排除`);
+            // log_process(`处理特定组合 ${region.index} (${region.type}) 的候选数排除`);
             // 统计该区域内已填入num的数量
             let filledCount = 0;
             for (const [r, c] of region.cells) {
@@ -245,6 +245,106 @@ export function eliminate_candidates(board, size, i, j, num, calc_score = true) 
         } catch (e) {
             // 容错：在无 DOM 环境或查询失败时不阻塞主流程
             // console.warn && console.warn('VX elimination error', e);
+        }
+    } // Kropki（黑白点）模式专用候选数处理
+    else if (mode === 'kropki') {
+        const container = (typeof document !== "undefined") ? document.querySelector('.sudoku-container') : null;
+        // 收集所有黑白点标记
+        const kropkiMarks = [];
+        const kropkiMarkKeySet = new Set();
+        if (container) {
+            container.querySelectorAll('.vx-mark[data-key]').forEach(mark => {
+                const key = mark.dataset.key;
+                const type = (mark.dataset.kropkiType || '').toUpperCase();
+                if (type === 'B' || type === 'W') {
+                    // 解析key
+                    let pair = null;
+                    if (key.startsWith('v-')) {
+                        const [_, r, c] = key.split('-').map(Number);
+                        pair = { row1: r, col1: c - 1, row2: r, col2: c };
+                    } else if (key.startsWith('h-')) {
+                        const [_, r, c] = key.split('-').map(Number);
+                        pair = { row1: r - 1, col1: c, row2: r, col2: c };
+                    }
+                    if (pair) {
+                        kropkiMarks.push({ ...pair, type });
+                        kropkiMarkKeySet.add(`${pair.row1},${pair.col1},${pair.row2},${pair.col2}`);
+                        kropkiMarkKeySet.add(`${pair.row2},${pair.col2},${pair.row1},${pair.col1}`);
+                    }
+                }
+            });
+        }
+        // 所有相邻格对
+        const allAdjacentPairs = [];
+        for (let drc of [[0,1],[1,0]]) {
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    const nr = r + drc[0], nc = c + drc[1];
+                    if (nr < size && nc < size) {
+                        allAdjacentPairs.push({ row1: r, col1: c, row2: nr, col2: nc });
+                    }
+                }
+            }
+        }
+        // 针对所有与(i,j)相邻的格
+        for (const pair of allAdjacentPairs) {
+            let otherRow, otherCol;
+            if (pair.row1 === i && pair.col1 === j) {
+                otherRow = pair.row2; otherCol = pair.col2;
+            } else if (pair.row2 === i && pair.col2 === j) {
+                otherRow = pair.row1; otherCol = pair.col1;
+            } else continue;
+            if (!Array.isArray(board[otherRow][otherCol])) continue;
+            // 是否有黑白点标记
+            const hasMark = kropkiMarkKeySet.has(`${i},${j},${otherRow},${otherCol}`);
+            if (hasMark) {
+                // 查找标记类型
+                const mark = kropkiMarks.find(m =>
+                    (m.row1 === i && m.col1 === j && m.row2 === otherRow && m.col2 === otherCol) ||
+                    (m.row2 === i && m.col2 === j && m.row1 === otherRow && m.col1 === otherCol)
+                );
+                if (!mark) continue;
+                if (mark.type === 'B') {
+                    // 黑点，两格为2倍关系
+                    // num是已填，other格候选只能是num*2或num/2（且在1~size范围内且为整数）
+                    const allowed = [];
+                    if (num * 2 <= size) allowed.push(num * 2);
+                    if (num % 2 === 0 && num / 2 >= 1) allowed.push(num / 2);
+                    for (let k = board[otherRow][otherCol].length - 1; k >= 0; k--) {
+                        if (!allowed.includes(board[otherRow][otherCol][k])) {
+                            if (calc_score) state.candidate_elimination_score[`${otherRow},${otherCol},${board[otherRow][otherCol][k]}`] = 1;
+                            eliminations.push({ row: otherRow, col: otherCol, val: board[otherRow][otherCol][k] });
+                            board[otherRow][otherCol].splice(k, 1);
+                        }
+                    }
+                } else if (mark.type === 'W') {
+                    // 白点，两格差1
+                    const allowed = [];
+                    if (num + 1 <= size) allowed.push(num + 1);
+                    if (num - 1 >= 1) allowed.push(num - 1);
+                    for (let k = board[otherRow][otherCol].length - 1; k >= 0; k--) {
+                        if (!allowed.includes(board[otherRow][otherCol][k])) {
+                            if (calc_score) state.candidate_elimination_score[`${otherRow},${otherCol},${board[otherRow][otherCol][k]}`] = 1;
+                            eliminations.push({ row: otherRow, col: otherCol, val: board[otherRow][otherCol][k] });
+                            board[otherRow][otherCol].splice(k, 1);
+                        }
+                    }
+                }
+            } else {
+                // 没有标记，不能满足黑点或白点关系
+                for (let k = board[otherRow][otherCol].length - 1; k >= 0; k--) {
+                    const v = board[otherRow][otherCol][k];
+                    // 黑点关系
+                    const isDouble = (num === v * 2 || v === num * 2);
+                    // 白点关系
+                    const isNeighbor = (Math.abs(num - v) === 1);
+                    if (isDouble || isNeighbor) {
+                        if (calc_score) state.candidate_elimination_score[`${otherRow},${otherCol},${v}`] = 1;
+                        eliminations.push({ row: otherRow, col: otherCol, val: v });
+                        board[otherRow][otherCol].splice(k, 1);
+                    }
+                }
+            }
         }
     }
     return eliminations;
@@ -757,7 +857,7 @@ export function get_all_regions(size, mode = 'classic') {
     return regions;
 }
 
-// 获取所有特定组合区域（如四格提示区域）
+// 获取所有特定组合（如四格提示区域）
 export function get_special_combination_regions(size, mode = 'classic') {
     const regions = [];
     if (mode === 'quadruple') {
@@ -799,10 +899,14 @@ export function get_special_combination_regions(size, mode = 'classic') {
                     }
                     // 判断是否有重复
                     const has_duplicate = nums.length !== new Set(nums).size;
+                    // 生成区域的 index
+                    const index = valid_positions
+                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                        .join('-');
                     if (has_duplicate) {
                         regions.push({
-                            type: '特定组合区域',
-                            index: region_index++,
+                            type: '特定组合',
+                            index,
                             cells: valid_positions,
                             clue_nums: nums
                         });
@@ -861,9 +965,14 @@ export function get_special_combination_regions(size, mode = 'classic') {
                 }
                 const clue_nums = Array.from(clue_nums_set).sort((x, y) => x - y);
 
+                // 生成区域的 index
+                const index = [cell_a, cell_b]
+                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                    .join('-');
+
                 regions.push({
-                    type: '特定组合区域',
-                    index: region_index++,
+                    type: '特定组合',
+                    index,
                     cells: [cell_a, cell_b],
                     clue_nums
                 });
@@ -951,10 +1060,13 @@ export function get_special_combination_regions(size, mode = 'classic') {
             }
             if (clue_nums.length === 0) continue;
 
-            const hasDuplicate = maxCount.some((c, idx) => idx >= 1 && c > 1);
+            const index = cells
+                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                    .join('-');
+
             regions.push({
-                type: '特定组合区域',
-                index: region_index++,
+                type: '特定组合',
+                index,
                 cells,
                 clue_nums
             });
@@ -1008,9 +1120,14 @@ export function get_special_combination_regions(size, mode = 'classic') {
             }
             const clue_nums = Array.from(clue_nums_set).sort((x, y) => x - y);
 
+            // 生成区域的 index
+            const index = [cell_a, cell_b]
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+
             regions.push({
-                type: '特定组合区域',
-                index: region_index++,
+                type: '特定组合',
+                index,
                 cells: [cell_a, cell_b],
                 clue_nums: clue_nums
             });
@@ -1068,9 +1185,13 @@ export function get_special_combination_regions(size, mode = 'classic') {
             }
             const clue_nums = Array.from(clue_nums_set).sort((x, y) => x - y);
 
+            const index = [cell_a, cell_b]
+                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                    .join('-');
+
             regions.push({
-                type: '特定组合区域',
-                index: region_index++,
+                type: '特定组合',
+                index,
                 cells: [cell_a, cell_b],
                 clue_nums: clue_nums
             });
@@ -1140,9 +1261,16 @@ export function get_special_combination_regions(size, mode = 'classic') {
             const clue_nums = Array.from(clueNumsSet).sort((x, y) => x - y);
             if (clue_nums.length === 0) continue;
 
+            const index = [
+                    [pair.row1, pair.col1],
+                    [pair.row2, pair.col2],
+                ]
+                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                    .join('-');
+
             regions.push({
-                type: '特定组合区域',
-                index: region_index++,
+                type: '特定组合',
+                index,
                 cells: [
                     [pair.row1, pair.col1],
                     [pair.row2, pair.col2],
@@ -1151,7 +1279,7 @@ export function get_special_combination_regions(size, mode = 'classic') {
             });
         }
     }
-    // VX 特定组合区域：将带 V/X 的相邻两格作为两格提示区域（用于逻辑消除）；
+    // VX 特定组合：将带 V/X 的相邻两格作为两格提示区域（用于逻辑消除）；
     // clue_nums 包含所有可能出现在这两个格子中的数字（即能与另一数和为 5 或 10 的数）
     else if (mode === 'VX' || mode === 'vx') {
         const container = document.querySelector('.sudoku-container');
@@ -1201,9 +1329,13 @@ export function get_special_combination_regions(size, mode = 'classic') {
             const clue_nums = Array.from(clue_nums_set).sort((x, y) => x - y);
             if (clue_nums.length === 0) continue;
 
+            const index = [cell_a, cell_b]
+                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                    .join('-');
+
             regions.push({
-                type: '特定组合区域',
-                index: region_index++,
+                type: '特定组合',
+                index,
                 cells: [cell_a, cell_b],
                 clue_nums
             });
@@ -1221,14 +1353,16 @@ export function get_special_combination_regions(size, mode = 'classic') {
         for (const cells of merged_lines) {
             const len = cells.length;
             for (let i = 0; i < Math.floor(len / 2); i++) {
-                const cellA = cells[i];
-                const cellB = cells[len - 1 - i];
-                // 跳过同一个格子的情况（奇数长度中点）
-                // if (cellA[0] === cellB[0] && cellA[1] === cellB[1]) continue;
+                const cell_a = cells[i];
+                const cell_b = cells[len - 1 - i];
+
+                const index = [cell_a, cell_b]
+                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                    .join('-');
                 regions.push({
-                    type: '特定组合区域',
-                    index: regionIndex++,
-                    cells: [cellA, cellB],
+                    type: '特定组合',
+                    index,
+                    cells: [cell_a, cell_b],
                     clue_nums: Array.from({length: size * 2}, (_, n) => (n % size) + 1)
                 });
             }
@@ -1251,13 +1385,18 @@ export function get_special_combination_regions(size, mode = 'classic') {
                 for (let col = 1; col <= size; col++) {
                     row_cells.push([row - 1, col - 1]); // 转换为 0 索引
                 }
+
+                const index = row_cells
+                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                    .join('-');
+
                 regions.push({
-                    type: '特定组合区域',
-                    index: `row-${row}`,
+                    type: '特定组合',
+                    index,
                     cells: row_cells,
                     clue_nums: Array.from({ length: size }, (_, n) => n + 1),
                 });
-                // log_process(`发现特定组合区域：row-${row}，提示数：${left_clue || ''} ${right_clue || ''}`);
+                // log_process(`发现特定组合：row-${row}，提示数：${left_clue || ''} ${right_clue || ''}`);
             }
         }
 
@@ -1273,16 +1412,110 @@ export function get_special_combination_regions(size, mode = 'classic') {
                 for (let row = 1; row <= size; row++) {
                     col_cells.push([row - 1, col - 1]); // 转换为 0 索引
                 }
+                const index = col_cells
+                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                    .join('-');
                 regions.push({
-                    type: '特定组合区域',
-                    index: `col-${col}`,
+                    type: '特定组合',
+                    index,
                     cells: col_cells,
                     clue_nums: Array.from({ length: size }, (_, n) => n + 1),
                 });
             }
         }
     }
-    return regions;
+    // return regions;
+    // 合并有共同格子的特定组合
+    const merged_regions = merge_regions_with_common_cells(regions);
+
+    // 返回原始区域和合并后的区域
+    return [...regions, ...merged_regions];
+}
+
+/**
+ * 多次合并有共同格子的区域，并生成所有可能的合并区域
+ */
+function merge_regions_with_common_cells(regions) {
+    // 新增：摩天楼、X和、三明治模式下不合并
+    if (
+        state.current_mode === 'skyscraper' ||
+        state.current_mode === 'X_sums' ||
+        state.current_mode === 'sandwich'
+    ) {
+        return [];
+    }
+    const merged = [];
+    const visited = new Set();
+
+    // 辅助函数：将格子坐标转换为字符串
+    const cellToString = ([r, c]) => `${r},${c}`;
+
+    // 遍历所有区域
+    for (let i = 0; i < regions.length; i++) {
+        if (visited.has(i)) continue;
+
+        const queue = [i];
+        const merged_cells = new Set();
+        const merged_clue_nums = [];
+
+        // BFS 合并所有与当前区域有交集的区域
+        while (queue.length > 0) {
+            const current = queue.pop();
+            if (visited.has(current)) continue;
+
+            visited.add(current);
+            const region = regions[current];
+
+            // 添加当前区域的格子和提示数
+            region.cells.forEach(cell => merged_cells.add(cellToString(cell)));
+            if (Array.isArray(region.clue_nums)) {
+                merged_clue_nums.push(...region.clue_nums);
+            }
+
+            // 查找与当前区域有交集的其他区域
+            for (let j = 0; j < regions.length; j++) {
+                if (visited.has(j)) continue;
+
+                const other = regions[j];
+                if (other.cells.some(cell => merged_cells.has(cellToString(cell)))) {
+                    queue.push(j);
+
+                    // 每次发现交集时，生成一个新的合并区域
+                    const temp_merged_cells = new Set(merged_cells);
+                    other.cells.forEach(cell => temp_merged_cells.add(cellToString(cell)));
+
+                    const temp_index = Array.from(temp_merged_cells)
+                        .map(str => str.split(',').map(Number))
+                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                        .join('-');
+
+                    const temp_clue_nums = [...merged_clue_nums, ...(other.clue_nums || [])];
+
+                    merged.push({
+                        type: '合并特定组合',
+                        index: temp_index,
+                        cells: Array.from(temp_merged_cells).map(str => str.split(',').map(Number)),
+                        clue_nums: temp_clue_nums
+                    });
+                }
+            }
+        }
+
+        // 最终合并区域
+        const final_index = Array.from(merged_cells)
+            .map(str => str.split(',').map(Number))
+            .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+            .join('-');
+
+        merged.push({
+            type: '合并特定组合',
+            index: final_index,
+            cells: Array.from(merged_cells).map(str => str.split(',').map(Number)),
+            clue_nums: merged_clue_nums
+        });
+    }
+
+    return merged;
 }
 
 // 辅助函数：比较两个board状态是否相同

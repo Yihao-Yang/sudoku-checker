@@ -13,38 +13,48 @@ export function create_quadruple_sudoku(size) {
     state.current_grid_size = size;
 
     // 修改技巧开关
-        state.techniqueSettings = {
-            Box_Elimination: true,
-            Row_Col_Elimination: true,
-            Box_Block: true,
-            Box_Pair_Block: true,
-            Row_Col_Block: true,
-            Box_Naked_Pair: true,
-            Row_Col_Naked_Pair: true,
-            Box_Hidden_Pair: true,
-            Row_Col_Hidden_Pair: true,
-            Box_Naked_Triple: true,
-            Row_Col_Naked_Triple: true,
-            Box_Hidden_Triple: true,
-            Row_Col_Hidden_Triple: true,
-            All_Quad: false,
-            Cell_Elimination: true,
-            Brute_Force: false,
-            Special_Combination_Region_Elimination: true, // 新增特定组合区域排除
-            Variant_Elimination: true,
-            Variant_Block: true,
-            Variant_Pair_Block: true,
-            Special_Combination_Region_Block: true, // 新增特定组合区块
-            Variant_Hidden_Pair: true,
-            Variant_Hidden_Triple: true
-        };
-        // 唯余法全部默认开启
-        for (let i = 1; i <= size; i++) {
-            state.techniqueSettings[`Cell_Elimination_${i}`] = true;
-        }
+    state.techniqueSettings = {
+        Box_Elimination: true,
+        Row_Col_Elimination: true,
+        Box_Block: true,
+        Box_Pair_Block: true,
+        Row_Col_Block: true,
+        Box_Naked_Pair: true,
+        Row_Col_Naked_Pair: true,
+        Box_Hidden_Pair: true,
+        Row_Col_Hidden_Pair: true,
+        Box_Naked_Triple: true,
+        Row_Col_Naked_Triple: true,
+        Box_Hidden_Triple: true,
+        Row_Col_Hidden_Triple: true,
+        All_Quad: false,
+        Cell_Elimination: true,
+        Brute_Force: false,
+        Variant_Elimination: true,
+        Variant_Block: true,
+        Variant_Pair_Block: true,
+        Variant_Hidden_Pair: true,
+        Variant_Hidden_Triple: true,
+        Special_Combination_Region_Elimination_1: true,
+        Special_Combination_Region_Elimination_2: true,
+        Special_Combination_Region_Elimination_3: true,
+        Multi_Special_Combination_Region_Elimination_1: true,
+        Multi_Special_Combination_Region_Elimination_2: true,
+        Multi_Special_Combination_Region_Elimination_3: true,
+        Special_Combination_Region_Block_1: true,
+        Special_Combination_Region_Block_2: true,
+        Special_Combination_Region_Block_3: true,
+        Multi_Special_Combination_Region_Block_1: true,
+        Multi_Special_Combination_Region_Block_2: true,
+        Multi_Special_Combination_Region_Block_3: true,
+    };
+    // 唯余法全部默认开启
+    for (let i = 1; i <= size; i++) {
+        state.techniqueSettings[`Cell_Elimination_${i}`] = true;
+    }
 
-        // 刷新技巧面板
-        create_technique_panel();
+    // 刷新技巧面板
+    create_technique_panel();
 
     // 创建基础数独盘面
     const { container, grid } = create_base_grid(size);

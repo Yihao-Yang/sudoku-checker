@@ -37,7 +37,6 @@ import {
     create_base_cell,
     add_base_input_handlers,
     handle_key_navigation,
-    base_solve,
     fill_solution,
     log_process,
     backup_original_board,
@@ -189,7 +188,7 @@ export function create_sudoku_grid(size) {
                 });
                 
                 this.value = inputNumbers.join('');
-                this.classList.add('hide-input-text'); 
+                this.classList.add('hide_input_text'); 
             } else {
                 this.style.display = 'block';
                 candidates_grid.style.display = 'none';
@@ -260,7 +259,6 @@ export function create_sudoku_grid(size) {
     extraButtons.innerHTML = '';
 
     if (size === 4) {
-        add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(4));
         add_Extra_Button('候选数', () => create_candidates_sudoku(4));
         add_Extra_Button('对角线', () => create_diagonal_sudoku(4));
         // add_Extra_Button('斜井', () => create_hashtag_sudoku(4));
@@ -277,14 +275,15 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('加法', () => create_add_sudoku(4));
         add_Extra_Button('乘积', () => create_product_sudoku(4));
         add_Extra_Button('比例', () => create_ratio_sudoku(4));
+        add_Extra_Button('不等号', () => create_inequality_sudoku(4));
         add_Extra_Button('奇数', () => create_odd_sudoku(4));
         add_Extra_Button('奇偶', () => create_odd_even_sudoku(4));
         add_Extra_Button('回文', () => create_palindrome_sudoku(4));
+        add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(4));
         add_Extra_Button('X和', () => create_X_sums_sudoku(4));
         add_Extra_Button('三明治', () => create_sandwich_sudoku(4));
         add_Extra_Button('新', () => create_new_sudoku(4));
     } else if (size === 6) {
-        add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(6));
         add_Extra_Button('候选数', () => create_candidates_sudoku(6));
         add_Extra_Button('对角线', () => create_diagonal_sudoku(6));
         add_Extra_Button('反对角', () => create_anti_diagonal_sudoku(6));
@@ -303,14 +302,15 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('加法', () => create_add_sudoku(6));
         add_Extra_Button('乘积', () => create_product_sudoku(6));
         add_Extra_Button('比例', () => create_ratio_sudoku(6));
+        add_Extra_Button('不等号', () => create_inequality_sudoku(6));
         add_Extra_Button('奇数', () => create_odd_sudoku(6));
         add_Extra_Button('奇偶', () => create_odd_even_sudoku(6));
         add_Extra_Button('回文', () => create_palindrome_sudoku(6));
+        add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(6));
         add_Extra_Button('X和', () => create_X_sums_sudoku(6));
         add_Extra_Button('三明治', () => create_sandwich_sudoku(6));
         add_Extra_Button('新', () => create_new_sudoku(6));
     } else if (size === 9) {
-        add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(9));
         add_Extra_Button('候选数', () => create_candidates_sudoku(9));
         add_Extra_Button('对角线', () => create_diagonal_sudoku(9));
         add_Extra_Button('反对角', () => create_anti_diagonal_sudoku(9));
@@ -332,9 +332,11 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('加法', () => create_add_sudoku(9));
         add_Extra_Button('乘积', () => create_product_sudoku(9));
         add_Extra_Button('比例', () => create_ratio_sudoku(9));
+        add_Extra_Button('不等号', () => create_inequality_sudoku(9));
         add_Extra_Button('奇数', () => create_odd_sudoku(9));
         add_Extra_Button('奇偶', () => create_odd_even_sudoku(9));
         add_Extra_Button('回文', () => create_palindrome_sudoku(9));
+        add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(9));
         add_Extra_Button('X和', () => create_X_sums_sudoku(9));
         add_Extra_Button('三明治', () => create_sandwich_sudoku(9));
         add_Extra_Button('新', () => create_new_sudoku(9));
@@ -348,9 +350,7 @@ export function create_technique_panel() {
     panel.style.position = 'absolute';  // 改为绝对定位
     // panel.style.position = 'fixed';
     panel.style.left = 'calc(50% - 550px)';  // 放在数独容器左侧
-    // panel.style.left = '20px';
     panel.style.top = '290px';  // 与数独容器顶部对齐
-    // panel.style.top = '100px';
     panel.style.width = '200px';
     panel.style.backgroundColor = '#f5f5f5';
     panel.style.padding = '10px';
@@ -366,23 +366,28 @@ export function create_technique_panel() {
     const title = document.createElement('h3');
     title.textContent = '技巧开关';
     title.style.marginTop = '0';
+    title.style.fontSize = '18px'; // 确保标题字体大小清晰
+    title.style.color = '#333'; // 设置字体颜色为深色
+    title.style.textAlign = 'center'; // 居中显示标题
     panel.appendChild(title);
 
     // 技巧列表
     const techniqueGroups = [
         {
             id: 'elimination',
+            name: '排除',
             items: [
                 { id: 'Box_Elimination', name: '宫排除', default: true },
                 { id: 'Box_One_Cut', name: '一刀流宫排除', default: true },
                 { id: 'Row_Col_Elimination', name: '行列排除', default: true },
                 { id: 'Variant_Elimination', name: '变型排除', default: false },
-                { id: 'Special_Combination_Region_Elimination', name: '特定组合排除', default: false },
-                { id: 'Multi_Special_Combination_Region_Elimination', name: '多特定组合排除', default: false }
+                // { id: 'Special_Combination_Region_Elimination', name: '特定组合排除', default: false },
+                // { id: 'Multi_Special_Combination_Region_Elimination', name: '多特定组合排除', default: false }
             ]
         },
         {
             id: 'block',
+            name: '区块',
         items: [
             { id: 'Box_Block', name: '宫区块', default: true },
             { id: 'Box_Block_One_Cut', name: '一刀流宫区块', default: true },
@@ -390,12 +395,59 @@ export function create_technique_panel() {
             { id: 'Variant_Pair_Block', name: '变型组合区块', default: false },
             { id: 'Row_Col_Block', name: '行列区块', default: true },
             { id: 'Variant_Block', name: '变型区块', default: false },
-            { id: 'Special_Combination_Region_Block', name: '特定组合区块', default: false }, // 新增特定组合区块
-            { id: 'Multi_Special_Combination_Region_Block', name: '多特定组合区块', default: false } // 新增多特定组合区块
+            // { id: 'Special_Combination_Region_Block', name: '特定组合区块', default: false }, // 新增特定组合区块
+            // { id: 'Multi_Special_Combination_Region_Block', name: '多特定组合区块', default: false } // 新增多特定组合区块
         ]
         },
         {
+            id: 'special_combination',
+            name: '特定组合',
+            items: [
+                {
+                    id: 'special_combination_elimination',
+                    name: '特定组合排除',
+                    items: [
+                        { id: 'Special_Combination_Region_Elimination_1', name: '特定组合排除_1', default: false },
+                        { id: 'Special_Combination_Region_Elimination_2', name: '特定组合排除_2', default: false },
+                        { id: 'Special_Combination_Region_Elimination_3', name: '特定组合排除_3', default: false },
+                        { id: 'Special_Combination_Region_Elimination_4', name: '特定组合排除_4', default: false }
+                    ]
+                },
+                {
+                    id: 'multi_special_combination_elimination',
+                    name: '多特定组合排除',
+                    items: [
+                        { id: 'Multi_Special_Combination_Region_Elimination_1', name: '多特定组合排除_1', default: false },
+                        { id: 'Multi_Special_Combination_Region_Elimination_2', name: '多特定组合排除_2', default: false },
+                        { id: 'Multi_Special_Combination_Region_Elimination_3', name: '多特定组合排除_3', default: false },
+                        { id: 'Multi_Special_Combination_Region_Elimination_4', name: '多特定组合排除_4', default: false }
+                    ]
+                },
+                {
+                    id: 'special_combination_block',
+                    name: '特定组合区块',
+                    items: [
+                        { id: 'Special_Combination_Region_Block_1', name: '特定组合区块_1', default: false },
+                        { id: 'Special_Combination_Region_Block_2', name: '特定组合区块_2', default: false },
+                        { id: 'Special_Combination_Region_Block_3', name: '特定组合区块_3', default: false },
+                        { id: 'Special_Combination_Region_Block_4', name: '特定组合区块_4', default: false }
+                    ]
+                },
+                {
+                    id: 'multi_special_combination_block',
+                    name: '多特定组合区块',
+                    items: [
+                        { id: 'Multi_Special_Combination_Region_Block_1', name: '多特定组合区块_1', default: false },
+                        { id: 'Multi_Special_Combination_Region_Block_2', name: '多特定组合区块_2', default: false },
+                        { id: 'Multi_Special_Combination_Region_Block_3', name: '多特定组合区块_3', default: false },
+                        { id: 'Multi_Special_Combination_Region_Block_4', name: '多特定组合区块_4', default: false }
+                    ]
+                }
+            ]
+        },
+        {
             id: 'pair',
+            name: '数对',
             items: [
                 // 隐性数对
                 { id: 'Box_Hidden_Pair', name: '宫隐性数对', default: true },
@@ -410,6 +462,7 @@ export function create_technique_panel() {
         },
         {
             id: 'subset',
+            name: '数组',
             items: [
                 // 隐性数组
                 { id: 'Box_Hidden_Triple', name: '宫隐性三数组', default: true },
@@ -425,6 +478,7 @@ export function create_technique_panel() {
         },
         {
             id: 'cell',
+            name: '唯余',
             items: [
                 { id: 'Cell_Elimination_1', name: '余1唯余法', default: true },
                 { id: 'Cell_Elimination_2', name: '余2唯余法', default: true },
@@ -439,12 +493,14 @@ export function create_technique_panel() {
         },
         {
             id: 'bruteForce',
+            name: '暴力',
             items: [
                 { id: 'Brute_Force', name: '暴力求解', default: false }
             ]
         },
         {
             id: 'missing', // 新增欠一排除分组
+            name: '欠一排除',
             items: [
                 { id: 'Missing_One', name: '欠一排除', default: state.current_mode === 'missing' }
             ]
@@ -453,133 +509,358 @@ export function create_technique_panel() {
 
     // 初始化技巧状态
     if (!state.techniqueSettings) {
-        state.techniqueSettings = {
-            Box_Elimination: true,
-            Box_One_Cut: true,
-            Row_Col_Elimination: true,
-            Box_Block: true,
-            Box_Block_One_Cut: true,
-            Box_Pair_Block: true,
-            Row_Col_Block: true,
-            Box_Naked_Pair: true,
-            Row_Col_Naked_Pair: true,
-            Box_Hidden_Pair: true,
-            Row_Col_Hidden_Pair: true,
-            Box_Naked_Triple: true,
-            Row_Col_Naked_Triple: true,
-            Box_Hidden_Triple: true,
-            Row_Col_Hidden_Triple: true,
-            All_Quad: false,
-            Cell_Elimination: true,
-            Brute_Force: false,
-            Missing_One: state.current_mode === 'missing',
-            // Variant_Elimination: state.current_mode === 'diagonal',
-            // Variant_Block: state.current_mode === 'diagonal'
-        };
-        techniqueGroups.forEach(group => {
-            group.items.forEach(tech => {
-                state.techniqueSettings[tech.id] = tech.default;
+        state.techniqueSettings = {};
+        const initializeDefaults = (items) => {
+            items.forEach(item => {
+                if (item.items) {
+                    // 如果是子分组，递归处理
+                    initializeDefaults(item.items);
+                } else {
+                    // 如果是叶子节点，设置默认值
+                    state.techniqueSettings[item.id] = item.default;
+                }
             });
-        });
+        };
+        techniqueGroups.forEach(group => initializeDefaults(group.items));
     }
 
-    // 创建开关控件
-    techniqueGroups.forEach(group => {
-        // 添加分组标题
-        if (group.name) {
-            const groupTitle = document.createElement('h4');
-            groupTitle.textContent = group.name;
-            groupTitle.style.margin = '10px 0 5px 0';
-            groupTitle.style.fontSize = '14px';
-            panel.appendChild(groupTitle);
-        }
+    // 渲染技巧面板
+    const renderGroupItems = (items, container, updateParentCheckbox) => {
+        items.forEach(item => {
+            if (item.items) {
+                // 子分组
+                const subGroupContainer = document.createElement('div');
+                subGroupContainer.style.marginBottom = '10px';
 
-        // 添加总开关（排除、区块、数组才有）
-        if (group.id) {
-            const masterDiv = document.createElement('div');
-            masterDiv.style.margin = '5px 0';
-            masterDiv.style.display = 'flex';
-            masterDiv.style.alignItems = 'center';
+                const subGroupTitleContainer = document.createElement('div');
+                subGroupTitleContainer.style.display = 'flex';
+                subGroupTitleContainer.style.alignItems = 'center';
+                subGroupTitleContainer.style.cursor = 'pointer';
+                subGroupTitleContainer.style.padding = '5px 0';
+                subGroupTitleContainer.style.borderBottom = '1px solid #ccc';
 
-            const masterCheckbox = document.createElement('input');
-            masterCheckbox.type = 'checkbox';
-            masterCheckbox.id = `tech_master_${group.id}`;
-            masterCheckbox.checked = group.items.every(tech => state.techniqueSettings[tech.id]);
-            masterCheckbox.style.marginRight = '10px';
+                const subGroupCheckbox = document.createElement('input');
+                subGroupCheckbox.type = 'checkbox';
+                subGroupCheckbox.style.marginRight = '10px';
+                subGroupCheckbox.id = `tech_${item.id}`;
 
-            masterCheckbox.addEventListener('change', () => {
-                const newValue = masterCheckbox.checked;
-                group.items.forEach(tech => {
-                    state.techniqueSettings[tech.id] = newValue;
-                    const checkbox = document.getElementById(`tech_${tech.id}`);
-                    if (checkbox) checkbox.checked = newValue;
-                    
-                    if (tech.id === 'All_Quad') {
-                        state.techniqueSettings.Box_Hidden_Quad = newValue;
-                        state.techniqueSettings.Row_Col_Hidden_Quad = newValue;
-                        state.techniqueSettings.Box_Naked_Quad = newValue;
-                        state.techniqueSettings.Row_Col_Naked_Quad = newValue;
-                    }
+                const updateSubGroupCheckbox = () => {
+                        // const allChecked = item.items.every(subItem => state.techniqueSettings[subItem.id]);
+                        // subGroupCheckbox.checked = allChecked;
+                    const allChecked = item.items.every(subItem => state.techniqueSettings[subItem.id]);
+                    subGroupCheckbox.checked = allChecked;
+                    // 当子分组状态发生变化时，向上传递给父级以更新父级复选框（支持多层嵌套）
+                    if (updateParentCheckbox) updateParentCheckbox();
+                };
+
+                updateSubGroupCheckbox();
+
+                subGroupCheckbox.addEventListener('change', (e) => {
+                    e.stopPropagation();
+                    const isChecked = subGroupCheckbox.checked;
+                    item.items.forEach(subItem => {
+                        state.techniqueSettings[subItem.id] = isChecked;
+                        const checkbox = document.getElementById(`tech_${subItem.id}`);
+                        if (checkbox) checkbox.checked = isChecked;
+                    });
+                    updateSubGroupCheckbox();
+                    if (updateParentCheckbox) updateParentCheckbox();
                 });
-            });
 
-            const masterLabel = document.createElement('label');
-            masterLabel.htmlFor = `tech_master_${group.id}`;
-            masterLabel.textContent = `${group.id === 'elimination' ? '排除' : 
-                                    group.id === 'block' ? '区块' :
-                                    group.id === 'pair' ? '数对' :
-                                    group.id === 'subset' ? '数组' :
-                                    group.id === 'cell' ? '唯余' : '暴力'}`;
-            masterLabel.style.fontWeight = 'bold';
+                const subGroupTitle = document.createElement('span');
+                subGroupTitle.textContent = item.name;
+                subGroupTitle.style.fontWeight = 'bold';
 
-            masterDiv.appendChild(masterCheckbox);
-            masterDiv.appendChild(masterLabel);
-            panel.appendChild(masterDiv);
-        }
+                subGroupTitle.addEventListener('click', () => {
+                    const isVisible = subGroupItems.style.display === 'block';
+                    subGroupItems.style.display = isVisible ? 'none' : 'block';
+                });
 
-        // 添加子技巧开关
-        group.items.forEach(tech => {
-            const div = document.createElement('div');
-            div.style.margin = group.id ? '5px 0 5px 20px' : '5px 0';
-            div.style.display = 'flex';
-            div.style.alignItems = 'center';
+                subGroupTitleContainer.appendChild(subGroupCheckbox);
+                subGroupTitleContainer.appendChild(subGroupTitle);
+                subGroupContainer.appendChild(subGroupTitleContainer);
 
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.id = `tech_${tech.id}`;
-            checkbox.checked = state.techniqueSettings[tech.id];
-            checkbox.style.marginRight = '10px';
+                const subGroupItems = document.createElement('div');
+                subGroupItems.style.display = 'none';
+                subGroupItems.style.paddingLeft = '20px';
 
-            checkbox.addEventListener('change', () => {
-                state.techniqueSettings[tech.id] = checkbox.checked;
-                
-                // 更新总开关状态
-                if (group.id) {
-                    const masterCheckbox = document.getElementById(`tech_master_${group.id}`);
-                    if (masterCheckbox) {
-                        masterCheckbox.checked = group.items.every(
-                            t => state.techniqueSettings[t.id]
-                        );
-                    }
-                }
-                
-                if (tech.id === 'All_Quad') {
-                    state.techniqueSettings.Box_Hidden_Quad = checkbox.checked;
-                    state.techniqueSettings.Row_Col_Hidden_Quad = checkbox.checked;
-                    state.techniqueSettings.Box_Naked_Quad = checkbox.checked;
-                    state.techniqueSettings.Row_Col_Naked_Quad = checkbox.checked;
-                }
-            });
+                renderGroupItems(item.items, subGroupItems, updateSubGroupCheckbox);
 
-            const label = document.createElement('label');
-            label.htmlFor = `tech_${tech.id}`;
-            label.textContent = tech.name;
+                subGroupContainer.appendChild(subGroupItems);
+                container.appendChild(subGroupContainer);
+            } else {
+                // 叶子节点
+                const div = document.createElement('div');
+                div.style.margin = '5px 0';
+                div.style.display = 'flex';
+                div.style.alignItems = 'center';
 
-            div.appendChild(checkbox);
-            div.appendChild(label);
-            panel.appendChild(div);
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `tech_${item.id}`;
+                checkbox.checked = state.techniqueSettings[item.id];
+                checkbox.style.marginRight = '10px';
+
+                checkbox.addEventListener('change', () => {
+                    state.techniqueSettings[item.id] = checkbox.checked;
+                    if (updateParentCheckbox) updateParentCheckbox();
+                });
+
+                const label = document.createElement('label');
+                label.htmlFor = `tech_${item.id}`;
+                label.textContent = item.name;
+
+                div.appendChild(checkbox);
+                div.appendChild(label);
+                container.appendChild(div);
+            }
         });
+    };
+    techniqueGroups.forEach(group => {
+        const groupContainer = document.createElement('div');
+        groupContainer.style.marginBottom = '10px';
+
+        const groupTitleContainer = document.createElement('div');
+        groupTitleContainer.style.display = 'flex';
+        groupTitleContainer.style.alignItems = 'center';
+        groupTitleContainer.style.cursor = 'pointer';
+        groupTitleContainer.style.padding = '5px 0';
+        groupTitleContainer.style.borderBottom = '1px solid #ccc';
+
+        const groupCheckbox = document.createElement('input');
+        groupCheckbox.type = 'checkbox';
+        groupCheckbox.style.marginRight = '10px';
+
+        const updateGroupCheckbox = () => {
+            const allChecked = group.items.every(item => {
+                if (item.items) {
+                    return item.items.every(subItem => state.techniqueSettings[subItem.id]);
+                } else {
+                    return state.techniqueSettings[item.id];
+                }
+            });
+            groupCheckbox.checked = allChecked;
+        };
+
+        updateGroupCheckbox();
+
+        groupCheckbox.addEventListener('change', (e) => {
+            e.stopPropagation();
+            const isChecked = groupCheckbox.checked;
+            group.items.forEach(item => {
+                if (item.items) {
+                    item.items.forEach(subItem => {
+                        state.techniqueSettings[subItem.id] = isChecked;
+                        const checkbox = document.getElementById(`tech_${subItem.id}`);
+                        if (checkbox) checkbox.checked = isChecked;
+                    });
+                } else {
+                    state.techniqueSettings[item.id] = isChecked;
+                    const checkbox = document.getElementById(`tech_${item.id}`);
+                    if (checkbox) checkbox.checked = isChecked;
+                }
+            });
+            // 同步更新子分组（非叶子）复选框的显示状态
+            group.items.forEach(item => {
+                if (item.items) {
+                    const subGroupCheckbox = document.getElementById(`tech_${item.id}`);
+                    if (subGroupCheckbox) subGroupCheckbox.checked = isChecked;
+                }
+            });
+        });
+
+        const groupTitle = document.createElement('span');
+        groupTitle.textContent = group.name;
+        groupTitle.style.fontWeight = 'bold';
+
+        groupTitle.addEventListener('click', () => {
+            const isVisible = groupItems.style.display === 'block';
+            groupItems.style.display = isVisible ? 'none' : 'block';
+        });
+
+        groupTitleContainer.appendChild(groupCheckbox);
+        groupTitleContainer.appendChild(groupTitle);
+        groupContainer.appendChild(groupTitleContainer);
+
+        const groupItems = document.createElement('div');
+        groupItems.style.display = 'none';
+        groupItems.style.paddingLeft = '20px';
+
+        renderGroupItems(group.items, groupItems, updateGroupCheckbox);
+
+        groupContainer.appendChild(groupItems);
+        panel.appendChild(groupContainer);
     });
+
+    // techniqueGroups.forEach(group => {
+    //     const groupContainer = document.createElement('div');
+    //     groupContainer.style.marginBottom = '10px';
+    
+    //     // 大标题容器
+    //     const groupTitleContainer = document.createElement('div');
+    //     groupTitleContainer.style.display = 'flex';
+    //     groupTitleContainer.style.alignItems = 'center';
+    //     groupTitleContainer.style.cursor = 'pointer';
+    //     groupTitleContainer.style.padding = '5px 0';
+    //     groupTitleContainer.style.borderBottom = '1px solid #ccc';
+    
+    //     // 大标题复选框
+    //     const groupCheckbox = document.createElement('input');
+    //     groupCheckbox.type = 'checkbox';
+    //     groupCheckbox.style.marginRight = '10px';
+    
+    //     // 动态更新大标题复选框状态
+    //     const updateGroupCheckbox = () => {
+    //         const allChecked = group.items.every(item => {
+    //             if (item.items) {
+    //                 // 如果是子分组，检查子分组的所有子项
+    //                 return item.items.every(subItem => state.techniqueSettings[subItem.id]);
+    //             } else {
+    //                 // 如果是叶子节点，直接检查状态
+    //                 return state.techniqueSettings[item.id];
+    //             }
+    //         });
+    //         groupCheckbox.checked = allChecked;
+    //     };
+    
+    //     // 初始化大标题复选框状态
+    //     updateGroupCheckbox();
+    
+    //     // 大标题文本
+    //     const groupTitle = document.createElement('span');
+    //     groupTitle.textContent = group.name;
+    //     groupTitle.style.fontWeight = 'bold';
+    
+    //     // 点击事件：展开/折叠（仅作用于标题文本，不包括复选框）
+    //     groupTitle.addEventListener('click', () => {
+    //         const isVisible = groupItems.style.display === 'block';
+    //         groupItems.style.display = isVisible ? 'none' : 'block';
+    //     });
+    
+    //     groupTitleContainer.appendChild(groupCheckbox);
+    //     groupTitleContainer.appendChild(groupTitle);
+    //     groupContainer.appendChild(groupTitleContainer);
+    
+    //     // 小标题容器
+    //     const groupItems = document.createElement('div');
+    //     groupItems.style.display = 'none'; // 默认折叠
+    //     groupItems.style.paddingLeft = '20px';
+    
+    //     // 递归渲染子分组或叶子节点
+    //     const renderGroupItems = (items, container) => {
+    //         items.forEach(item => {
+    //             if (item.items) {
+    //                 // 如果是子分组，递归渲染
+    //                 const subGroupContainer = document.createElement('div');
+    //                 subGroupContainer.style.marginBottom = '10px';
+    
+    //                 const subGroupTitleContainer = document.createElement('div');
+    //                 subGroupTitleContainer.style.display = 'flex';
+    //                 subGroupTitleContainer.style.alignItems = 'center';
+    //                 subGroupTitleContainer.style.cursor = 'pointer';
+    //                 subGroupTitleContainer.style.padding = '5px 0';
+    //                 subGroupTitleContainer.style.borderBottom = '1px solid #ccc';
+    
+    //                 const subGroupCheckbox = document.createElement('input');
+    //                 subGroupCheckbox.type = 'checkbox';
+    //                 subGroupCheckbox.style.marginRight = '10px';
+    
+    //                 // 动态更新子分组复选框状态
+    //                 const updateSubGroupCheckbox = () => {
+    //                     const allChecked = item.items.every(subItem => state.techniqueSettings[subItem.id]);
+    //                     subGroupCheckbox.checked = allChecked;
+    //                 };
+    
+    //                 // 初始化子分组复选框状态
+    //                 updateSubGroupCheckbox();
+    
+    //                 subGroupCheckbox.addEventListener('change', (e) => {
+    //                     e.stopPropagation(); // 阻止事件冒泡，避免触发折叠/展开
+    //                     const isChecked = subGroupCheckbox.checked;
+    //                     item.items.forEach(subItem => {
+    //                         state.techniqueSettings[subItem.id] = isChecked;
+    //                         const checkbox = document.getElementById(`tech_${subItem.id}`);
+    //                         if (checkbox) checkbox.checked = isChecked;
+    //                     });
+    //                     updateGroupCheckbox(); // 更新大标题复选框状态
+    //                 });
+    
+    //                 const subGroupTitle = document.createElement('span');
+    //                 subGroupTitle.textContent = item.name;
+    //                 subGroupTitle.style.fontWeight = 'bold';
+    
+    //                 subGroupTitle.addEventListener('click', () => {
+    //                     const isVisible = subGroupItems.style.display === 'block';
+    //                     subGroupItems.style.display = isVisible ? 'none' : 'block';
+    //                 });
+    
+    //                 subGroupTitleContainer.appendChild(subGroupCheckbox);
+    //                 subGroupTitleContainer.appendChild(subGroupTitle);
+    //                 subGroupContainer.appendChild(subGroupTitleContainer);
+    
+    //                 const subGroupItems = document.createElement('div');
+    //                 subGroupItems.style.display = 'none'; // 默认折叠
+    //                 subGroupItems.style.paddingLeft = '20px';
+    
+    //                 renderGroupItems(item.items, subGroupItems);
+    
+    //                 subGroupContainer.appendChild(subGroupItems);
+    //                 container.appendChild(subGroupContainer);
+    //             } else {
+    //                 // 如果是叶子节点，渲染技巧项
+    //                 const div = document.createElement('div');
+    //                 div.style.margin = '5px 0';
+    //                 div.style.display = 'flex';
+    //                 div.style.alignItems = 'center';
+    
+    //                 const checkbox = document.createElement('input');
+    //                 checkbox.type = 'checkbox';
+    //                 checkbox.id = `tech_${item.id}`;
+    //                 checkbox.checked = state.techniqueSettings[item.id];
+    //                 checkbox.style.marginRight = '10px';
+    
+    //                 checkbox.addEventListener('change', () => {
+    //                     state.techniqueSettings[item.id] = checkbox.checked;
+    //                     updateGroupCheckbox(); // 更新大标题复选框状态
+    //                 });
+    
+    //                 const label = document.createElement('label');
+    //                 label.htmlFor = `tech_${item.id}`;
+    //                 label.textContent = item.name;
+    
+    //                 div.appendChild(checkbox);
+    //                 div.appendChild(label);
+    //                 container.appendChild(div);
+    //             }
+    //         });
+    //     };
+    
+    //     renderGroupItems(group.items, groupItems);
+    
+    //     // 大标题复选框事件：全选/取消全选
+    //     groupCheckbox.addEventListener('change', (e) => {
+    //         e.stopPropagation(); // 阻止事件冒泡，避免触发折叠/展开
+    //         const isChecked = groupCheckbox.checked;
+    //         group.items.forEach(item => {
+    //             if (item.items) {
+    //                 // 如果是子分组，更新子分组的所有子项
+    //                 item.items.forEach(subItem => {
+    //                     state.techniqueSettings[subItem.id] = isChecked;
+    //                     const checkbox = document.getElementById(`tech_${subItem.id}`);
+    //                     if (checkbox) checkbox.checked = isChecked;
+    //                 });
+    //             } else {
+    //                 // 如果是叶子节点，直接更新状态
+    //                 state.techniqueSettings[item.id] = isChecked;
+    //                 const checkbox = document.getElementById(`tech_${item.id}`);
+    //                 if (checkbox) checkbox.checked = isChecked;
+    //             }
+    //         });
+    //     });
+    
+    //     groupContainer.appendChild(groupItems);
+    //     panel.appendChild(groupContainer);
+    // });
 
     document.body.appendChild(panel);
     // // 将面板添加到数独容器中而不是body

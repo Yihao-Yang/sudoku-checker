@@ -7,7 +7,6 @@ import {
     create_base_cell,
     add_base_input_handlers,
     handle_key_navigation,
-    base_solve,
     fill_solution,
     log_process,
     backup_original_board

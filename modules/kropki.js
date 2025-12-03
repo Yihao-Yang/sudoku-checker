@@ -8,7 +8,6 @@ import {
     handle_key_navigation,
     add_Extra_Button,
     clear_all_inputs,
-    base_solve,
     fill_solution,
     clear_marks
 } from '../solver/core.js';
@@ -47,10 +46,18 @@ export function create_kropki_sudoku(size) {
         All_Quad: false,
         Cell_Elimination: true,
         Brute_Force: false,
-        Special_Combination_Region_Elimination: true,
-        Multi_Special_Combination_Region_Elimination: true,
-        Special_Combination_Region_Block: true,
-        Multi_Special_Combination_Region_Block: true,
+        Special_Combination_Region_Elimination_1: true,
+        Special_Combination_Region_Elimination_2: true,
+        Special_Combination_Region_Elimination_3: true,
+        Multi_Special_Combination_Region_Elimination_1: true,
+        Multi_Special_Combination_Region_Elimination_2: true,
+        Multi_Special_Combination_Region_Elimination_3: true,
+        Special_Combination_Region_Block_1: true,
+        Special_Combination_Region_Block_2: true,
+        Special_Combination_Region_Block_3: true,
+        Multi_Special_Combination_Region_Block_1: true,
+        Multi_Special_Combination_Region_Block_2: true,
+        Multi_Special_Combination_Region_Block_3: true,
     };
     for (let i = 1; i <= size; i++) {
         state.techniqueSettings[`Cell_Elimination_${i}`] = true;
@@ -183,7 +190,7 @@ export function generate_kropki_puzzle(size, score_lower_limit = 0, holes_count 
         marksAdded > 0 ? 'success' : 'info'
     );
 
-    generate_puzzle(effectiveSize, score_lower_limit, holes_count, solvedBoard);
+    // generate_puzzle(effectiveSize, score_lower_limit, holes_count, solvedBoard);
 }
 
 function enable_kropki_mark_mode(size) {
@@ -285,12 +292,21 @@ function mark_pair_if_needed(container, size, row1, col1, row2, col2) {
 
     if (Number.isNaN(val1) || Number.isNaN(val2)) return 0;
 
-    // 黑点：一方是另一方的两倍；白点：两数差为1
-    if (val1 === 2 * val2 || val2 === 2 * val1) {
+    // 特殊处理1和2的关系：30%概率标黑点，70%概率标白点
+    if ((val1 === 1 && val2 === 2) || (val1 === 2 && val2 === 1)) {
+        const useBlackDot = Math.random() < 0.3; // 需要增加1和2的白点概率就减少这个值
+        const { created } = create_or_update_kropki_mark(container, size, row1, col1, row2, col2, useBlackDot ? 'B' : 'W', false);
+        return created ? 1 : 0;
+    }
+
+    // 其他情况保持原有逻辑
+    // 黑点：一方是另一方的两倍（排除1和2的情况，因为上面已经处理了）
+    if ((val1 === 2 * val2 || val2 === 2 * val1) && !((val1 === 1 && val2 === 2) || (val1 === 2 && val2 === 1))) {
         const { created } = create_or_update_kropki_mark(container, size, row1, col1, row2, col2, 'B', false);
         return created ? 1 : 0;
     }
-    if (Math.abs(val1 - val2) === 1) {
+    // 白点：两数差为1（排除1和2的情况，因为上面已经处理了）
+    if (Math.abs(val1 - val2) === 1 && !((val1 === 1 && val2 === 2) || (val1 === 2 && val2 === 1))) {
         const { created } = create_or_update_kropki_mark(container, size, row1, col1, row2, col2, 'W', false);
         return created ? 1 : 0;
     }
@@ -305,7 +321,12 @@ function populate_all_kropki_marks(container, board, size) {
                 const a = board[row]?.[col] ?? 0;
                 const b = board[row]?.[col + 1] ?? 0;
                 if (a && b) {
-                    if (a === 2 * b || b === 2 * a) {
+                    // 特殊处理1和2的关系
+                    if ((a === 1 && b === 2) || (a === 2 && b === 1)) {
+                        const useBlackDot = Math.random() < 0.3;  // 需要增加1和2的白点概率就减少这个值
+                        const { created } = create_or_update_kropki_mark(container, size, row, col, row, col + 1, useBlackDot ? 'B' : 'W', false);
+                        if (created) count++;
+                    } else if (a === 2 * b || b === 2 * a) {
                         const { created } = create_or_update_kropki_mark(container, size, row, col, row, col + 1, 'B', false);
                         if (created) count++;
                     } else if (Math.abs(a - b) === 1) {
@@ -318,7 +339,12 @@ function populate_all_kropki_marks(container, board, size) {
                 const a = board[row]?.[col] ?? 0;
                 const b = board[row + 1]?.[col] ?? 0;
                 if (a && b) {
-                    if (a === 2 * b || b === 2 * a) {
+                    // 特殊处理1和2的关系
+                    if ((a === 1 && b === 2) || (a === 2 && b === 1)) {
+                        const useBlackDot = Math.random() < 0.5;
+                        const { created } = create_or_update_kropki_mark(container, size, row, col, row + 1, col, useBlackDot ? 'B' : 'W', false);
+                        if (created) count++;
+                    } else if (a === 2 * b || b === 2 * a) {
                         const { created } = create_or_update_kropki_mark(container, size, row, col, row + 1, col, 'B', false);
                         if (created) count++;
                     } else if (Math.abs(a - b) === 1) {

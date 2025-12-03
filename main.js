@@ -1,5 +1,4 @@
 import { 
-    check_solution, 
     hide_solution,
     clear_all_inputs,
     import_sudoku_from_string,

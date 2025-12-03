@@ -8,7 +8,6 @@ import {
     handle_key_navigation,
     add_Extra_Button,
     clear_all_inputs,
-    base_solve,
     fill_solution,
     clear_marks
 } from '../solver/core.js';
@@ -45,10 +44,18 @@ export function create_vx_sudoku(size = 9) {
         All_Quad: false,
         Cell_Elimination: true,
         Brute_Force: false,
-        Special_Combination_Region_Elimination: true,
-        Multi_Special_Combination_Region_Elimination: true,
-        Special_Combination_Region_Block: true,
-        Multi_Special_Combination_Region_Block: true,
+        Special_Combination_Region_Elimination_1: true,
+        Special_Combination_Region_Elimination_2: true,
+        Special_Combination_Region_Elimination_3: true,
+        Multi_Special_Combination_Region_Elimination_1: true,
+        Multi_Special_Combination_Region_Elimination_2: true,
+        Multi_Special_Combination_Region_Elimination_3: true,
+        Special_Combination_Region_Block_1: true,
+        Special_Combination_Region_Block_2: true,
+        Special_Combination_Region_Block_3: true,
+        Multi_Special_Combination_Region_Block_1: true,
+        Multi_Special_Combination_Region_Block_2: true,
+        Multi_Special_Combination_Region_Block_3: true,
     };
     for (let i = 1; i <= size; i++) {
         state.techniqueSettings[`Cell_Elimination_${i}`] = true;

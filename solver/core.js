@@ -367,51 +367,51 @@ export function show_logical_solution() {
     }
 }
 
-/**
- * 基础求解函数
- */
-export function base_solve(board, size, isValidFunc, saveSolution = false) {
-    let solution = null;
-    state.solve_stats.solution_count = 0;
+// /**
+//  * 基础求解函数
+//  */
+// export function base_solve(board, size, isValidFunc, saveSolution = false) {
+//     let solution = null;
+//     state.solve_stats.solution_count = 0;
 
 
-    function solve(r = 0, c = 0) {
-        if (state.solve_stats.solution_count >= 101) return;
-        if (r === size) {
-            state.solve_stats.solution_count++;
-            if (saveSolution && state.solve_stats.solution_count === 1) {
-                solution = board.map(row => [...row]);
-            }
-            return;
-        }
+//     function solve(r = 0, c = 0) {
+//         if (state.solve_stats.solution_count >= 101) return;
+//         if (r === size) {
+//             state.solve_stats.solution_count++;
+//             if (saveSolution && state.solve_stats.solution_count === 1) {
+//                 solution = board.map(row => [...row]);
+//             }
+//             return;
+//         }
 
-        const nextRow = c === size - 1 ? r + 1 : r;
-        const nextCol = (c + 1) % size;
+//         const nextRow = c === size - 1 ? r + 1 : r;
+//         const nextCol = (c + 1) % size;
 
-        if (board[r][c] !== 0) {
-            const num = board[r][c];
-            // Temporarily set the cell to 0 to check validity
-            board[r][c] = 0;
-            if (!isValidFunc(r, c, num)) {
-                // Invalid starting board
-                return { solution_count: 0, solution: null };
-            }
-            board[r][c] = num;
-            solve(nextRow, nextCol);
-        } else {
-            for (let num = 1; num <= size; num++) {
-                if (isValidFunc(r, c, num)) {
-                    board[r][c] = num;
-                    solve(nextRow, nextCol);
-                    board[r][c] = 0;
-                }
-            }
-        }
-    }
+//         if (board[r][c] !== 0) {
+//             const num = board[r][c];
+//             // Temporarily set the cell to 0 to check validity
+//             board[r][c] = 0;
+//             if (!isValidFunc(r, c, num)) {
+//                 // Invalid starting board
+//                 return { solution_count: 0, solution: null };
+//             }
+//             board[r][c] = num;
+//             solve(nextRow, nextCol);
+//         } else {
+//             for (let num = 1; num <= size; num++) {
+//                 if (isValidFunc(r, c, num)) {
+//                     board[r][c] = num;
+//                     solve(nextRow, nextCol);
+//                     board[r][c] = 0;
+//                 }
+//             }
+//         }
+//     }
 
-    solve(0, 0);
-    return { solution_count: state.solve_stats.solution_count, solution };
-}
+//     solve(0, 0);
+//     return { solution_count: state.solve_stats.solution_count, solution };
+// }
 
 /**
  * 填充解决方案到网格
@@ -547,55 +547,55 @@ export function add_Extra_Button(label, handler, color = '#2196F3') {
     extraButtons.appendChild(btn);
 }
 
-export function check_solution() {
-    const container = document.querySelector('.sudoku-container');
-    const isValidSet = arr => new Set(arr).size === arr.length;
-    const size = state.current_grid_size;
+// export function check_solution() {
+//     const container = document.querySelector('.sudoku-container');
+//     const isValidSet = arr => new Set(arr).size === arr.length;
+//     const size = state.current_grid_size;
     
-    // 对于摩天楼数独，我们只检查内部的正方形区域
-    const startRow = state.is_skyscraper_mode ? 1 : 0;
-    const endRow = state.is_skyscraper_mode ? size + 1 : size;
-    const startCol = state.is_skyscraper_mode ? 1 : 0;
-    const endCol = state.is_skyscraper_mode ? size + 1 : size;
-    const actualSize = size; // 内部区域的实际大小
+//     // 对于摩天楼数独，我们只检查内部的正方形区域
+//     const startRow = state.is_skyscraper_mode ? 1 : 0;
+//     const endRow = state.is_skyscraper_mode ? size + 1 : size;
+//     const startCol = state.is_skyscraper_mode ? 1 : 0;
+//     const endCol = state.is_skyscraper_mode ? size + 1 : size;
+//     const actualSize = size; // 内部区域的实际大小
 
-    // 检查行
-    for (let row = startRow; row < endRow; row++) {
-        const rowValues = [];
-        for (let col = startCol; col < endCol; col++) {
-            const input = container.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
-            if (input && input.value) rowValues.push(input.value);
-        }
-        if (!isValidSet(rowValues)) return show_result("解答有误，请检查！");
-    }
+//     // 检查行
+//     for (let row = startRow; row < endRow; row++) {
+//         const rowValues = [];
+//         for (let col = startCol; col < endCol; col++) {
+//             const input = container.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
+//             if (input && input.value) rowValues.push(input.value);
+//         }
+//         if (!isValidSet(rowValues)) return show_result("解答有误，请检查！");
+//     }
 
-    // 检查列
-    for (let col = startCol; col < endCol; col++) {
-        const colValues = [];
-        for (let row = startRow; row < endRow; row++) {
-            const input = container.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
-            if (input && input.value) colValues.push(input.value);
-        }
-        if (!isValidSet(colValues)) return show_result("解答有误，请检查！");
-    }
+//     // 检查列
+//     for (let col = startCol; col < endCol; col++) {
+//         const colValues = [];
+//         for (let row = startRow; row < endRow; row++) {
+//             const input = container.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
+//             if (input && input.value) colValues.push(input.value);
+//         }
+//         if (!isValidSet(colValues)) return show_result("解答有误，请检查！");
+//     }
 
-    // 检查宫
-    const boxSize = size === 6 ? [2, 3] : [Math.sqrt(actualSize), Math.sqrt(actualSize)];
-    for (let boxRow = startRow; boxRow < endRow; boxRow += boxSize[0]) {
-        for (let boxCol = startCol; boxCol < endCol; boxCol += boxSize[1]) {
-            const boxValues = [];
-            for (let r = 0; r < boxSize[0]; r++) {
-                for (let c = 0; c < boxSize[1]; c++) {
-                    const input = container.querySelector(`input[data-row="${boxRow + r}"][data-col="${boxCol + c}"]`);
-                    if (input && input.value) boxValues.push(input.value);
-                }
-            }
-            if (!isValidSet(boxValues)) return show_result("解答有误，请检查！");
-        }
-    }
+//     // 检查宫
+//     const boxSize = size === 6 ? [2, 3] : [Math.sqrt(actualSize), Math.sqrt(actualSize)];
+//     for (let boxRow = startRow; boxRow < endRow; boxRow += boxSize[0]) {
+//         for (let boxCol = startCol; boxCol < endCol; boxCol += boxSize[1]) {
+//             const boxValues = [];
+//             for (let r = 0; r < boxSize[0]; r++) {
+//                 for (let c = 0; c < boxSize[1]; c++) {
+//                     const input = container.querySelector(`input[data-row="${boxRow + r}"][data-col="${boxCol + c}"]`);
+//                     if (input && input.value) boxValues.push(input.value);
+//                 }
+//             }
+//             if (!isValidSet(boxValues)) return show_result("解答有误，请检查！");
+//         }
+//     }
 
-    show_result("恭喜！解答正确！");
-}
+//     show_result("恭喜！解答正确！");
+// }
 
 
 export function hide_solution() {
@@ -611,11 +611,6 @@ export function hide_solution() {
     
     show_result("已隐藏所有系统自动填充的答案和提示数字！");
 }
-
-// export function clear_all_inputs() {
-//     document.querySelectorAll('.sudoku-cell input').forEach(input => input.value = '');
-//     show_result("已清除所有数字！", 'info');
-// }
 
 export function clear_all_inputs() {
     // clear_multi_diagonal_marks();
@@ -748,47 +743,6 @@ export function clear_outer_clues() {
 
     show_result("已清除所有外部提示数字！", 'info');
 }
-// ...existing code...
-// export function clear_inner_numbers() {
-//     const container = document.querySelector('.sudoku-container');
-//     if (!container) return;
-
-//     const size = state.current_grid_size;
-
-//     // 默认视为摩天楼数独，内圈从 1 到 size
-//     for (let row = 1; row <= size; row++) {
-//         for (let col = 1; col <= size; col++) {
-//             const input = container.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
-//             if (input) input.value = '';
-//         }
-//     }
-
-//     show_result("已清除所有内部数字！", 'info');
-// }
-
-// export function clear_outer_clues() {
-//     const container = document.querySelector('.sudoku-container');
-//     if (!container) return;
-
-//     const size = state.current_grid_size;
-
-//     // 默认清除四周的外部提示
-//     for (let col = 1; col <= size; col++) {
-//         const top = container.querySelector(`input[data-row="0"][data-col="${col}"]`);
-//         const bottom = container.querySelector(`input[data-row="${size + 1}"][data-col="${col}"]`);
-//         if (top) top.value = '';
-//         if (bottom) bottom.value = '';
-//     }
-
-//     for (let row = 1; row <= size; row++) {
-//         const left = container.querySelector(`input[data-row="${row}"][data-col="0"]`);
-//         const right = container.querySelector(`input[data-row="${row}"][data-col="${size + 1}"]`);
-//         if (left) left.value = '';
-//         if (right) right.value = '';
-//     }
-
-//     show_result("已清除所有外部提示数字！", 'info');
-// }
 
 export function clear_marks() {
     const container = document.querySelector('.sudoku-container');

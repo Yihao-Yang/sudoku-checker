@@ -28,7 +28,9 @@ export function create_palindrome_sudoku(size) {
         All_Quad: false,
         Cell_Elimination: true,
         Brute_Force: false,
-        Special_Combination_Region_Elimination: true,
+        Special_Combination_Region_Elimination_1: true,
+        Special_Combination_Region_Elimination_2: true,
+        Special_Combination_Region_Elimination_3: true,
     };
     for (let i = 1; i <= size; i++) {
         state.techniqueSettings[`Cell_Elimination_${i}`] = true;

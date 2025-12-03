@@ -5,8 +5,8 @@ import { get_all_regions, solve } from '../solver/solver_tool.js';
 import { generate_solved_board_brute_force } from '../solver/generate.js';
 
 // 新数独主入口
-export function create_ratio_sudoku(size) {
-    set_current_mode('ratio');
+export function create_inequality_sudoku(size) {
+    set_current_mode('inequality');
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
@@ -82,18 +82,18 @@ export function create_ratio_sudoku(size) {
     gridDisplay.appendChild(container);
 
     // 添加标记功能
-    add_ratio_mark(size);
+    add_inequality_mark(size);
 
     // 添加新数独专属按钮
     const extra_buttons = document.getElementById('extraButtons');
     extra_buttons.innerHTML = '';
     add_Extra_Button('清除标记', clear_marks);
-    add_Extra_Button('自动出题', () => generate_ratio_puzzle(size), '#2196F3');
+    add_Extra_Button('自动出题', () => generate_inequality_puzzle(size), '#2196F3');
     // 可添加唯一性验证等按钮
 }
 
-// 自动生成比例数独题目（生成圆圈并调用generate_puzzle）
-export function generate_ratio_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
+// 自动生成不等号数独题目（生成圆圈并调用generate_puzzle）
+export function generate_inequality_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
     const start_time = performance.now();
     clear_all_inputs();
     log_process('', true);
@@ -102,7 +102,7 @@ export function generate_ratio_puzzle(size, score_lower_limit = 0, holes_count =
     if (!container) return;
     Array.from(container.querySelectorAll('.vx-mark')).forEach(mark => mark.remove());
 
-    log_process('第一步：生成比例数独终盘...');
+    log_process('第一步：生成不等号数独终盘...');
     const solvedBoard = generate_solved_board_brute_force(size);
     if (!solvedBoard) {
         log_process('生成终盘失败！');
@@ -144,21 +144,21 @@ export function generate_ratio_puzzle(size, score_lower_limit = 0, holes_count =
         }
 
         const addedMarks = [];
-        const mainRatio = calculate_ratio_from_solved(row, col, type, solvedBoard);
-        if (!mainRatio) continue;
+        const maininequality = calculate_inequality_from_solved(row, col, type, solvedBoard);
+        if (!maininequality) continue;
 
-        const mainMark = add_ratio_mark_with_value(row, col, size, container, type, mainRatio);
+        const mainMark = add_inequality_mark_with_value(row, col, size, container, type, maininequality);
         if (!mainMark) continue;
         addedMarks.push(mainMark);
 
         const symmetric_is_same = row === sym_row && col === sym_col && type === sym_type;
         if (!symmetric_is_same) {
-            const symRatio = calculate_ratio_from_solved(sym_row, sym_col, sym_type, solvedBoard);
-            if (!symRatio) {
+            const syminequality = calculate_inequality_from_solved(sym_row, sym_col, sym_type, solvedBoard);
+            if (!syminequality) {
                 remove_marks(addedMarks);
                 continue;
             }
-            const symMark = add_ratio_mark_with_value(sym_row, sym_col, size, container, sym_type, symRatio);
+            const symMark = add_inequality_mark_with_value(sym_row, sym_col, size, container, sym_type, syminequality);
             if (!symMark) {
                 remove_marks(addedMarks);
                 continue;
@@ -169,7 +169,7 @@ export function generate_ratio_puzzle(size, score_lower_limit = 0, holes_count =
         marks_added += addedMarks.length;
 
         backup_original_board();
-        const result = solve(create_solver_board(size), size, is_valid_ratio, true);
+        const result = solve(create_solver_board(size), size, is_valid_inequality, true);
         restore_original_board();
 
         if (result.solution_count === 1) {
@@ -189,7 +189,7 @@ export function generate_ratio_puzzle(size, score_lower_limit = 0, holes_count =
     }
 
     const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
-    show_result(`比例数独提示生成完成（${unique_found ? '唯一解' : '未验证唯一'}，耗时${elapsed}秒）`);
+    show_result(`不等号数独提示生成完成（${unique_found ? '唯一解' : '未验证唯一'}，耗时${elapsed}秒）`);
 
     if (!unique_found) {
         if (try_count >= MAX_TRY) {
@@ -256,7 +256,7 @@ export function generate_ratio_puzzle(size, score_lower_limit = 0, holes_count =
         }
     }
 
-    function calculate_ratio_from_solved(row, col, type, solvedBoard) {
+    function calculate_inequality_from_solved(row, col, type, solvedBoard) {
         let a, b;
         if (type === 'v') {
             a = solvedBoard[row]?.[col];
@@ -286,7 +286,7 @@ export function generate_ratio_puzzle(size, score_lower_limit = 0, holes_count =
         return a;
     }
 
-    function add_ratio_mark_with_value(row, col, size, container, type, ratio) {
+    function add_inequality_mark_with_value(row, col, size, container, type, inequality) {
         const grid = container.querySelector('.sudoku-grid');
         if (!grid) return null;
 
@@ -319,7 +319,7 @@ export function generate_ratio_puzzle(size, score_lower_limit = 0, holes_count =
         const input = document.createElement('input');
         input.type = 'text';
         input.maxLength = 5;
-        input.value = ratio;
+        input.value = inequality;
         input.style.width = '38px';
         input.style.height = '28px';
         input.style.fontSize = '22px';
@@ -353,7 +353,7 @@ export function generate_ratio_puzzle(size, score_lower_limit = 0, holes_count =
         for (const group of groups) {
             const removedMarks = temporarily_remove_marks(container, group.keys);
             backup_original_board();
-            const result = solve(create_solver_board(size), size, is_valid_ratio, true);
+            const result = solve(create_solver_board(size), size, is_valid_inequality, true);
             restore_original_board();
             if (result.solution_count === 1) {
                 permanently_remove_marks(removedMarks);
@@ -434,12 +434,12 @@ export function generate_ratio_puzzle(size, score_lower_limit = 0, holes_count =
     }
 }
 
-function add_ratio_mark(size) {
+function add_inequality_mark(size) {
     const grid = document.querySelector('.sudoku-grid');
     if (!grid) return;
 
-    if (grid._ratio_mark_mode) return;
-    grid._ratio_mark_mode = true;
+    if (grid._inequality_mark_mode) return;
+    grid._inequality_mark_mode = true;
 
     const container = grid.parentElement;
     container.style.position = 'relative';
@@ -582,10 +582,10 @@ function add_ratio_mark(size) {
     });
 }
 
-// 比例数独有效性检测函数
-export function is_valid_ratio(board, size, row, col, num) {
+// 不等号数独有效性检测函数
+export function is_valid_inequality(board, size, row, col, num) {
     // 1. 常规区域判断（与普通数独一致）
-    const mode = state.current_mode || 'ratio';
+    const mode = state.current_mode || 'inequality';
     const regions = get_all_regions(size, mode);
     for (const region of regions) {
         if (region.cells.some(([r, c]) => r === row && c === col)) {
@@ -597,13 +597,13 @@ export function is_valid_ratio(board, size, row, col, num) {
         }
     }
 
-    // 2. 比例标记判断
+    // 2. 不等号标记判断
     const container = document.querySelector('.sudoku-container');
     const marks = container ? container.querySelectorAll('.vx-mark') : [];
     for (const mark of marks) {
         const input = mark.querySelector('input');
         const value = input && input.value.trim();
-        // 只处理形如 "a/b" 的比例
+        // 只处理形如 "a/b" 的不等号
         if (!value || !/^(\d*)\/(\d*)$/.test(value)) continue;
         const match = value.match(/^(\d*)\/(\d*)$/);
         const left_num = match[1] ? parseInt(match[1]) : null;
@@ -658,7 +658,7 @@ export function is_valid_ratio(board, size, row, col, num) {
             typeof other_value !== 'number' || other_value <= 0 || Array.isArray(other_value)
         ) continue;
 
-        // 判断比例关系
+        // 判断不等号关系
         if (left_num && right_num) {
             // 例如 1/2，A格:1，B格:2 或 A格:2，B格:1
             if (

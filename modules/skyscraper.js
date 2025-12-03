@@ -31,8 +31,20 @@ export function create_skyscraper_sudoku(size) {
         All_Quad: false,
         Cell_Elimination: true,
         Brute_Force: false,
-        Special_Combination_Region_Elimination: true,
-        Special_Combination_Region_Block: true,
+        Special_Combination_Region_Elimination_1: true,
+        Special_Combination_Region_Elimination_2: true,
+        Special_Combination_Region_Elimination_3: true,
+        Special_Combination_Region_Elimination_4: true,
+        // Multi_Special_Combination_Region_Elimination_1: true,
+        // Multi_Special_Combination_Region_Elimination_2: true,
+        // Multi_Special_Combination_Region_Elimination_3: true,
+        Special_Combination_Region_Block_1: true,
+        Special_Combination_Region_Block_2: true,
+        Special_Combination_Region_Block_3: true,
+        Special_Combination_Region_Block_4: true,
+        // Multi_Special_Combination_Region_Block_1: true,
+        // Multi_Special_Combination_Region_Block_2: true,
+        // Multi_Special_Combination_Region_Block_3: true,
     };
     for (let i = 1; i <= size; i++) {
         state.techniqueSettings[`Cell_Elimination_${i}`] = true;
