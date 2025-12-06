@@ -4,6 +4,7 @@ import { state } from "./state.js";
 import { get_all_mark_lines, get_cells_on_line } from "../modules/multi_diagonal.js";
 import { get_extra_region_cells } from '../modules/extra_region.js';
 import { get_renban_cells, is_valid_renban } from '../modules/renban.js';
+import { is_valid_fortress } from "../modules/fortress.js";
 import { apply_exclusion_marks, is_valid_exclusion } from "../modules/exclusion.js";
 import { apply_quadruple_marks, is_valid_quadruple } from "../modules/quadruple.js";
 import { is_valid_add } from "../modules/add.js";
@@ -92,6 +93,58 @@ export function eliminate_candidates(board, size, i, j, num, calc_score = true) 
                     const eliminated = before.filter(candidate_num => candidate_num === num);
                     if (eliminated.length > 0) {
                         eliminations.push({ row: r, col: c, eliminated });
+                    }
+                }
+            }
+        }
+    }
+
+    // 堡垒数独模式下的特殊处理
+    if (mode === 'fortress') {
+        const directions = [
+            [-1, 0], // 上
+            [1, 0],  // 下
+            [0, -1], // 左
+            [0, 1],  // 右
+        ];
+        const cell_key = `${i},${j}`;
+        const is_gray = state.fortress_cells.has(cell_key); // 判断当前格子是否为灰格
+
+        for (const [dr, dc] of directions) {
+            const nr = i + dr;
+            const nc = j + dc;
+
+            if (nr >= 0 && nr < size && nc >= 0 && nc < size) {
+                const neighbor_key = `${nr},${nc}`;
+                const is_neighbor_gray = state.fortress_cells.has(neighbor_key);
+
+                if (is_gray && !is_neighbor_gray) {
+                    // 当前格子是灰格，邻居是白格
+                    if (Array.isArray(board[nr][nc])) {
+                        for (let k = board[nr][nc].length - 1; k >= 0; k--) {
+                            const candidate = board[nr][nc][k];
+                            if (candidate > num) {
+                                if (calc_score) {
+                                    state.candidate_elimination_score[`${nr},${nc},${candidate}`] = 1;
+                                }
+                                eliminations.push({ row: nr, col: nc, val: candidate });
+                                board[nr][nc].splice(k, 1);
+                            }
+                        }
+                    }
+                } else if (!is_gray && is_neighbor_gray) {
+                    // 当前格子是白格，邻居是灰格
+                    if (Array.isArray(board[nr][nc])) {
+                        for (let k = board[nr][nc].length - 1; k >= 0; k--) {
+                            const candidate = board[nr][nc][k];
+                            if (candidate < num) {
+                                if (calc_score) {
+                                    state.candidate_elimination_score[`${nr},${nc},${candidate}`] = 1;
+                                }
+                                eliminations.push({ row: nr, col: nc, val: candidate });
+                                board[nr][nc].splice(k, 1);
+                            }
+                        }
                     }
                 }
             }
@@ -961,7 +1014,51 @@ export function get_all_regions(size, mode = 'classic') {
 // 获取所有特定组合（如四格提示区域）
 export function get_special_combination_regions(size, mode = 'classic') {
     const regions = [];
-    if (mode === 'quadruple') {
+    if (mode === 'fortress') {
+        const fortressCells = Array.from(state.fortress_cells).map(key => key.split(',').map(Number));
+        const directions = [
+            [-1, 0], // 上
+            [1, 0],  // 下
+            [0, -1], // 左
+            [0, 1],  // 右
+        ];
+
+        for (const [row, col] of fortressCells) {
+            const region = [[row, col]]; // 包含灰格本身
+
+            for (const [dr, dc] of directions) {
+                const neighborRow = row + dr;
+                const neighborCol = col + dc;
+
+                // 检查是否在边界内且是白格
+                if (
+                    neighborRow >= 0 && neighborRow < size &&
+                    neighborCol >= 0 && neighborCol < size &&
+                    !state.fortress_cells.has(`${neighborRow},${neighborCol}`)
+                ) {
+                    region.push([neighborRow, neighborCol]);
+                }
+            }
+            // clue_nums 包含与格子数量相同的 1-size 数字集合
+            const clue_nums = [];
+            for (let i = 0; i < region.length; i++) {
+                clue_nums.push(...Array.from({ length: size }, (_, idx) => idx + 1));
+            }
+            // 生成区域的 index
+            const index = region
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+
+            // 将灰格及其邻居作为一个特定组合区域
+            regions.push({
+                type: '特定组合',
+                index,
+                cells: region,
+                clue_nums, // 可根据需求填充线索数字
+            });
+        }
+    }
+    else if (mode === 'quadruple') {
         const container = document.querySelector('.sudoku-container');
         if (container) {
             const marks = container.querySelectorAll('.vx-mark');
@@ -1729,6 +1826,8 @@ export function isValid(board, size, row, col, num) {
         return is_valid_consecutive(board, size, row, col, num);
     } else if (state.current_mode === 'renban') {
         return is_valid_renban(board, size, row, col, num);
+    } else if (state.current_mode === 'fortress') {
+        return is_valid_fortress(board, size, row, col, num);
     } else if (state.current_mode === 'odd') {
         return is_valid_odd(board, size, row, col, num);
     } else if (state.current_mode === 'odd_even') {

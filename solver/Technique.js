@@ -1631,7 +1631,8 @@ function region_block_elimination(board, size, region_cells, region_type, region
             board_copy[r][c] = num;
             const eliminations = eliminate_candidates(board_copy, size, r, c, num, false);
             const eliminated_positions = eliminations
-                .filter(e => e.eliminated.includes(num))
+                // .filter(e => e.eliminated.includes(num))
+                .filter(e => Array.isArray(e.eliminated) && e.eliminated.includes(num))
                 .map(e => `${e.row},${e.col}`);
             elimination_sets.push(new Set(eliminated_positions));
 

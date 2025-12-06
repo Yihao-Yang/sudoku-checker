@@ -44,6 +44,7 @@ export function set_current_mode(mode) {
         'pyramid',
         'extra_region',
         'renban',
+        'fortress',
         'exclusion',
         'quadruple',
         'add',
