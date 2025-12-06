@@ -3,7 +3,7 @@ import { create_vx_sudoku } from '../modules/vx.js';
 import { create_candidates_sudoku } from '../modules/candidates.js';
 import { state } from './state.js';
 import { solve_By_Elimination } from './Technique.js';
-import { check_uniqueness } from '../modules/classic.js';
+import { check_uniqueness } from './classic.js';
 import { clear_multi_diagonal_marks } from '../modules/multi_diagonal.js'
 import { check_missing_uniqueness } from '../modules/missing.js';
 

@@ -1,7 +1,7 @@
 import { state, set_current_mode } from '../solver/state.js';
 import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell } from '../solver/core.js';
 import { solve, isValid, get_all_regions } from '../solver/solver_tool.js';
-import { create_technique_panel } from './classic.js';
+import { create_technique_panel } from '../solver/classic.js';
 
 // 对角线数独主入口
 export function create_diagonal_sudoku(size) {

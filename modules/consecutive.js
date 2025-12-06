@@ -12,7 +12,7 @@ import {
     clear_marks
 } from '../solver/core.js';
 import { state, set_current_mode } from '../solver/state.js';
-import { create_technique_panel } from './classic.js';
+import { create_technique_panel } from '../solver/classic.js';
 import { generate_solved_board_brute_force, generate_puzzle } from '../solver/generate.js';
 import { get_all_regions } from '../solver/solver_tool.js';
 
@@ -20,7 +20,7 @@ const MARK_WIDTH = 32;
 const MARK_HEIGHT = 26;
 const EDGE_CLICK_THRESHOLD_MIN = 12;
 const consecutive_MARK_DIAMETER = 16;
-let current_consecutive_type = 'B'; // 默认使用黑点/白点标记 B/W
+let current_consecutive_type = 'W'; // 连续模式只使用白点标记
 
 export function create_consecutive_sudoku(size) {
     // 保留外部 mode 名称为 consecutive（避免改动其它模块），但 UI/逻辑实现为连续
@@ -65,7 +65,7 @@ export function create_consecutive_sudoku(size) {
 
     create_technique_panel();
     clear_result();
-    current_consecutive_type = 'B';
+    current_consecutive_type = 'W';
 
     const { container, grid } = create_base_grid(size);
     container.style.position = 'relative';
@@ -244,7 +244,7 @@ function enable_consecutive_mark_mode(size) {
             grid._consecutiveClickTimer = null;
         }
         grid._consecutiveClickTimer = setTimeout(() => {
-            create_or_update_consecutive_mark(container, size, r1, c1, r2, c2, 'B', true);
+            create_or_update_consecutive_mark(container, size, r1, c1, r2, c2, 'W', true);
             grid._consecutiveClickTimer = null;
         }, CLICK_DELAY);
     });
@@ -292,21 +292,8 @@ function mark_pair_if_needed(container, size, row1, col1, row2, col2) {
 
     if (Number.isNaN(val1) || Number.isNaN(val2)) return 0;
 
-    // 特殊处理1和2的关系：30%概率标黑点，70%概率标白点
-    if ((val1 === 1 && val2 === 2) || (val1 === 2 && val2 === 1)) {
-        const useBlackDot = Math.random() < 0.3; // 需要增加1和2的白点概率就减少这个值
-        const { created } = create_or_update_consecutive_mark(container, size, row1, col1, row2, col2, useBlackDot ? 'B' : 'W', false);
-        return created ? 1 : 0;
-    }
-
-    // 其他情况保持原有逻辑
-    // 黑点：一方是另一方的两倍（排除1和2的情况，因为上面已经处理了）
-    if ((val1 === 2 * val2 || val2 === 2 * val1) && !((val1 === 1 && val2 === 2) || (val1 === 2 && val2 === 1))) {
-        const { created } = create_or_update_consecutive_mark(container, size, row1, col1, row2, col2, 'B', false);
-        return created ? 1 : 0;
-    }
     // 白点：两数差为1（排除1和2的情况，因为上面已经处理了）
-    if (Math.abs(val1 - val2) === 1 && !((val1 === 1 && val2 === 2) || (val1 === 2 && val2 === 1))) {
+    if (Math.abs(val1 - val2) === 1) {
         const { created } = create_or_update_consecutive_mark(container, size, row1, col1, row2, col2, 'W', false);
         return created ? 1 : 0;
     }
@@ -321,15 +308,7 @@ function populate_all_consecutive_marks(container, board, size) {
                 const a = board[row]?.[col] ?? 0;
                 const b = board[row]?.[col + 1] ?? 0;
                 if (a && b) {
-                    // 特殊处理1和2的关系
-                    if ((a === 1 && b === 2) || (a === 2 && b === 1)) {
-                        const useBlackDot = Math.random() < 0.3;  // 需要增加1和2的白点概率就减少这个值
-                        const { created } = create_or_update_consecutive_mark(container, size, row, col, row, col + 1, useBlackDot ? 'B' : 'W', false);
-                        if (created) count++;
-                    } else if (a === 2 * b || b === 2 * a) {
-                        const { created } = create_or_update_consecutive_mark(container, size, row, col, row, col + 1, 'B', false);
-                        if (created) count++;
-                    } else if (Math.abs(a - b) === 1) {
+                    if (Math.abs(a - b) === 1) {
                         const { created } = create_or_update_consecutive_mark(container, size, row, col, row, col + 1, 'W', false);
                         if (created) count++;
                     }
@@ -339,15 +318,7 @@ function populate_all_consecutive_marks(container, board, size) {
                 const a = board[row]?.[col] ?? 0;
                 const b = board[row + 1]?.[col] ?? 0;
                 if (a && b) {
-                    // 特殊处理1和2的关系
-                    if ((a === 1 && b === 2) || (a === 2 && b === 1)) {
-                        const useBlackDot = Math.random() < 0.5;
-                        const { created } = create_or_update_consecutive_mark(container, size, row, col, row + 1, col, useBlackDot ? 'B' : 'W', false);
-                        if (created) count++;
-                    } else if (a === 2 * b || b === 2 * a) {
-                        const { created } = create_or_update_consecutive_mark(container, size, row, col, row + 1, col, 'B', false);
-                        if (created) count++;
-                    } else if (Math.abs(a - b) === 1) {
+                    if (Math.abs(a - b) === 1) {
                         const { created } = create_or_update_consecutive_mark(container, size, row, col, row + 1, col, 'W', false);
                         if (created) count++;
                     }
@@ -358,11 +329,10 @@ function populate_all_consecutive_marks(container, board, size) {
     return count;
 }
 
-function create_or_update_consecutive_mark(container, size, row1, col1, row2, col2, type = 'B', focus_input = false) {
+function create_or_update_consecutive_mark(container, size, row1, col1, row2, col2, type = 'W', focus_input = false) {
     const orientation = get_orientation(row1, col1, row2, col2);
     if (!orientation) return { mark: null, created: false };
 
-    const normalized_type = (type === 'W' ? 'W' : 'B');
     const grid = container.querySelector('.sudoku-grid');
     if (!grid) return { mark: null, created: false };
 
@@ -408,7 +378,7 @@ function create_or_update_consecutive_mark(container, size, row1, col1, row2, co
         dot.style.boxSizing = 'border-box';
         dot.style.pointerEvents = 'none';
 
-        apply_consecutive_dot_style(dot, normalized_type);
+        apply_consecutive_dot_style(dot, type);
         mark.appendChild(dot);
 
         mark.addEventListener('dblclick', (evt) => {
@@ -424,11 +394,11 @@ function create_or_update_consecutive_mark(container, size, row1, col1, row2, co
         if (dot) {
             dot.style.width = '100%';
             dot.style.height = '100%';
-            apply_consecutive_dot_style(dot, normalized_type);
+            apply_consecutive_dot_style(dot, type);
         }
     }
 
-    mark.dataset.consecutiveType = normalized_type;
+    mark.dataset.consecutiveType = type;
     const half_mark = consecutive_MARK_DIAMETER / 2;
     mark.style.left = `${grid.offsetLeft + mark_x - half_mark}px`;
     mark.style.top = `${grid.offsetTop + mark_y - half_mark}px`;
@@ -447,13 +417,8 @@ function apply_consecutive_dot_style(dot, type) {
     dot.style.height = '100%';
     dot.style.borderRadius = '50%';
     dot.style.boxSizing = 'border-box';
-    if (type === 'W') {
-        dot.style.backgroundColor = '#fff';
-        dot.style.border = '3px solid #000';
-    } else {
-        dot.style.backgroundColor = '#000';
-        dot.style.border = '3px solid #000';
-    }
+    dot.style.backgroundColor = '#fff';
+    dot.style.border = '3px solid #000';
 }
 
 function parse_mark_key(key) {
@@ -478,8 +443,8 @@ function parse_mark_key(key) {
 function read_mark_type(mark) {
     if (!mark) return null;
     const raw = (mark.dataset.consecutiveType || '').toUpperCase();
-    if (raw === 'B' || raw === 'W') {
-        return raw;
+    if (raw === 'W') {
+        return 'W';
     }
     return null;
 }
@@ -542,9 +507,8 @@ function get_all_adjacent_pairs(size) {
 }
 
 // 连续数独有效性检测（用于求解器）
-// 黑点 (B)：两格满足二倍关系（a === 2*b 或 b === 2*a）
 // 白点 (W)：两格差为1（|a-b| === 1）
-// 未标记相邻且两格均已定值时，不得满足上述任一关系
+// 未标记相邻且两格均已定值时，不得满足白点关系
 export function is_valid_consecutive(board, size, row, col, num) {
     // 1) 常规数独区域冲突检测
     const mode = state.current_mode || 'consecutive';
@@ -559,7 +523,7 @@ export function is_valid_consecutive(board, size, row, col, num) {
         }
     }
 
-    // 2) 收集界面上的标记约束（B/W）
+    // 2) 收集界面上的白点标记约束
     const container = document.querySelector('.sudoku-container');
     const consecutiveConstraints = [];
     const consecutiveConstraintKeySet = new Set();
@@ -568,8 +532,8 @@ export function is_valid_consecutive(board, size, row, col, num) {
         for (const mark of marks) {
             const key = mark.dataset.key;
             const pair = parse_mark_key(key);
-            const type = read_mark_type(mark); // 'B' 或 'W' 或 null
-            if (!pair || !type) continue;
+            const type = read_mark_type(mark); // 仅处理 'W' 标记
+            if (!pair || type !== 'W') continue;
             const normalizedKey = normalize_pair_key(pair.row1, pair.col1, pair.row2, pair.col2);
             consecutiveConstraints.push({
                 cell1: { row: pair.row1, col: pair.col1 },
@@ -581,7 +545,7 @@ export function is_valid_consecutive(board, size, row, col, num) {
         }
     }
 
-    // 3) 对涉及标记对的检查：若另一格已确定数字，则当前填入数字必须满足对应关系
+    // 3) 对涉及白点标记对的检查：若另一格已确定数字，则当前填入数字必须满足白点关系
     for (const constraint of consecutiveConstraints) {
         const involvesCell1 = constraint.cell1.row === row && constraint.cell1.col === col;
         const involvesCell2 = constraint.cell2.row === row && constraint.cell2.col === col;
@@ -589,20 +553,14 @@ export function is_valid_consecutive(board, size, row, col, num) {
             const otherCell = involvesCell1 ? constraint.cell2 : constraint.cell1;
             const otherValue = board[otherCell.row][otherCell.col];
             if (otherValue !== 0 && typeof otherValue === 'number' && !Array.isArray(otherValue)) {
-                if (constraint.type === 'B') {
-                    if (!(num === 2 * otherValue || otherValue === 2 * num)) {
-                        return false;
-                    }
-                } else if (constraint.type === 'W') {
-                    if (Math.abs(num - otherValue) !== 1) {
-                        return false;
-                    }
+                if (Math.abs(num - otherValue) !== 1) {
+                    return false;
                 }
             }
         }
     }
 
-    // 4) 对所有未标记的相邻对：若另一格已确定数字且没有标记，则两数不得满足黑点或白点任一关系
+    // 4) 对所有未标记的相邻对：若另一格已确定数字且没有标记，则两数不得满足白点关系
     const allAdjacentPairs = get_all_adjacent_pairs(size);
     for (const pair of allAdjacentPairs) {
         const isCurrentInPair =
@@ -618,10 +576,9 @@ export function is_valid_consecutive(board, size, row, col, num) {
         const key = normalize_pair_key(pair.row1, pair.col1, pair.row2, pair.col2);
         const hasMark = consecutiveConstraintKeySet.has(key);
         if (!hasMark) {
-            // 若未标记但满足任一关系则不允许
-            const isBlackRelation = (num === 2 * otherValue || otherValue === 2 * num);
+            // 若未标记但满足白点关系则不允许
             const isWhiteRelation = (Math.abs(num - otherValue) === 1);
-            if (isBlackRelation || isWhiteRelation) {
+            if (isWhiteRelation) {
                 return false;
             }
         }

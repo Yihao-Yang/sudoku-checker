@@ -13,7 +13,7 @@ import {
 } from '../solver/core.js';
 import { state, set_current_mode } from '../solver/state.js';
 import { solve } from '../solver/solver_tool.js';
-import { create_technique_panel } from './classic.js';
+import { create_technique_panel } from '../solver/classic.js';
 import { shuffle,get_symmetric_positions } from '../solver/generate.js';
 
 let is_missing_mode_active = false;

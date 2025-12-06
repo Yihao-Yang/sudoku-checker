@@ -163,20 +163,8 @@ export function solve_By_Elimination(board, size) {
         [() => state.techniqueSettings?.Cell_Elimination_2 && check_cell_elimination(board, size, 2)],
         // // 特定组合排除
         // [() => state.techniqueSettings?.Special_Combination_Region_Elimination && check_special_combination_region_elimination(board, size)],
-        // 余1特定组合排除
-        [() => state.techniqueSettings?.Special_Combination_Region_Elimination_1 && check_special_combination_region_elimination(board, size, 1)],
-        // 余2特定组合排除
-        [() => state.techniqueSettings?.Special_Combination_Region_Elimination_2 && check_special_combination_region_elimination(board, size, 2)],
-        // 余3特定组合排除
-        [() => state.techniqueSettings?.Special_Combination_Region_Elimination_3 && check_special_combination_region_elimination(board, size, 3)],
-        // 余4特定组合排除
-        [() => state.techniqueSettings?.Special_Combination_Region_Elimination_4 && check_special_combination_region_elimination(board, size, 4)],
-        // 余5-9 特定组合排除（放在同一组下）
-        [() => state.techniqueSettings?.Special_Combination_Region_Elimination_4 && check_special_combination_region_elimination(board, size, 5)],
-        [() => state.techniqueSettings?.Special_Combination_Region_Elimination_4 && check_special_combination_region_elimination(board, size, 6)],
-        [() => state.techniqueSettings?.Special_Combination_Region_Elimination_4 && check_special_combination_region_elimination(board, size, 7)],
-        [() => state.techniqueSettings?.Special_Combination_Region_Elimination_4 && check_special_combination_region_elimination(board, size, 8)],
-        [() => state.techniqueSettings?.Special_Combination_Region_Elimination_4 && check_special_combination_region_elimination(board, size, 9)],
+        
+        
         // 第三优先级：宫排除法
     ...Array.from({length: size}, (_, i) => [() => state.techniqueSettings?.Box_Elimination && check_Box_Elimination(board, size, i + 1)]),
         [() => state.techniqueSettings?.Box_One_Cut && check_Box_Elimination_One_Cut(board, size)],
@@ -188,6 +176,12 @@ export function solve_By_Elimination(board, size) {
         [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 1)],
         [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 2)],
         [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 3)],
+        // 余1特定组合排除
+        [() => state.techniqueSettings?.Special_Combination_Region_Elimination_1 && check_special_combination_region_elimination(board, size, 1)],
+        // 余2特定组合排除
+        [() => state.techniqueSettings?.Special_Combination_Region_Elimination_2 && check_special_combination_region_elimination(board, size, 2)],
+        // 余3特定组合排除
+        [() => state.techniqueSettings?.Special_Combination_Region_Elimination_3 && check_special_combination_region_elimination(board, size, 3)],
 
 
 
@@ -199,28 +193,22 @@ export function solve_By_Elimination(board, size) {
         [() => state.techniqueSettings?.Box_Block && check_box_block_elimination(board, size)],
         [() => state.techniqueSettings?.Box_Block_One_Cut && check_box_block_elimination_One_Cut(board, size)],
         [() => state.current_mode !== 'classic' && state.techniqueSettings?.Variant_Block && check_Variant_Block_Elimination(board, size)],
+        // 特定组合区块1-3
         [() => state.techniqueSettings?.Special_Combination_Region_Block_1 && check_special_combination_region_block_elimination(board, size, 1)],
         [() => state.techniqueSettings?.Special_Combination_Region_Block_2 && check_special_combination_region_block_elimination(board, size, 2)],
         [() => state.techniqueSettings?.Special_Combination_Region_Block_3 && check_special_combination_region_block_elimination(board, size, 3)],
-        [() => state.techniqueSettings?.Special_Combination_Region_Block_4 && check_special_combination_region_block_elimination(board, size, 4)],
-        [() => state.techniqueSettings?.Special_Combination_Region_Block_4 && check_special_combination_region_block_elimination(board, size, 5)],
-        [() => state.techniqueSettings?.Special_Combination_Region_Block_4 && check_special_combination_region_block_elimination(board, size, 6)],
-        [() => state.techniqueSettings?.Special_Combination_Region_Block_4 && check_special_combination_region_block_elimination(board, size, 7)],
-        [() => state.techniqueSettings?.Special_Combination_Region_Block_4 && check_special_combination_region_block_elimination(board, size, 8)],
-        [() => state.techniqueSettings?.Special_Combination_Region_Block_4 && check_special_combination_region_block_elimination(board, size, 9)],
-        // 多特定组合排除
-        [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_1 && check_multi_special_combination_region_elimination(board, size, 1)],
-        [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_2 && check_multi_special_combination_region_elimination(board, size, 2)],
-        [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_3 && check_multi_special_combination_region_elimination(board, size, 3)],
-        [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_4 && check_multi_special_combination_region_elimination(board, size, 4)],
-        [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_4 && check_multi_special_combination_region_elimination(board, size, 5)],
-        [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_4 && check_multi_special_combination_region_elimination(board, size, 6)],
-        [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_4 && check_multi_special_combination_region_elimination(board, size, 7)],
-        [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_4 && check_multi_special_combination_region_elimination(board, size, 8)],
-        [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_4 && check_multi_special_combination_region_elimination(board, size, 9)],
+        
+        
         // 第七优先级：组合区块
         [() => state.techniqueSettings?.Box_Pair_Block && check_box_pair_block_elimination(board, size)],
         [() => state.current_mode !== 'classic' && state.techniqueSettings?.Variant_Pair_Block && check_variant_pair_block_elimination(board, size)],
+        // 余4-9特定组合排除（放在同一组下）
+        [() => state.techniqueSettings?.Special_Combination_Region_Elimination_4 && check_special_combination_region_elimination(board, size, 4)],
+        [() => state.techniqueSettings?.Special_Combination_Region_Elimination_4 && check_special_combination_region_elimination(board, size, 5)],
+        [() => state.techniqueSettings?.Special_Combination_Region_Elimination_4 && check_special_combination_region_elimination(board, size, 6)],
+        [() => state.techniqueSettings?.Special_Combination_Region_Elimination_4 && check_special_combination_region_elimination(board, size, 7)],
+        [() => state.techniqueSettings?.Special_Combination_Region_Elimination_4 && check_special_combination_region_elimination(board, size, 8)],
+        [() => state.techniqueSettings?.Special_Combination_Region_Elimination_4 && check_special_combination_region_elimination(board, size, 9)],
 
 
 
@@ -233,6 +221,13 @@ export function solve_By_Elimination(board, size) {
 
         // 第九优先级：行列区块
         [() => state.techniqueSettings?.Row_Col_Block && check_Row_Col_Block_Elimination(board, size)],
+        // 特定组合区块4-9
+        [() => state.techniqueSettings?.Special_Combination_Region_Block_4 && check_special_combination_region_block_elimination(board, size, 4)],
+        [() => state.techniqueSettings?.Special_Combination_Region_Block_4 && check_special_combination_region_block_elimination(board, size, 5)],
+        [() => state.techniqueSettings?.Special_Combination_Region_Block_4 && check_special_combination_region_block_elimination(board, size, 6)],
+        [() => state.techniqueSettings?.Special_Combination_Region_Block_4 && check_special_combination_region_block_elimination(board, size, 7)],
+        [() => state.techniqueSettings?.Special_Combination_Region_Block_4 && check_special_combination_region_block_elimination(board, size, 8)],
+        [() => state.techniqueSettings?.Special_Combination_Region_Block_4 && check_special_combination_region_block_elimination(board, size, 9)],
 
 
 
@@ -250,6 +245,16 @@ export function solve_By_Elimination(board, size) {
         [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 8)],
         [() => state.techniqueSettings?.Cell_Elimination_9 && check_cell_elimination(board, size, 9)],
         [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 9)],
+        // 多特定组合排除
+        [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_1 && check_multi_special_combination_region_elimination(board, size, 1)],
+        [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_2 && check_multi_special_combination_region_elimination(board, size, 2)],
+        [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_3 && check_multi_special_combination_region_elimination(board, size, 3)],
+        [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_4 && check_multi_special_combination_region_elimination(board, size, 4)],
+        [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_4 && check_multi_special_combination_region_elimination(board, size, 5)],
+        [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_4 && check_multi_special_combination_region_elimination(board, size, 6)],
+        [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_4 && check_multi_special_combination_region_elimination(board, size, 7)],
+        [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_4 && check_multi_special_combination_region_elimination(board, size, 8)],
+        [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_4 && check_multi_special_combination_region_elimination(board, size, 9)],
         // 多特定组合区块
         [() => state.techniqueSettings?.Multi_Special_Combination_Region_Block_1 && check_multi_special_combination_region_block_elimination(board, size, 1)],
         [() => state.techniqueSettings?.Multi_Special_Combination_Region_Block_2 && check_multi_special_combination_region_block_elimination(board, size, 2)],

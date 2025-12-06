@@ -729,7 +729,7 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
     let changed;
 
     // 在这些模式下跳过分值比较，直接以唯一解为准进行挖洞
-    const SKIP_SCORE_MODES = new Set(['VX', 'kropki']);
+    const SKIP_SCORE_MODES = new Set(['VX', 'kropki', 'consecutive']);
     const skipScore = SKIP_SCORE_MODES.has(state.current_mode);
 
     // 获取所有区域并计算每个格子所属的区域数量

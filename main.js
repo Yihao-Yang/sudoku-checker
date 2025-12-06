@@ -10,7 +10,7 @@ import {
 
 import { 
     create_sudoku_grid, check_uniqueness
-} from './modules/classic.js';
+} from './solver/classic.js';
 
 import { 
     check_candidates_uniqueness

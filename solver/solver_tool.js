@@ -3,6 +3,7 @@ import { solve_By_Elimination } from "./Technique.js";
 import { state } from "./state.js";
 import { get_all_mark_lines, get_cells_on_line } from "../modules/multi_diagonal.js";
 import { get_extra_region_cells } from '../modules/extra_region.js';
+import { get_renban_cells, is_valid_renban } from '../modules/renban.js';
 import { apply_exclusion_marks, is_valid_exclusion } from "../modules/exclusion.js";
 import { apply_quadruple_marks, is_valid_quadruple } from "../modules/quadruple.js";
 import { is_valid_add } from "../modules/add.js";
@@ -10,6 +11,7 @@ import { is_valid_product } from "../modules/product.js";
 import { is_valid_ratio } from "../modules/ratio.js";
 import { is_valid_VX } from "../modules/vx.js";
 import { is_valid_kropki } from "../modules/kropki.js";
+import { is_valid_consecutive } from "../modules/consecutive.js";
 import { apply_odd_marks, is_valid_odd } from "../modules/odd.js";
 import { apply_odd_even_marks, is_valid_odd_even } from "../modules/odd_even.js";
 import { is_valid_anti_king } from "../modules/anti_king.js";
@@ -346,7 +348,91 @@ export function eliminate_candidates(board, size, i, j, num, calc_score = true) 
                 }
             }
         }
-    }
+    } 
+    // else if (mode === 'consecutive') {
+    //     const container = (typeof document !== "undefined") ? document.querySelector('.sudoku-container') : null;
+    //     const consecutiveMarkType = new Map();
+    //     if (container) {
+    //         container.querySelectorAll('.vx-mark[data-key]').forEach(mark => {
+    //             const key = mark.dataset.key;
+    //             const rawType = (mark.dataset.consecutiveType || '').toUpperCase();
+    //             if (!key || (rawType !== 'W' && rawType !== 'B')) return;
+    //             const parts = key.split('-');
+    //             if (parts.length < 3) return;
+    //             const rowToken = Number(parts[1]);
+    //             const colToken = Number(parts[2]);
+    //             if (Number.isNaN(rowToken) || Number.isNaN(colToken)) return;
+    //             let pair = null;
+    //             if (key.startsWith('v-')) {
+    //                 pair = { row1: rowToken, col1: colToken - 1, row2: rowToken, col2: colToken };
+    //             } else if (key.startsWith('h-')) {
+    //                 pair = { row1: rowToken - 1, col1: colToken, row2: rowToken, col2: colToken };
+    //             }
+    //             if (!pair) return;
+    //             const forward = `${pair.row1},${pair.col1},${pair.row2},${pair.col2}`;
+    //             const reverse = `${pair.row2},${pair.col2},${pair.row1},${pair.col1}`;
+    //             consecutiveMarkType.set(forward, 'W');
+    //             consecutiveMarkType.set(reverse, 'W');
+    //         });
+    //     }
+
+    //     const allAdjacentPairs = [];
+    //     for (const [dr, dc] of [[0, 1], [1, 0]]) {
+    //         for (let r = 0; r < size; r++) {
+    //             for (let c = 0; c < size; c++) {
+    //                 const nr = r + dr;
+    //                 const nc = c + dc;
+    //                 if (nr < size && nc < size) {
+    //                     allAdjacentPairs.push({ row1: r, col1: c, row2: nr, col2: nc });
+    //                 }
+    //             }
+    //         }
+    //     }
+
+    //     for (const pair of allAdjacentPairs) {
+    //         let otherRow;
+    //         let otherCol;
+    //         if (pair.row1 === i && pair.col1 === j) {
+    //             otherRow = pair.row2;
+    //             otherCol = pair.col2;
+    //         } else if (pair.row2 === i && pair.col2 === j) {
+    //             otherRow = pair.row1;
+    //             otherCol = pair.col1;
+    //         } else {
+    //             continue;
+    //         }
+    //         if (!Array.isArray(board[otherRow][otherCol])) continue;
+
+    //         const relationKey = `${i},${j},${otherRow},${otherCol}`;
+    //         const hasMark = consecutiveMarkType.has(relationKey);
+    //         if (hasMark) {
+    //             const allowed = [];
+    //             if (num + 1 <= size) allowed.push(num + 1);
+    //             if (num - 1 >= 1) allowed.push(num - 1);
+    //             for (let k = board[otherRow][otherCol].length - 1; k >= 0; k--) {
+    //                 const candidate = board[otherRow][otherCol][k];
+    //                 if (!allowed.includes(candidate)) {
+    //                     if (calc_score) {
+    //                         state.candidate_elimination_score[`${otherRow},${otherCol},${candidate}`] = 1;
+    //                     }
+    //                     eliminations.push({ row: otherRow, col: otherCol, val: candidate });
+    //                     board[otherRow][otherCol].splice(k, 1);
+    //                 }
+    //             }
+    //         } else {
+    //             for (let k = board[otherRow][otherCol].length - 1; k >= 0; k--) {
+    //                 const candidate = board[otherRow][otherCol][k];
+    //                 if (Math.abs(num - candidate) === 1) {
+    //                     if (calc_score) {
+    //                         state.candidate_elimination_score[`${otherRow},${otherCol},${candidate}`] = 1;
+    //                     }
+    //                     eliminations.push({ row: otherRow, col: otherCol, val: candidate });
+    //                     board[otherRow][otherCol].splice(k, 1);
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
     return eliminations;
 }
 
@@ -786,9 +872,6 @@ export function get_all_regions(size, mode = 'classic') {
     // 额外区域数独：将手动标记的格子作为一个额外区域
     else if (mode === 'extra_region' && typeof get_extra_region_cells === 'function') {
         const extra_region_cells = get_extra_region_cells();
-        // if (extra_region_cells && extra_region_cells.length > 0) {
-        //     regions.push({ type: '额外区域', index: 1, cells: extra_region_cells });
-        // }
         if (Array.isArray(extra_region_cells) && extra_region_cells.length > 0) {
             // 判断是单区域还是多区域
             if (Array.isArray(extra_region_cells[0][0])) {
@@ -801,6 +884,24 @@ export function get_all_regions(size, mode = 'classic') {
             } else {
                 // 单个区域
                 regions.push({ type: '额外区域', index: 1, cells: extra_region_cells });
+            }
+        }
+    }
+    // 灰格连续数独：将手动标记的格子作为一个灰格连续区域
+    else if (mode === 'renban' && typeof get_renban_cells === 'function') {
+        const renban_cells = get_renban_cells();
+        if (Array.isArray(renban_cells) && renban_cells.length > 0) {
+            // 判断是单区域还是多区域
+            if (Array.isArray(renban_cells[0][0])) {
+                // 多个区域
+                renban_cells.forEach((region_cells, idx) => {
+                    if (region_cells.length > 0) {
+                        regions.push({ type: '灰格连续区域', index: idx + 1, cells: region_cells });
+                    }
+                });
+            } else {
+                // 单个区域
+                regions.push({ type: '灰格连续区域', index: 1, cells: renban_cells });
             }
         }
     }
@@ -1367,8 +1468,70 @@ export function get_special_combination_regions(size, mode = 'classic') {
                 });
             }
         }
-        // log_process(`合并后的回文线段数：${regions.length}`);
-    } else if (mode === 'X_sums' || mode === 'sandwich' || mode === 'skyscraper') {
+        // log_process(`合并后的回文线段数：${regions.length}`);、
+    } else if (mode === 'consecutive') {
+        // 处理连续数独的白点标记
+        const container = document.querySelector('.sudoku-container');
+        if (container) {
+            container.querySelectorAll('.vx-mark[data-key]').forEach(mark => {
+                const key = mark.dataset.key;
+                const type = (mark.dataset.consecutiveType || '').toUpperCase();
+                if (type !== 'W') return; // 只处理白点标记
+
+                const parts = key.split('-');
+                if (parts.length < 3) return;
+
+                const rowToken = Number(parts[1]);
+                const colToken = Number(parts[2]);
+                if (Number.isNaN(rowToken) || Number.isNaN(colToken)) return;
+
+                let pair = null;
+                if (key.startsWith('v-')) {
+                    pair = { row1: rowToken, col1: colToken - 1, row2: rowToken, col2: colToken };
+                } else if (key.startsWith('h-')) {
+                    pair = { row1: rowToken - 1, col1: colToken, row2: rowToken, col2: colToken };
+                }
+
+                if (pair) {
+                    regions.push({
+                        type: '连续数独白点',
+                        index: `${pair.row1},${pair.col1}-${pair.row2},${pair.col2}`,
+                        cells: [
+                            [pair.row1, pair.col1],
+                            [pair.row2, pair.col2]
+                        ]
+                    });
+                }
+            });
+        }
+    
+    } 
+    // 灰格连续数独：将手动标记的格子作为一个灰格连续区域
+    else if (mode === 'renban' && typeof get_renban_cells === 'function') {
+        const renban_cells = get_renban_cells();
+        if (Array.isArray(renban_cells) && renban_cells.length > 0) {
+            // 判断是单区域还是多区域
+            if (Array.isArray(renban_cells[0][0])) {
+                // 多个区域
+                renban_cells.forEach((region_cells) => {
+                    const index = region_cells
+                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                    .join('-');
+
+                    if (region_cells.length > 0) {
+                        regions.push({ type: '特定组合', index, cells: region_cells, clue_nums: Array.from({ length: size }, (_, n) => n + 1), });
+                    }
+                });
+            } else {
+                // 单个区域
+                const index = renban_cells
+                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                    .join('-');
+                regions.push({ type: '特定组合', index, cells: renban_cells, clue_nums: Array.from({ length: size }, (_, n) => n + 1), });
+            }
+        }
+    }
+    else if (mode === 'X_sums' || mode === 'sandwich' || mode === 'skyscraper') {
         const container = document.querySelector('.sudoku-container');
         if (!container) return regions;
 
@@ -1562,6 +1725,10 @@ export function isValid(board, size, row, col, num) {
         return is_valid_VX(board, size, row, col, num);
     } else if (state.current_mode === 'kropki') {
         return is_valid_kropki(board, size, row, col, num);
+    } else if (state.current_mode === 'consecutive') {
+        return is_valid_consecutive(board, size, row, col, num);
+    } else if (state.current_mode === 'renban') {
+        return is_valid_renban(board, size, row, col, num);
     } else if (state.current_mode === 'odd') {
         return is_valid_odd(board, size, row, col, num);
     } else if (state.current_mode === 'odd_even') {

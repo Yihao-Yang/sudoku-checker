@@ -2,7 +2,7 @@
 import { state, set_current_mode } from '../solver/state.js';
 import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell } from '../solver/core.js';
 import { solve } from '../solver/solver_tool.js';
-import { create_technique_panel } from './classic.js';
+import { create_technique_panel } from '../solver/classic.js';
 
 // 窗口数独主入口
 export function create_window_sudoku(size) {

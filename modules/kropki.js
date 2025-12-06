@@ -12,7 +12,7 @@ import {
     clear_marks
 } from '../solver/core.js';
 import { state, set_current_mode } from '../solver/state.js';
-import { create_technique_panel } from './classic.js';
+import { create_technique_panel } from '../solver/classic.js';
 import { generate_solved_board_brute_force, generate_puzzle } from '../solver/generate.js';
 import { get_all_regions } from '../solver/solver_tool.js';
 
