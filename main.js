@@ -23,6 +23,7 @@ import { state } from './solver/state.js';
 import { generate_multi_diagonal_puzzle } from './modules/multi_diagonal.js';
 import { generate_vx_puzzle } from './modules/vx.js';
 import { generate_extra_region_puzzle } from './modules/extra_region.js';
+import { generate_renban_puzzle } from './modules/renban.js';
 import { generate_exclusion_puzzle } from './modules/exclusion.js';
 import { generate_quadruple_puzzle } from './modules/quadruple.js';
 import { generate_ratio_puzzle } from './modules/ratio.js';
@@ -182,6 +183,8 @@ document.addEventListener('input', function(e) {
                 generate_vx_puzzle(state.current_grid_size, score_lower_limit, holes_count);
             } else if (state.current_mode === 'extra_region') {
                 generate_extra_region_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+            } else if (state.current_mode === 'renban') {
+                generate_renban_puzzle(state.current_grid_size, score_lower_limit, holes_count);
             } else if (state.current_mode === 'exclusion') {
                 generate_exclusion_puzzle(state.current_grid_size, score_lower_limit, holes_count);
             } else if (state.current_mode === 'quadruple') {

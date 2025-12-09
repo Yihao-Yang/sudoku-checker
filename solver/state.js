@@ -50,6 +50,7 @@ export function set_current_mode(mode) {
         'add',
         'product',
         'ratio',
+        'inequality',
         'odd',
         'odd_even',
         'isomorphic',

@@ -22,6 +22,7 @@ import { create_quadruple_sudoku, is_valid_quadruple } from '../modules/quadrupl
 import { create_add_sudoku } from '../modules/add.js';
 import { create_product_sudoku } from '../modules/product.js';
 import { create_ratio_sudoku } from '../modules/ratio.js';
+import { create_inequality_sudoku } from '../modules/inequality.js';
 import { create_odd_sudoku } from '../modules/odd.js';
 import { create_odd_even_sudoku, is_valid_odd_even } from '../modules/odd_even.js';
 import { create_palindrome_sudoku } from '../modules/palindrome.js';

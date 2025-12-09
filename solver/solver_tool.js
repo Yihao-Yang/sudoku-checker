@@ -13,6 +13,7 @@ import { is_valid_ratio } from "../modules/ratio.js";
 import { is_valid_VX } from "../modules/vx.js";
 import { is_valid_kropki } from "../modules/kropki.js";
 import { is_valid_consecutive } from "../modules/consecutive.js";
+import { is_valid_inequality } from "../modules/inequality.js";
 import { apply_odd_marks, is_valid_odd } from "../modules/odd.js";
 import { apply_odd_even_marks, is_valid_odd_even } from "../modules/odd_even.js";
 import { is_valid_anti_king } from "../modules/anti_king.js";
@@ -151,7 +152,7 @@ export function eliminate_candidates(board, size, i, j, num, calc_score = true) 
         }
     }
     // Anti-King模式下，斜对角格也要删除候选
-    if (mode === 'anti_king') {
+    else if (mode === 'anti_king') {
         const king_moves = [
             [-1, -1], [-1, 1],
             [1, -1], [1, 1]
@@ -486,6 +487,108 @@ export function eliminate_candidates(board, size, i, j, num, calc_score = true) 
     //         }
     //     }
     // }
+    // 不等号数独模式专用候选数处理
+    else if (mode === 'inequality') {
+        const container = (typeof document !== "undefined") ? document.querySelector('.sudoku-container') : null;
+        if (container) {
+            const marks = container.querySelectorAll('.vx-mark[data-key]');
+            for (const mark of marks) {
+                const key = mark.dataset.key;
+                if (!key) continue;
+
+                // 解析标记对应的两格
+                let cell_a, cell_b;
+                if (key.startsWith('v-')) {
+                    const [_, row_str, col_str] = key.split('-');
+                    const r = parseInt(row_str);
+                    const c = parseInt(col_str);
+                    cell_a = [r, c - 1]; // Left
+                    cell_b = [r, c];     // Right
+                } else if (key.startsWith('h-')) {
+                    const [_, row_str, col_str] = key.split('-');
+                    const r = parseInt(row_str);
+                    const c = parseInt(col_str);
+                    cell_a = [r - 1, c]; // Top
+                    cell_b = [r, c];     // Bottom
+                } else {
+                    continue;
+                }
+
+                // 判断当前格是否与标记关联
+                let other_cell;
+                if (i === cell_a[0] && j === cell_a[1]) {
+                    other_cell = cell_b;
+                } else if (i === cell_b[0] && j === cell_b[1]) {
+                    other_cell = cell_a;
+                } else {
+                    continue; // 当前格与此标记无关
+                }
+
+                // 只有另一个格子有候选数时才处理
+                if (!Array.isArray(board[other_cell[0]][other_cell[1]])) continue;
+
+                // 获取标记符号
+                const symbolDiv = mark.querySelector('div');
+                const symbol = symbolDiv ? symbolDiv.textContent : null;
+
+                if (symbol === '>') {
+                    // cell_a > cell_b，即当前格 > 另一格
+                    if (i === cell_a[0] && j === cell_a[1]) {
+                        // 当前格 > 另一格，所以另一格的候选必须 < num
+                        for (let k = board[other_cell[0]][other_cell[1]].length - 1; k >= 0; k--) {
+                            const candidate = board[other_cell[0]][other_cell[1]][k];
+                            if (candidate >= num) {
+                                if (calc_score) {
+                                    state.candidate_elimination_score[`${other_cell[0]},${other_cell[1]},${candidate}`] = 1;
+                                }
+                                eliminations.push({ row: other_cell[0], col: other_cell[1], val: candidate });
+                                board[other_cell[0]][other_cell[1]].splice(k, 1);
+                            }
+                        }
+                    } else {
+                        // 另一格 > 当前格，所以当前格的候选必须 < num，另一格的候选必须 > num
+                        for (let k = board[other_cell[0]][other_cell[1]].length - 1; k >= 0; k--) {
+                            const candidate = board[other_cell[0]][other_cell[1]][k];
+                            if (candidate <= num) {
+                                if (calc_score) {
+                                    state.candidate_elimination_score[`${other_cell[0]},${other_cell[1]},${candidate}`] = 1;
+                                }
+                                eliminations.push({ row: other_cell[0], col: other_cell[1], val: candidate });
+                                board[other_cell[0]][other_cell[1]].splice(k, 1);
+                            }
+                        }
+                    }
+                } else if (symbol === '<') {
+                    // cell_a < cell_b，即当前格 < 另一格
+                    if (i === cell_a[0] && j === cell_a[1]) {
+                        // 当前格 < 另一格，所以另一格的候选必须 > num
+                        for (let k = board[other_cell[0]][other_cell[1]].length - 1; k >= 0; k--) {
+                            const candidate = board[other_cell[0]][other_cell[1]][k];
+                            if (candidate <= num) {
+                                if (calc_score) {
+                                    state.candidate_elimination_score[`${other_cell[0]},${other_cell[1]},${candidate}`] = 1;
+                                }
+                                eliminations.push({ row: other_cell[0], col: other_cell[1], val: candidate });
+                                board[other_cell[0]][other_cell[1]].splice(k, 1);
+                            }
+                        }
+                    } else {
+                        // 另一格 < 当前格，所以当前格的候选必须 > num，另一格的候选必须 < num
+                        for (let k = board[other_cell[0]][other_cell[1]].length - 1; k >= 0; k--) {
+                            const candidate = board[other_cell[0]][other_cell[1]][k];
+                            if (candidate >= num) {
+                                if (calc_score) {
+                                    state.candidate_elimination_score[`${other_cell[0]},${other_cell[1]},${candidate}`] = 1;
+                                }
+                                eliminations.push({ row: other_cell[0], col: other_cell[1], val: candidate });
+                                board[other_cell[0]][other_cell[1]].splice(k, 1);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
     return eliminations;
 }
 
@@ -1394,6 +1497,47 @@ export function get_special_combination_regions(size, mode = 'classic') {
                 clue_nums: clue_nums
             });
         }
+    } else if (mode === 'inequality') {
+        const container = document.querySelector('.sudoku-container');
+        if (container) {
+            const marks = container.querySelectorAll('.vx-mark');
+            for (const mark of marks) {
+                const key = mark.dataset.key;
+                if (!key) continue;
+
+                let cell_a, cell_b;
+                if (key.startsWith('v-')) {
+                    const [_, row_str, col_str] = key.split('-');
+                    const r = parseInt(row_str);
+                    const c = parseInt(col_str);
+                    cell_a = [r, c - 1];
+                    cell_b = [r, c];
+                } else if (key.startsWith('h-')) {
+                    const [_, row_str, col_str] = key.split('-');
+                    const r = parseInt(row_str);
+                    const c = parseInt(col_str);
+                    cell_a = [r - 1, c];
+                    cell_b = [r, c];
+                } else {
+                    continue;
+                }
+
+                if (cell_a[0] >= 0 && cell_a[0] < size && cell_a[1] >= 0 && cell_a[1] < size &&
+                    cell_b[0] >= 0 && cell_b[0] < size && cell_b[1] >= 0 && cell_b[1] < size) {
+                    
+                    // const index = `${getRowLetter(cell_a[0] + 1)}${cell_a[1] + 1}-${getRowLetter(cell_b[0] + 1)}${cell_b[1] + 1}`;
+                    const index = [cell_a, cell_b]
+                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                    .join('-');
+                    regions.push({
+                        type: '特定组合',
+                        index,
+                        cells: [cell_a, cell_b],
+                        clue_nums: Array.from({ length: size }, (_, n) => n + 1)
+                    });
+                }
+            }
+        }
     } else if (mode === 'kropki') {
         const container = document.querySelector('.sudoku-container');
         if (!container) return regions;
@@ -1693,6 +1837,73 @@ export function get_special_combination_regions(size, mode = 'classic') {
 }
 
 /**
+ * 通用有效性检测函数，根据当前模式自动判断所有相关区域
+ */
+export function isValid(board, size, row, col, num) {
+    if (state.current_mode === 'exclusion') {
+        return is_valid_exclusion(board, size, row, col, num);
+    } else if (state.current_mode === 'quadruple') {
+        return is_valid_quadruple(board, size, row, col, num);
+    } else if (state.current_mode === 'add') {
+        return is_valid_add(board, size, row, col, num);
+    } else if (state.current_mode === 'product') {
+        return is_valid_product(board, size, row, col, num);
+    } else if (state.current_mode === 'ratio') {
+        return is_valid_ratio(board, size, row, col, num);
+    } else if (state.current_mode === 'VX') {
+        return is_valid_VX(board, size, row, col, num);
+    } else if (state.current_mode === 'kropki') {
+        return is_valid_kropki(board, size, row, col, num);
+    } else if (state.current_mode === 'consecutive') {
+        return is_valid_consecutive(board, size, row, col, num);
+    } else if (state.current_mode === 'renban') {
+        return is_valid_renban(board, size, row, col, num);
+    } else if (state.current_mode === 'fortress') {
+        return is_valid_fortress(board, size, row, col, num);
+    } else if (state.current_mode === 'inequality') {
+        return is_valid_inequality(board, size, row, col, num);
+    } else if (state.current_mode === 'odd') {
+        return is_valid_odd(board, size, row, col, num);
+    } else if (state.current_mode === 'odd_even') {
+        return is_valid_odd_even(board, size, row, col, num);
+    } else if (state.current_mode === 'anti_king') {
+        return is_valid_anti_king(board, size, row, col, num);
+    } else if (state.current_mode === 'anti_knight') {
+        return is_valid_anti_knight(board, size, row, col, num);
+    } else if (state.current_mode === 'anti_elephant') {
+        return is_valid_anti_elephant(board, size, row, col, num);
+    // } else if (state.current_mode === 'anti_diagonal') {
+    //     return is_valid_anti_diagonal(board, size, row, col, num);
+    } else if (state.current_mode === 'palindrome') {
+        return is_valid_palindrome(board, size, row, col, num);
+    } else if (state.current_mode === 'X_sums') {
+        return is_valid_X_sums(board, size, row, col, num);
+    } else if (state.current_mode === 'sandwich') {
+        return is_valid_sandwich(board, size, row, col, num);
+    } else if (state.current_mode === 'skyscraper') {
+        return is_valid_skyscraper(board, size, row, col, num);
+    } else {
+        // 获取当前模式（classic/diagonal/missing/...）
+        const mode = state.current_mode || 'classic';
+        // 获取所有相关区域
+        // 为避免 cached_regions 与当前 size/mode 不匹配导致越界，
+        // 在此处始终按传入的 size 与当前 mode 重新计算区域
+        const regions = get_all_regions(size, mode);
+        // 找出包含(row, col)的所有区域
+        for (const region of regions) {
+            if (region.cells.some(([r, c]) => r === row && c === col)) {
+                for (const [r, c] of region.cells) {
+                    if ((r !== row || c !== col) && board[r][c] === num) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+}
+
+/**
  * 多次合并有共同格子的区域，并生成所有可能的合并区域
  */
 function merge_regions_with_common_cells(regions) {
@@ -1802,71 +2013,6 @@ export function getCombinations(array, size) {
     
     backtrack(0, []);
     return result;
-}
-
-/**
- * 通用有效性检测函数，根据当前模式自动判断所有相关区域
- */
-export function isValid(board, size, row, col, num) {
-    if (state.current_mode === 'exclusion') {
-        return is_valid_exclusion(board, size, row, col, num);
-    } else if (state.current_mode === 'quadruple') {
-        return is_valid_quadruple(board, size, row, col, num);
-    } else if (state.current_mode === 'add') {
-        return is_valid_add(board, size, row, col, num);
-    } else if (state.current_mode === 'product') {
-        return is_valid_product(board, size, row, col, num);
-    } else if (state.current_mode === 'ratio') {
-        return is_valid_ratio(board, size, row, col, num);
-    } else if (state.current_mode === 'VX') {
-        return is_valid_VX(board, size, row, col, num);
-    } else if (state.current_mode === 'kropki') {
-        return is_valid_kropki(board, size, row, col, num);
-    } else if (state.current_mode === 'consecutive') {
-        return is_valid_consecutive(board, size, row, col, num);
-    } else if (state.current_mode === 'renban') {
-        return is_valid_renban(board, size, row, col, num);
-    } else if (state.current_mode === 'fortress') {
-        return is_valid_fortress(board, size, row, col, num);
-    } else if (state.current_mode === 'odd') {
-        return is_valid_odd(board, size, row, col, num);
-    } else if (state.current_mode === 'odd_even') {
-        return is_valid_odd_even(board, size, row, col, num);
-    } else if (state.current_mode === 'anti_king') {
-        return is_valid_anti_king(board, size, row, col, num);
-    } else if (state.current_mode === 'anti_knight') {
-        return is_valid_anti_knight(board, size, row, col, num);
-    } else if (state.current_mode === 'anti_elephant') {
-        return is_valid_anti_elephant(board, size, row, col, num);
-    // } else if (state.current_mode === 'anti_diagonal') {
-    //     return is_valid_anti_diagonal(board, size, row, col, num);
-    } else if (state.current_mode === 'palindrome') {
-        return is_valid_palindrome(board, size, row, col, num);
-    } else if (state.current_mode === 'X_sums') {
-        return is_valid_X_sums(board, size, row, col, num);
-    } else if (state.current_mode === 'sandwich') {
-        return is_valid_sandwich(board, size, row, col, num);
-    } else if (state.current_mode === 'skyscraper') {
-        return is_valid_skyscraper(board, size, row, col, num);
-    } else {
-        // 获取当前模式（classic/diagonal/missing/...）
-        const mode = state.current_mode || 'classic';
-        // 获取所有相关区域
-        // 为避免 cached_regions 与当前 size/mode 不匹配导致越界，
-        // 在此处始终按传入的 size 与当前 mode 重新计算区域
-        const regions = get_all_regions(size, mode);
-        // 找出包含(row, col)的所有区域
-        for (const region of regions) {
-            if (region.cells.some(([r, c]) => r === row && c === col)) {
-                for (const [r, c] of region.cells) {
-                    if ((r !== row || c !== col) && board[r][c] === num) {
-                        return false;
-                    }
-                }
-            }
-        }
-        return true;
-    }
 }
 
 let board = null;

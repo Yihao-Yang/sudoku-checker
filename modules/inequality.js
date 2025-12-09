@@ -2,7 +2,7 @@ import { state, set_current_mode } from '../solver/state.js';
 import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, add_Extra_Button, clear_all_inputs, clear_marks } from '../solver/core.js';
 import { create_technique_panel } from '../solver/classic.js';
 import { get_all_regions, solve } from '../solver/solver_tool.js';
-import { generate_solved_board_brute_force } from '../solver/generate.js';
+import { generate_solved_board_brute_force, shuffle, generate_puzzle } from '../solver/generate.js';
 
 // 新数独主入口
 export function create_inequality_sudoku(size) {
@@ -93,6 +93,808 @@ export function create_inequality_sudoku(size) {
 }
 
 // 自动生成不等号数独题目（生成圆圈并调用generate_puzzle）
+// export function generate_inequality_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
+//     const start_time = performance.now();
+//     clear_all_inputs();
+//     log_process('', true);
+
+//     const container = document.querySelector('.sudoku-container');
+//     if (!container) return;
+//     Array.from(container.querySelectorAll('.vx-mark')).forEach(mark => mark.remove());
+
+//     log_process('第一步：生成不等号数独终盘...');
+//     const solvedBoard = generate_solved_board_brute_force(size);
+//     if (!solvedBoard) {
+//         log_process('生成终盘失败！');
+//         return;
+//     }
+
+//     log_process('第二步：开始添加对称提示标记...');
+//     const SYMMETRY_TYPES = [
+//         'central','central','central','central','central',
+//         'diagonal','diagonal',
+//         'anti-diagonal','anti-diagonal',
+//         'horizontal',
+//         'vertical'
+//     ];
+//     const symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
+//     log_process(`使用对称类型: ${symmetry}`);
+
+//     const MAX_MARKS = size * (size - 1);
+//     const MAX_TRY = 200;
+
+//     let marks_added = 0;
+//     let try_count = 0;
+//     let unique_found = false;
+
+//     while (try_count < MAX_TRY && marks_added < MAX_MARKS && !unique_found) {
+//         try_count++;
+
+//         const type = Math.random() < 0.5 ? 'v' : 'h';
+//         const row = type === 'v' ? Math.floor(Math.random() * size) : Math.floor(Math.random() * (size - 1));
+//         const col = type === 'v' ? Math.floor(Math.random() * (size - 1)) : Math.floor(Math.random() * size);
+
+//         if (!is_valid_position(row, col, size, type)) continue;
+
+//         const [sym_row, sym_col, sym_type] = get_symmetric(row, col, size, symmetry, type);
+//         if (!is_valid_position(sym_row, sym_col, size, sym_type)) continue;
+
+//         if (is_mark_exists(row, col, type, container) || is_mark_exists(sym_row, sym_col, sym_type, container)) {
+//             continue;
+//         }
+
+//         const addedMarks = [];
+//         const maininequality = calculate_inequality_from_solved(row, col, type, solvedBoard);
+//         if (!maininequality) continue;
+
+//         const mainMark = add_inequality_mark_with_value(row, col, size, container, type, maininequality);
+//         if (!mainMark) continue;
+//         addedMarks.push(mainMark);
+
+//         const symmetric_is_same = row === sym_row && col === sym_col && type === sym_type;
+//         if (!symmetric_is_same) {
+//             const syminequality = calculate_inequality_from_solved(sym_row, sym_col, sym_type, solvedBoard);
+//             if (!syminequality) {
+//                 remove_marks(addedMarks);
+//                 continue;
+//             }
+//             const symMark = add_inequality_mark_with_value(sym_row, sym_col, size, container, sym_type, syminequality);
+//             if (!symMark) {
+//                 remove_marks(addedMarks);
+//                 continue;
+//             }
+//             addedMarks.push(symMark);
+//         }
+
+//         marks_added += addedMarks.length;
+
+//         backup_original_board();
+//         const result = solve(create_solver_board(size), size, is_valid_inequality, true);
+//         restore_original_board();
+
+//         if (result.solution_count === 1) {
+//             unique_found = true;
+//             log_process(`✓ 找到唯一解！共添加 ${marks_added} 个标记`);
+//             optimize_marks(container, size, symmetry);
+//             break;
+//         }
+
+//         if (result.solution_count === 0 || result.solution_count === -2) {
+//             log_process('✗ 无解，移除最后添加的标记');
+//             remove_marks(addedMarks);
+//             marks_added -= addedMarks.length;
+//         } else {
+//             log_process(`当前解数：${result.solution_count}，继续添加标记...`);
+//         }
+//     }
+
+//     const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
+//     show_result(`不等号数独提示生成完成（${unique_found ? '唯一解' : '未验证唯一'}，耗时${elapsed}秒）`);
+
+//     if (!unique_found) {
+//         if (try_count >= MAX_TRY) {
+//             log_process('自动出题失败：达到最大尝试次数');
+//         } else {
+//             log_process('自动出题完成（可能非唯一解）');
+//         }
+//     }
+
+//     function create_solver_board(size) {
+//         return Array.from({ length: size }, () =>
+//             Array.from({ length: size }, () => [...Array(size)].map((_, n) => n + 1))
+//         );
+//     }
+
+//     function remove_marks(list) {
+//         for (const mark of list) {
+//             if (mark && mark.parentNode) {
+//                 mark.remove();
+//             }
+//         }
+//     }
+
+//     function get_mark_key(row, col, type) {
+//         return type === 'v' ? `v-${row}-${col + 1}` : `h-${row + 1}-${col}`;
+//     }
+
+//     function is_mark_exists(row, col, type, container) {
+//         const key = get_mark_key(row, col, type);
+//         return !!container.querySelector(`.vx-mark[data-key="${key}"]`);
+//     }
+
+//     function is_valid_position(row, col, size, type) {
+//         if (type === 'v') {
+//             return row >= 0 && row < size && col >= 0 && col < size - 1;
+//         }
+//         return row >= 0 && row < size - 1 && col >= 0 && col < size;
+//     }
+
+//     function get_symmetric(row, col, size, symmetry, type) {
+//         switch (symmetry) {
+//             case 'central':
+//                 return type === 'v'
+//                     ? [size - 1 - row, size - 2 - col, 'v']
+//                     : [size - 2 - row, size - 1 - col, 'h'];
+//             case 'diagonal':
+//                 return type === 'v'
+//                     ? [col, row, 'h']
+//                     : [col, row, 'v'];
+//             case 'anti-diagonal':
+//                 return type === 'v'
+//                     ? [size - 2 - col, size - 1 - row, 'h']
+//                     : [size - 1 - col, size - 2 - row, 'v'];
+//             case 'horizontal':
+//                 return type === 'v'
+//                     ? [size - 1 - row, col, 'v']
+//                     : [size - 2 - row, col, 'h'];
+//             case 'vertical':
+//                 return type === 'v'
+//                     ? [row, size - 2 - col, 'v']
+//                     : [row, size - 1 - col, 'h'];
+//             default:
+//                 return [row, col, type];
+//         }
+//     }
+
+//     function calculate_inequality_from_solved(row, col, type, solvedBoard) {
+//         let a, b;
+//         if (type === 'v') {
+//             a = solvedBoard[row]?.[col];
+//             b = solvedBoard[row]?.[col + 1];
+//         } else {
+//             a = solvedBoard[row]?.[col];
+//             b = solvedBoard[row + 1]?.[col];
+//         }
+//         if (!a || !b) return null;
+//         if (a === b) return null; // 相等时无法形成不等关系
+
+//         // 返回不等符号：如果 a < b 则返回 '<'，否则返回 '>'
+//         return a < b ? '<' : '>';
+//     }
+
+//     function add_inequality_mark_with_value(row, col, size, container, type, symbol) {
+//         const grid = container.querySelector('.sudoku-grid');
+//         if (!grid) return null;
+
+//         const cell_width = grid.offsetWidth / size;
+//         const cell_height = grid.offsetHeight / size;
+
+//         let mark_x, mark_y, key, direction;
+//         if (type === 'v') {
+//             mark_x = (col + 1) * cell_width;
+//             mark_y = row * cell_height + cell_height / 2;
+//             key = get_mark_key(row, col, type);
+//             direction = 'horizontal';
+//         } else {
+//             mark_x = col * cell_width + cell_width / 2;
+//             mark_y = (row + 1) * cell_height;
+//             key = get_mark_key(row, col, type);
+//             direction = 'vertical';
+//         }
+
+//         const grid_offset_left = grid.offsetLeft;
+//         const grid_offset_top = grid.offsetTop;
+
+//         const mark = document.createElement('div');
+//         mark.className = 'vx-mark';
+//         mark.dataset.key = key;
+//         mark.style.position = 'absolute';
+//         mark.style.left = `${grid_offset_left + mark_x - 10}px`;
+//         mark.style.top = `${grid_offset_top + mark_y - 10}px`;
+//         mark.style.width = '20px';
+//         mark.style.height = '20px';
+//         mark.style.display = 'flex';
+//         mark.style.alignItems = 'center';
+//         mark.style.justifyContent = 'center';
+//         mark.style.fontSize = '24px';
+//         mark.style.color = '#333';
+//         mark.style.userSelect = 'none';
+//         mark.style.cursor = 'pointer';
+
+//         const symbolDiv = document.createElement('div');
+//         symbolDiv.textContent = symbol;
+//         if (direction === 'vertical') {
+//             symbolDiv.style.transform = 'rotate(90deg)';
+//         }
+
+//         mark.appendChild(symbolDiv);
+
+//         // 切换标记的函数：> → < → 删除
+//         const toggleMark = function() {
+//             if (symbolDiv.textContent === '>') {
+//                 symbolDiv.textContent = '<';
+//             } else {
+//                 mark.remove();
+//             }
+//         };
+
+//         // 单击切换标记状态
+//         mark.addEventListener('click', function(e) {
+//             e.stopPropagation();
+//             toggleMark();
+//         });
+
+//         // 双击直接删除
+//         mark.ondblclick = function(e) {
+//             e.stopPropagation();
+//             mark.remove();
+//         };
+
+//         container.appendChild(mark);
+//         return mark;
+//     }
+
+//     function optimize_marks(container, size, symmetry) {
+//         log_process('开始最小化删除多余标记...');
+//         const groups = group_marks_by_symmetry(container, size, symmetry);
+//         let removed = 0;
+//         for (const group of groups) {
+//             const removedMarks = temporarily_remove_marks(container, group.keys);
+            
+//             // 关键改动：创建当前棋盘状态，而不是空棋盘
+//             const currentBoard = Array.from({ length: size }, (_, r) =>
+//                 Array.from({ length: size }, (_, c) => {
+//                     const input = document.querySelector(`.sudoku-grid input[data-row="${r}"][data-col="${c}"]`);
+//                     return input && input.value ? parseInt(input.value) : 0;
+//                 })
+//             );
+            
+//             backup_original_board();
+//             // 使用当前棋盘状态进行唯一性检测
+//             const result = solve(currentBoard, size, is_valid_inequality, true);
+//             restore_original_board();
+            
+//             if (result.solution_count === 1) {
+//                 permanently_remove_marks(removedMarks);
+//                 removed += removedMarks.length;
+//                 log_process(`删除标记组 [${group.keys.join(', ')}]，仍保持唯一解`);
+//             } else {
+//                 restore_marks(container, removedMarks);
+//                 log_process(`标记组 [${group.keys.join(', ')}] 对唯一性有贡献，保留`);
+//             }
+//         }
+//         log_process(`标记优化完成，共删除 ${removed} 个多余标记`);
+//     }
+
+//     function group_marks_by_symmetry(container, size, symmetry) {
+//         const marks = Array.from(container.querySelectorAll('.vx-mark[data-key]'))
+//             .filter(m => /^v-/.test(m.dataset.key) || /^h-/.test(m.dataset.key));
+//         const groups = [];
+//         const visited = new Set();
+//         for (const mark of marks) {
+//             const key = mark.dataset.key;
+//             if (visited.has(key)) continue;
+//             const [type, rowStr, colStr] = key.split('-');
+//             let baseRow, baseCol, baseType;
+//             if (type === 'v') {
+//                 baseRow = parseInt(rowStr, 10);
+//                 baseCol = parseInt(colStr, 10) - 1;
+//                 baseType = 'v';
+//             } else {
+//                 baseRow = parseInt(rowStr, 10) - 1;
+//                 baseCol = parseInt(colStr, 10);
+//                 baseType = 'h';
+//             }
+//             const [symRow, symCol, symType] = get_symmetric(baseRow, baseCol, size, symmetry, baseType);
+//             if (!is_valid_position(symRow, symCol, size, symType)) {
+//                 groups.push({ keys: [key] });
+//                 visited.add(key);
+//                 continue;
+//             }
+//             const symKey = get_mark_key(symRow, symCol, symType);
+//             if (symKey && symKey !== key && marks.some(m => m.dataset.key === symKey) && !visited.has(symKey)) {
+//                 groups.push({ keys: [key, symKey] });
+//                 visited.add(symKey);
+//             } else {
+//                 groups.push({ keys: [key] });
+//             }
+//             visited.add(key);
+//         }
+//         return groups;
+//     }
+
+//     function temporarily_remove_marks(container, keys = []) {
+//         const removed = [];
+//         for (const key of keys.filter(Boolean)) {
+//             const mark = container.querySelector(`.vx-mark[data-key="${key}"]`);
+//             if (!mark) continue;
+//             const placeholder = document.createElement('div');
+//             placeholder.style.display = 'none';
+//             placeholder.className = 'vx-mark-placeholder';
+//             mark.parentNode.insertBefore(placeholder, mark);
+//             removed.push({ element: mark, placeholder });
+//             mark.remove();
+//         }
+//         return removed;
+//     }
+
+//     function restore_marks(container, removedMarks) {
+//         for (const info of removedMarks) {
+//             if (info.placeholder && info.placeholder.parentNode) {
+//                 info.placeholder.parentNode.replaceChild(info.element, info.placeholder);
+//             }
+//         }
+//     }
+
+//     function permanently_remove_marks(removedMarks) {
+//         for (const info of removedMarks) {
+//             if (info.placeholder && info.placeholder.parentNode) {
+//                 info.placeholder.remove();
+//             }
+//         }
+//     }
+// }
+
+// 新的 generate_inequality_puzzle 函数，仿照摩天楼逻辑
+
+// export function generate_inequality_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
+//     const start_time = performance.now();
+//     clear_all_inputs();
+//     log_process('', true);
+
+//     const container = document.querySelector('.sudoku-container');
+//     if (!container) return;
+//     Array.from(container.querySelectorAll('.vx-mark')).forEach(mark => mark.remove());
+
+//     log_process('第一步：生成不等号数独终盘...');
+//     const solvedBoard = generate_solved_board_brute_force(size);
+//     if (!solvedBoard) {
+//         log_process('生成终盘失败！');
+//         return;
+//     }
+
+//     log_process('第二步：开始添加对称不等号标记...');
+//     const SYMMETRY_TYPES = [
+//         'central','central','central','central','central',
+//         'diagonal','diagonal',
+//         'anti-diagonal','anti-diagonal',
+//         'horizontal',
+//         'vertical'
+//     ];
+//     const symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
+//     log_process(`使用对称类型: ${symmetry}`);
+
+//     const MAX_MARKS = size * (size - 1);
+//     const MAX_TRY = 200;
+
+//     let marks_added = 0;
+//     let try_count = 0;
+
+//     // 第一阶段：添加不等号标记，尽量达到唯一解
+//     while (try_count < MAX_TRY && marks_added < MAX_MARKS) {
+//         try_count++;
+
+//         const type = Math.random() < 0.5 ? 'v' : 'h';
+//         const row = type === 'v' ? Math.floor(Math.random() * size) : Math.floor(Math.random() * (size - 1));
+//         const col = type === 'v' ? Math.floor(Math.random() * (size - 1)) : Math.floor(Math.random() * size);
+
+//         if (!is_valid_position(row, col, size, type)) continue;
+
+//         const [sym_row, sym_col, sym_type] = get_symmetric(row, col, size, symmetry, type);
+//         if (!is_valid_position(sym_row, sym_col, size, sym_type)) continue;
+
+//         if (is_mark_exists(row, col, type, container) || is_mark_exists(sym_row, sym_col, sym_type, container)) {
+//             continue;
+//         }
+
+//         const addedMarks = [];
+//         const maininequality = calculate_inequality_from_solved(row, col, type, solvedBoard);
+//         if (!maininequality) continue;
+
+//         const mainMark = add_inequality_mark_with_value(row, col, size, container, type, maininequality);
+//         if (!mainMark) continue;
+//         addedMarks.push(mainMark);
+
+//         const symmetric_is_same = row === sym_row && col === sym_col && type === sym_type;
+//         if (!symmetric_is_same) {
+//             const syminequality = calculate_inequality_from_solved(sym_row, sym_col, sym_type, solvedBoard);
+//             if (!syminequality) {
+//                 remove_marks(addedMarks);
+//                 continue;
+//             }
+//             const symMark = add_inequality_mark_with_value(sym_row, sym_col, size, container, sym_type, syminequality);
+//             if (!symMark) {
+//                 remove_marks(addedMarks);
+//                 continue;
+//             }
+//             addedMarks.push(symMark);
+//         }
+
+//         marks_added += addedMarks.length;
+
+//         // 检查唯一性
+//         backup_original_board();
+//         const result = solve(create_solver_board(size), size, is_valid_inequality, true);
+//         restore_original_board();
+
+//         if (result.solution_count === 1) {
+//             log_process(`✓ 通过标记达到唯一解！共添加 ${marks_added} 个标记`);
+//             // 进入第三阶段：优化删除多余标记
+//             optimize_marks_and_numbers(container, size, symmetry, solvedBoard);
+//             const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
+//             show_result(`不等号数独出题完成（唯一解，耗时${elapsed}秒）`);
+//             return;
+//         }
+
+//         if (result.solution_count === 0 || result.solution_count === -2) {
+//             log_process('✗ 无解，移除最后添加的标记');
+//             remove_marks(addedMarks);
+//             marks_added -= addedMarks.length;
+//         } else {
+//             log_process(`当前解数：${result.solution_count}，继续添加标记...`);
+//         }
+//     }
+
+//     // 第二阶段：标记仍未达到唯一解，开始对称填充答案
+//     log_process('第三步：标记未能达到唯一解，开始对称填充答案...');
+    
+//     const board = Array.from({ length: size }, () => Array.from({ length: size }, () => 0));
+    
+//     // 识别不确定的格子
+//     let test_board = create_solver_board(size);
+//     backup_original_board();
+//     let res = solve(test_board, size, is_valid_inequality, true);
+//     restore_original_board();
+
+//     const ambiguous = [];
+//     if (state.logical_solution) {
+//         for (let r = 0; r < size; r++) {
+//             for (let c = 0; c < size; c++) {
+//                 const cell = state.logical_solution[r][c];
+//                 if (Array.isArray(cell)) {
+//                     ambiguous.push([r, c]);
+//                 }
+//             }
+//         }
+//     } else {
+//         for (let r = 0; r < size; r++) {
+//             for (let c = 0; c < size; c++) {
+//                 ambiguous.push([r, c]);
+//             }
+//         }
+//     }
+
+//     shuffle(ambiguous);
+
+//     const filled_pairs = [];
+//     const grid = container.querySelector('.sudoku-grid');
+
+//     // 对称填充答案
+//     for (const [r, c] of ambiguous) {
+//         const input = grid.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
+//         if (input && input.value) continue;
+
+//         const [sr, sc] = get_symmetric_position(r, c, size, symmetry);
+//         const sinput = grid.querySelector(`input[data-row="${sr}"][data-col="${sc}"]`);
+//         if ((sinput && sinput.value) && !(r === sr && c === sc)) continue;
+
+//         const v1 = solvedBoard[r][c];
+//         const v2 = solvedBoard[sr][sc];
+
+//         const old1 = input ? input.value : '';
+//         const old2 = sinput ? sinput.value : '';
+
+//         if (input) input.value = v1;
+//         if (sinput) sinput.value = v2;
+//         board[r][c] = v1;
+//         board[sr][sc] = v2;
+
+//         filled_pairs.push({ a: [r, c], b: [sr, sc], v1, v2, old1, old2 });
+
+//         // 检测唯一性
+//         test_board = create_solver_board(size);
+//         backup_original_board();
+//         res = solve(test_board, size, is_valid_inequality, true);
+//         restore_original_board();
+
+//         if (res.solution_count === 1) {
+//             log_process(`对称填充 (${r},${c})=${v1}` + (r===sr&&c===sc? '' : ` 与 (${sr},${sc})=${v2}`) + ` 后达到唯一解。`);
+//             break;
+//         } else {
+//             log_process(`对称填充 (${r},${c})=${v1}` + (r===sr&&c===sc? '' : ` 与 (${sr},${sc})=${v2}`) + ` 仍非唯一，继续填充...`);
+//         }
+//     }
+
+//     // 最终检测
+//     test_board = create_solver_board(size);
+//     backup_original_board();
+//     res = solve(test_board, size, is_valid_inequality, true);
+//     restore_original_board();
+
+//     if (res.solution_count === 1 && filled_pairs.length > 0) {
+//         log_process('第四步：已达到唯一解，开始最小化移除多余填充的答案...');
+//         optimize_filled_numbers(container, size, symmetry, board, filled_pairs, grid);
+//         log_process('第五步：开始优化删除多余的不等号标记...');
+//         optimize_marks(container, size, symmetry);
+//     } else if (res.solution_count !== 1) {
+//         log_process('尝试填充答案后仍未达到唯一解，出题可能无法完成。');
+//     }
+
+//     const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
+//     show_result(`不等号数独出题完成（耗时${elapsed}秒）`;
+
+//     // 内部函数定义...
+//     function create_solver_board(size) {
+//         return Array.from({ length: size }, () =>
+//             Array.from({ length: size }, () => [...Array(size)].map((_, n) => n + 1))
+//         );
+//     }
+
+//     function remove_marks(list) {
+//         for (const mark of list) {
+//             if (mark && mark.parentNode) {
+//                 mark.remove();
+//             }
+//         }
+//     }
+
+//     function get_mark_key(row, col, type) {
+//         return type === 'v' ? `v-${row}-${col + 1}` : `h-${row + 1}-${col}`;
+//     }
+
+//     function is_mark_exists(row, col, type, container) {
+//         const key = get_mark_key(row, col, type);
+//         return !!container.querySelector(`.vx-mark[data-key="${key}"]`);
+//     }
+
+//     function is_valid_position(row, col, size, type) {
+//         if (type === 'v') {
+//             return row >= 0 && row < size && col >= 0 && col < size - 1;
+//         }
+//         return row >= 0 && row < size - 1 && col >= 0 && col < size;
+//     }
+
+//     function get_symmetric(row, col, size, symmetry, type) {
+//         switch (symmetry) {
+//             case 'central':
+//                 return type === 'v'
+//                     ? [size - 1 - row, size - 2 - col, 'v']
+//                     : [size - 2 - row, size - 1 - col, 'h'];
+//             case 'diagonal':
+//                 return type === 'v'
+//                     ? [col, row, 'h']
+//                     : [col, row, 'v'];
+//             case 'anti-diagonal':
+//                 return type === 'v'
+//                     ? [size - 2 - col, size - 1 - row, 'h']
+//                     : [size - 1 - col, size - 2 - row, 'v'];
+//             case 'horizontal':
+//                 return type === 'v'
+//                     ? [size - 1 - row, col, 'v']
+//                     : [size - 2 - row, col, 'h'];
+//             case 'vertical':
+//                 return type === 'v'
+//                     ? [row, size - 2 - col, 'v']
+//                     : [row, size - 1 - col, 'h'];
+//             default:
+//                 return [row, col, type];
+//         }
+//     }
+
+//     function get_symmetric_position(row, col, size, symmetry) {
+//         switch (symmetry) {
+//             case 'central':
+//                 return [size - 1 - row, size - 1 - col];
+//             case 'diagonal':
+//                 return [col, row];
+//             case 'anti-diagonal':
+//                 return [size - 1 - col, size - 1 - row];
+//             case 'horizontal':
+//                 return [size - 1 - row, col];
+//             case 'vertical':
+//                 return [row, size - 1 - col];
+//             default:
+//                 return [row, col];
+//         }
+//     }
+
+//     function calculate_inequality_from_solved(row, col, type, solvedBoard) {
+//         let a, b;
+//         if (type === 'v') {
+//             a = solvedBoard[row]?.[col];
+//             b = solvedBoard[row]?.[col + 1];
+//         } else {
+//             a = solvedBoard[row]?.[col];
+//             b = solvedBoard[row + 1]?.[col];
+//         }
+//         if (!a || !b) return null;
+//         if (a === b) return null;
+//         return a < b ? '<' : '>';
+//     }
+
+//     function add_inequality_mark_with_value(row, col, size, container, type, symbol) {
+//         const grid = container.querySelector('.sudoku-grid');
+//         if (!grid) return null;
+
+//         const cell_width = grid.offsetWidth / size;
+//         const cell_height = grid.offsetHeight / size;
+
+//         let mark_x, mark_y, key, direction;
+//         if (type === 'v') {
+//             mark_x = (col + 1) * cell_width;
+//             mark_y = row * cell_height + cell_height / 2;
+//             key = get_mark_key(row, col, type);
+//             direction = 'horizontal';
+//         } else {
+//             mark_x = col * cell_width + cell_width / 2;
+//             mark_y = (row + 1) * cell_height;
+//             key = get_mark_key(row, col, type);
+//             direction = 'vertical';
+//         }
+
+//         const grid_offset_left = grid.offsetLeft;
+//         const grid_offset_top = grid.offsetTop;
+
+//         const mark = document.createElement('div');
+//         mark.className = 'vx-mark';
+//         mark.dataset.key = key;
+//         mark.style.position = 'absolute';
+//         mark.style.left = `${grid_offset_left + mark_x - 10}px`;
+//         mark.style.top = `${grid_offset_top + mark_y - 10}px`;
+//         mark.style.width = '20px';
+//         mark.style.height = '20px';
+//         mark.style.display = 'flex';
+//         mark.style.alignItems = 'center';
+//         mark.style.justifyContent = 'center';
+//         mark.style.fontSize = '24px';
+//         mark.style.color = '#333';
+//         mark.style.userSelect = 'none';
+//         mark.style.cursor = 'pointer';
+
+//         const symbolDiv = document.createElement('div');
+//         symbolDiv.textContent = symbol;
+//         if (direction === 'vertical') {
+//             symbolDiv.style.transform = 'rotate(90deg)';
+//         }
+
+//         mark.appendChild(symbolDiv);
+
+//         // 切换标记的函数：> → < → 删除
+//         const toggleMark = function() {
+//             if (symbolDiv.textContent === '>') {
+//                 symbolDiv.textContent = '<';
+//             } else {
+//                 mark.remove();
+//             }
+//         };
+
+//         // 单击切换标记状态
+//         mark.addEventListener('click', function(e) {
+//             e.stopPropagation();
+//             toggleMark();
+//         });
+
+//         // 双击直接删除
+//         mark.ondblclick = function(e) {
+//             e.stopPropagation();
+//             mark.remove();
+//         };
+
+//         container.appendChild(mark);
+//         return mark;
+//     }
+
+//     function optimize_marks(container, size, symmetry) {
+//         log_process('开始最小化删除多余标记...');
+//         const groups = group_marks_by_symmetry(container, size, symmetry);
+//         let removed = 0;
+//         for (const group of groups) {
+//             const removedMarks = temporarily_remove_marks(container, group.keys);
+            
+//             // 关键改动：创建当前棋盘状态，而不是空棋盘
+//             const currentBoard = Array.from({ length: size }, (_, r) =>
+//                 Array.from({ length: size }, (_, c) => {
+//                     const input = document.querySelector(`.sudoku-grid input[data-row="${r}"][data-col="${c}"]`);
+//                     return input && input.value ? parseInt(input.value) : 0;
+//                 })
+//             );
+            
+//             backup_original_board();
+//             // 使用当前棋盘状态进行唯一性检测
+//             const result = solve(currentBoard, size, is_valid_inequality, true);
+//             restore_original_board();
+            
+//             if (result.solution_count === 1) {
+//                 permanently_remove_marks(removedMarks);
+//                 removed += removedMarks.length;
+//                 log_process(`删除标记组 [${group.keys.join(', ')}]，仍保持唯一解`);
+//             } else {
+//                 restore_marks(container, removedMarks);
+//                 log_process(`标记组 [${group.keys.join(', ')}] 对唯一性有贡献，保留`);
+//             }
+//         }
+//         log_process(`标记优化完成，共删除 ${removed} 个多余标记`);
+//     }
+
+//     function group_marks_by_symmetry(container, size, symmetry) {
+//         const marks = Array.from(container.querySelectorAll('.vx-mark[data-key]'))
+//             .filter(m => /^v-/.test(m.dataset.key) || /^h-/.test(m.dataset.key));
+//         const groups = [];
+//         const visited = new Set();
+//         for (const mark of marks) {
+//             const key = mark.dataset.key;
+//             if (visited.has(key)) continue;
+//             const [type, rowStr, colStr] = key.split('-');
+//             let baseRow, baseCol, baseType;
+//             if (type === 'v') {
+//                 baseRow = parseInt(rowStr, 10);
+//                 baseCol = parseInt(colStr, 10) - 1;
+//                 baseType = 'v';
+//             } else {
+//                 baseRow = parseInt(rowStr, 10) - 1;
+//                 baseCol = parseInt(colStr, 10);
+//                 baseType = 'h';
+//             }
+//             const [symRow, symCol, symType] = get_symmetric(baseRow, baseCol, size, symmetry, baseType);
+//             if (!is_valid_position(symRow, symCol, size, symType)) {
+//                 groups.push({ keys: [key] });
+//                 visited.add(key);
+//                 continue;
+//             }
+//             const symKey = get_mark_key(symRow, symCol, symType);
+//             if (symKey && symKey !== key && marks.some(m => m.dataset.key === symKey) && !visited.has(symKey)) {
+//                 groups.push({ keys: [key, symKey] });
+//                 visited.add(symKey);
+//             } else {
+//                 groups.push({ keys: [key] });
+//             }
+//             visited.add(key);
+//         }
+//         return groups;
+//     }
+
+//     function temporarily_remove_marks(container, keys = []) {
+//         const removed = [];
+//         for (const key of keys.filter(Boolean)) {
+//             const mark = container.querySelector(`.vx-mark[data-key="${key}"]`);
+//             if (!mark) continue;
+//             const placeholder = document.createElement('div');
+//             placeholder.style.display = 'none';
+//             placeholder.className = 'vx-mark-placeholder';
+//             mark.parentNode.insertBefore(placeholder, mark);
+//             removed.push({ element: mark, placeholder });
+//             mark.remove();
+//         }
+//         return removed;
+//     }
+
+//     function restore_marks(container, removedMarks) {
+//         for (const info of removedMarks) {
+//             if (info.placeholder && info.placeholder.parentNode) {
+//                 info.placeholder.parentNode.replaceChild(info.element, info.placeholder);
+//             }
+//         }
+//     }
+
+//     function permanently_remove_marks(removedMarks) {
+//         for (const info of removedMarks) {
+//             if (info.placeholder && info.placeholder.parentNode) {
+//                 info.placeholder.remove();
+//             }
+//         }
+//     }
+// }
+
 export function generate_inequality_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
     const start_time = performance.now();
     clear_all_inputs();
@@ -109,7 +911,7 @@ export function generate_inequality_puzzle(size, score_lower_limit = 0, holes_co
         return;
     }
 
-    log_process('第二步：开始添加对称提示标记...');
+    log_process('第二步：开始添加对称不等号标记...');
     const SYMMETRY_TYPES = [
         'central','central','central','central','central',
         'diagonal','diagonal',
@@ -125,9 +927,9 @@ export function generate_inequality_puzzle(size, score_lower_limit = 0, holes_co
 
     let marks_added = 0;
     let try_count = 0;
-    let unique_found = false;
 
-    while (try_count < MAX_TRY && marks_added < MAX_MARKS && !unique_found) {
+    // 添加不等号标记，直到达到唯一解
+    while (try_count < MAX_TRY && marks_added < MAX_MARKS) {
         try_count++;
 
         const type = Math.random() < 0.5 ? 'v' : 'h';
@@ -168,14 +970,13 @@ export function generate_inequality_puzzle(size, score_lower_limit = 0, holes_co
 
         marks_added += addedMarks.length;
 
+        // 检查唯一性
         backup_original_board();
         const result = solve(create_solver_board(size), size, is_valid_inequality, true);
         restore_original_board();
 
         if (result.solution_count === 1) {
-            unique_found = true;
-            log_process(`✓ 找到唯一解！共添加 ${marks_added} 个标记`);
-            optimize_marks(container, size, symmetry);
+            log_process(`✓ 通过标记达到唯一解！共添加 ${marks_added} 个标记`);
             break;
         }
 
@@ -188,17 +989,24 @@ export function generate_inequality_puzzle(size, score_lower_limit = 0, holes_co
         }
     }
 
-    const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
-    show_result(`不等号数独提示生成完成（${unique_found ? '唯一解' : '未验证唯一'}，耗时${elapsed}秒）`);
-
-    if (!unique_found) {
-        if (try_count >= MAX_TRY) {
-            log_process('自动出题失败：达到最大尝试次数');
-        } else {
-            log_process('自动出题完成（可能非唯一解）');
-        }
+    // 第二步：调用 generate_puzzle 函数出题
+    log_process('第三步：调用标准出题流程生成题目...');
+    const puzzle_result = generate_puzzle(size, score_lower_limit, holes_count, solvedBoard);
+    
+    if (!puzzle_result) {
+        log_process('出题失败！');
+        return;
     }
 
+    // 第三步：优化删除多余的不等号标记
+    log_process('第四步：开始优化删除多余的不等号标记...');
+    optimize_marks(container, size, symmetry);
+
+    const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
+    show_result(`不等号数独出题完成（耗时${elapsed}秒）`);
+
+    // ==================== 内部函数定义 ====================
+    
     function create_solver_board(size) {
         return Array.from({ length: size }, () =>
             Array.from({ length: size }, () => [...Array(size)].map((_, n) => n + 1))
@@ -256,6 +1064,23 @@ export function generate_inequality_puzzle(size, score_lower_limit = 0, holes_co
         }
     }
 
+    function get_symmetric_position(row, col, size, symmetry) {
+        switch (symmetry) {
+            case 'central':
+                return [size - 1 - row, size - 1 - col];
+            case 'diagonal':
+                return [col, row];
+            case 'anti-diagonal':
+                return [size - 1 - col, size - 1 - row];
+            case 'horizontal':
+                return [size - 1 - row, col];
+            case 'vertical':
+                return [row, size - 1 - col];
+            default:
+                return [row, col];
+        }
+    }
+
     function calculate_inequality_from_solved(row, col, type, solvedBoard) {
         let a, b;
         if (type === 'v') {
@@ -266,42 +1091,28 @@ export function generate_inequality_puzzle(size, score_lower_limit = 0, holes_co
             b = solvedBoard[row + 1]?.[col];
         }
         if (!a || !b) return null;
-
-        const small = Math.min(a, b);
-        const big = Math.max(a, b);
-        if (small === big) return null;
-
-        const divisor = gcd(small, big);
-        const numerator = small / divisor;
-        const denominator = big / divisor;
-        if (numerator >= denominator) return null;
-
-        return `${numerator}/${denominator}`;
+        if (a === b) return null;
+        return a < b ? '<' : '>';
     }
 
-    function gcd(a, b) {
-        while (b !== 0) {
-            [a, b] = [b, a % b];
-        }
-        return a;
-    }
-
-    function add_inequality_mark_with_value(row, col, size, container, type, inequality) {
+    function add_inequality_mark_with_value(row, col, size, container, type, symbol) {
         const grid = container.querySelector('.sudoku-grid');
         if (!grid) return null;
 
         const cell_width = grid.offsetWidth / size;
         const cell_height = grid.offsetHeight / size;
 
-        let mark_x, mark_y, key;
+        let mark_x, mark_y, key, direction;
         if (type === 'v') {
             mark_x = (col + 1) * cell_width;
             mark_y = row * cell_height + cell_height / 2;
             key = get_mark_key(row, col, type);
+            direction = 'horizontal';
         } else {
             mark_x = col * cell_width + cell_width / 2;
             mark_y = (row + 1) * cell_height;
             key = get_mark_key(row, col, type);
+            direction = 'vertical';
         }
 
         const grid_offset_left = grid.offsetLeft;
@@ -311,58 +1122,81 @@ export function generate_inequality_puzzle(size, score_lower_limit = 0, holes_co
         mark.className = 'vx-mark';
         mark.dataset.key = key;
         mark.style.position = 'absolute';
-        mark.style.left = `${grid_offset_left + mark_x - 18}px`;
+        mark.style.left = `${grid_offset_left + mark_x - 10}px`;
         mark.style.top = `${grid_offset_top + mark_y - 10}px`;
-        mark.style.width = '36px';
+        mark.style.width = '20px';
         mark.style.height = '20px';
+        mark.style.display = 'flex';
+        mark.style.alignItems = 'center';
+        mark.style.justifyContent = 'center';
+        mark.style.fontSize = '24px';
+        mark.style.color = '#333';
+        mark.style.userSelect = 'none';
+        mark.style.cursor = 'pointer';
 
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.maxLength = 5;
-        input.value = inequality;
-        input.style.width = '38px';
-        input.style.height = '28px';
-        input.style.fontSize = '22px';
-        input.style.textAlign = 'center';
-        input.style.border = 'none';
-        input.style.background = 'transparent';
-        input.style.outline = 'none';
-        input.style.position = 'absolute';
-        input.style.left = '50%';
-        input.style.top = '50%';
-        input.style.transform = 'translate(-50%, -50%)';
-        input.style.color = '#333';
+        const symbolDiv = document.createElement('div');
+        symbolDiv.textContent = symbol;
+        if (direction === 'vertical') {
+            symbolDiv.style.transform = 'rotate(90deg)';
+        }
 
-        mark.appendChild(input);
+        mark.appendChild(symbolDiv);
+
+        // 切换标记的函数：> → < → 删除
+        const toggleMark = function() {
+            if (symbolDiv.textContent === '>') {
+                symbolDiv.textContent = '<';
+            } else {
+                mark.remove();
+            }
+        };
+
+        // 单击切换标记状态
+        mark.addEventListener('click', function(e) {
+            e.stopPropagation();
+            toggleMark();
+        });
+
+        // 双击直接删除
         mark.ondblclick = function(e) {
             e.stopPropagation();
             mark.remove();
         };
-        input.ondblclick = function(e) {
-            e.stopPropagation();
-            mark.remove();
-        };
+
         container.appendChild(mark);
         return mark;
     }
 
     function optimize_marks(container, size, symmetry) {
-        log_process('开始优化标记，删除无用条件...');
+        log_process('开始最小化删除多余标记...');
         const groups = group_marks_by_symmetry(container, size, symmetry);
         let removed = 0;
         for (const group of groups) {
             const removedMarks = temporarily_remove_marks(container, group.keys);
+            
+            // 关键改动：创建当前棋盘状态，而不是空棋盘
+            const currentBoard = Array.from({ length: size }, (_, r) =>
+                Array.from({ length: size }, (_, c) => {
+                    const input = document.querySelector(`.sudoku-grid input[data-row="${r}"][data-col="${c}"]`);
+                    return input && input.value ? parseInt(input.value) : 0;
+                })
+            );
+            
             backup_original_board();
-            const result = solve(create_solver_board(size), size, is_valid_inequality, true);
+            // 使用当前棋盘状态进行唯一性检测
+            const result = solve(currentBoard, size, is_valid_inequality, true);
             restore_original_board();
+            
             if (result.solution_count === 1) {
                 permanently_remove_marks(removedMarks);
                 removed += removedMarks.length;
+                log_process(`删除标记组 [${group.keys.join(', ')}]，仍保持唯一解`);
             } else {
                 restore_marks(container, removedMarks);
+                log_process(`标记组 [${group.keys.join(', ')}] 对唯一性有贡献，保留`);
             }
         }
-        log_process(`优化完成，共删除 ${removed} 个标记`);
+        log_process(`标记优化完成，共删除 ${removed} 个多余标记`);
     }
 
     function group_marks_by_symmetry(container, size, symmetry) {
@@ -444,6 +1278,16 @@ function add_inequality_mark(size) {
     const container = grid.parentElement;
     container.style.position = 'relative';
 
+    // 切换标记状态的辅助函数
+    function toggleMark(mark) {
+        const symbolDiv = mark.querySelector('div');
+        if (symbolDiv.textContent === '>') {
+            symbolDiv.textContent = '<';
+        } else {
+            mark.remove();
+        }
+    }
+
     grid.addEventListener('click', function handler(e) {
         const rect = grid.getBoundingClientRect();
         const x = e.clientX - rect.left;
@@ -460,15 +1304,19 @@ function add_inequality_mark(size) {
 
         const threshold = 12;
 
-        let mark_x, mark_y, key;
-        if (dist_to_v_line < dist_to_h_line && dist_to_v_line < threshold && col < size - 1) {
-            mark_x = (col + 1) * cell_width;
-            mark_y = row * cell_height + cell_height / 2;
-            key = `v-${row}-${col + 1}`;
-        } else if (dist_to_h_line <= dist_to_v_line && dist_to_h_line < threshold && row < size - 1) {
+        let mark_x, mark_y, key, direction;
+        if (dist_to_h_line < dist_to_v_line && dist_to_h_line < threshold && row < size - 1) {
+            // 横向线（上下相邻），逻辑为 vertical
             mark_x = col * cell_width + cell_width / 2;
             mark_y = (row + 1) * cell_height;
             key = `h-${row + 1}-${col}`;
+            direction = 'vertical';
+        } else if (dist_to_v_line <= dist_to_h_line && dist_to_v_line < threshold && col < size - 1) {
+            // 纵向线（左右相邻），逻辑为 horizontal
+            mark_x = (col + 1) * cell_width;
+            mark_y = row * cell_height + cell_height / 2;
+            key = `v-${row}-${col + 1}`;
+            direction = 'horizontal';
         } else {
             return;
         }
@@ -476,109 +1324,46 @@ function add_inequality_mark(size) {
         const grid_offset_left = grid.offsetLeft;
         const grid_offset_top = grid.offsetTop;
 
-        const marks = Array.from(container.querySelectorAll('.vx-mark'));
-        if (marks.some(m => m.dataset.key === key)) {
+        // 检查是否已存在标记
+        const existingMark = container.querySelector(`.vx-mark[data-key="${key}"]`);
+        if (existingMark) {
+            toggleMark(existingMark);
             return;
         }
 
+        // 创建新标记
         const mark = document.createElement('div');
         mark.className = 'vx-mark';
         mark.dataset.key = key;
         mark.style.position = 'absolute';
-        mark.style.left = `${grid_offset_left + mark_x - 18}px`;
+        mark.style.left = `${grid_offset_left + mark_x - 10}px`;
         mark.style.top = `${grid_offset_top + mark_y - 10}px`;
-        mark.style.width = '36px';
+        mark.style.width = '20px';
         mark.style.height = '20px';
+        mark.style.display = 'flex';
+        mark.style.alignItems = 'center';
+        mark.style.justifyContent = 'center';
+        mark.style.fontSize = '24px';
+        mark.style.color = '#333';
+        mark.style.userSelect = 'none';
+        mark.style.cursor = 'pointer';
 
-        // 创建只显示斜杠的输入框
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.maxLength = 3;
-        input.style.width = '38px';
-        input.style.height = '28px';
-        input.style.fontSize = '22px';
-        input.style.textAlign = 'center';
-        input.style.border = 'none';
-        input.style.background = 'transparent';
-        input.style.outline = 'none';
-        input.style.position = 'absolute';
-        input.style.left = '50%';
-        input.style.top = '50%';
-        input.style.transform = 'translate(-50%, -50%)';
-        input.style.color = '#333';
+        // 初始方向统一为 >
+        const symbol = document.createElement('div');
+        symbol.textContent = '>';
+        if (direction === 'vertical') {
+            symbol.style.transform = 'rotate(90deg)';
+        }
 
-        // 初始内容为'/'
-        input.value = '/';
+        mark.appendChild(symbol);
 
-        // 输入时自动格式化为 左/右
-        input.addEventListener('input', function() {
-            const max_value = size;
-            const regex = new RegExp(`[^1-${max_value}]`, 'g');
-            const digits = this.value.replace(regex, '');
-
-            let left = '';
-            let right = '';
-
-            if (digits.length === 1) {
-                right = digits[0];
-            } else if (digits.length >= 2) {
-                const first = parseInt(digits[0], 10);
-                const second = parseInt(digits[1], 10);
-                if (first !== second) {
-                    const [minVal, maxVal] = first < second ? [first, second] : [second, first];
-                    left = String(minVal);
-                    right = String(maxVal);
-                }
-            }
-
-            if (left && right) {
-                this.value = `${left}/${right}`;
-            } else if (left) {
-                this.value = `${left}/`;
-            } else if (right) {
-                this.value = `/${right}`;
-            } else {
-                this.value = '/';
-            }
-        });
-
-        // 保证光标不能移到/前面
-        input.addEventListener('keydown', function(e) {
-            // 禁止删除斜杠
-            if ((e.key === 'Backspace' && this.selectionStart === 1) ||
-                (e.key === 'Delete' && this.selectionStart === 0)) {
-                e.preventDefault();
-            }
-            // 输入时自动跳过斜杠
-            if (e.key.length === 1 && /[0-9]/.test(e.key)) {
-                if (this.selectionStart === 1) {
-                    this.setSelectionRange(2, 2);
-                }
-            }
-        });
-
-        // 点击时自动跳到斜杠后
-        input.addEventListener('focus', function() {
-            // 如果左侧有数字，光标放在右侧，否则放在右侧
-            if (this.value.length <= 1) {
-                this.setSelectionRange(2, 2);
-            } else {
-                this.setSelectionRange(this.value.length, this.value.length);
-            }
-        });
-
-        mark.ondblclick = function(e) {
+        // 点击标记本身也触发切换
+        mark.addEventListener('click', function(e) {
             e.stopPropagation();
-            mark.remove();
-        };
-        input.ondblclick = function(e) {
-            e.stopPropagation();
-            mark.remove();
-        };
+            toggleMark(this);
+        });
 
-        mark.appendChild(input);
         container.appendChild(mark);
-        input.focus();
     });
 }
 
@@ -601,36 +1386,26 @@ export function is_valid_inequality(board, size, row, col, num) {
     const container = document.querySelector('.sudoku-container');
     const marks = container ? container.querySelectorAll('.vx-mark') : [];
     for (const mark of marks) {
-        const input = mark.querySelector('input');
-        const value = input && input.value.trim();
-        // 只处理形如 "a/b" 的不等号
-        if (!value || !/^(\d*)\/(\d*)$/.test(value)) continue;
-        const match = value.match(/^(\d*)\/(\d*)$/);
-        const left_num = match[1] ? parseInt(match[1]) : null;
-        const right_num = match[2] ? parseInt(match[2]) : null;
-        if (!left_num && !right_num) continue;
-
         // 解析标记的唯一key
         const key = mark.dataset.key;
         if (!key) continue;
 
         // 解析标记对应的两格
-        // 竖线：v-row-col，横线：h-row-col
         let cell_a, cell_b;
         if (key.startsWith('v-')) {
-            // 竖线，row、col
+            // 竖线：左右相邻
             const [_, row_str, col_str] = key.split('-');
             const r = parseInt(row_str);
             const c = parseInt(col_str);
-            cell_a = [r, c - 1];
-            cell_b = [r, c];
+            cell_a = [r, c - 1]; // Left
+            cell_b = [r, c];     // Right
         } else if (key.startsWith('h-')) {
-            // 横线，row、col
+            // 横线：上下相邻
             const [_, row_str, col_str] = key.split('-');
             const r = parseInt(row_str);
             const c = parseInt(col_str);
-            cell_a = [r - 1, c];
-            cell_b = [r, c];
+            cell_a = [r - 1, c]; // Top
+            cell_b = [r, c];     // Bottom
         } else {
             continue;
         }
@@ -651,26 +1426,49 @@ export function is_valid_inequality(board, size, row, col, num) {
         const this_value = num;
         const other_value = board[other_cell[0]] && board[other_cell[0]][other_cell[1]];
 
-        // 只有两个格子都填了确定数字才检查合法性，否则跳过
-        // 判断：必须是数字且大于0，且不是数组（即不是候选数模式）
-        if (
-            // typeof this_value !== 'number' || this_value <= 0 || Array.isArray(this_value) ||
-            typeof other_value !== 'number' || other_value <= 0 || Array.isArray(other_value)
-        ) continue;
+        // 只有两个格子都填了确定数字才检查合法性
+        if (typeof other_value !== 'number' || other_value <= 0 || Array.isArray(other_value)) continue;
 
-        // 判断不等号关系
-        if (left_num && right_num) {
-            // 例如 1/2，A格:1，B格:2 或 A格:2，B格:1
-            if (
-                !(
-                    (this_value * right_num === other_value * left_num) ||
-                    (other_value * right_num === this_value * left_num)
-                )
-            ) {
-                return false;
+        // 检查新版标记 (div > / <)
+        const symbolDiv = mark.querySelector('div');
+        if (symbolDiv) {
+            const symbol = symbolDiv.textContent;
+            if (symbol === '>') {
+                // 意味着 cell_a > cell_b
+                if (this_cell_pos === 'A') {
+                    if (!(this_value > other_value)) return false;
+                } else {
+                    if (!(other_value > this_value)) return false;
+                }
+            } else if (symbol === '<') {
+                // 意味着 cell_a < cell_b
+                if (this_cell_pos === 'A') {
+                    if (!(this_value < other_value)) return false;
+                } else {
+                    if (!(other_value < this_value)) return false;
+                }
+            }
+            continue; // 处理完新标记后跳过旧逻辑
+        }
+
+        // 兼容旧版输入框逻辑 (a/b)
+        const input = mark.querySelector('input');
+        const value = input && input.value.trim();
+        if (value && /^(\d*)\/(\d*)$/.test(value)) {
+            const match = value.match(/^(\d*)\/(\d*)$/);
+            const left_num = match[1] ? parseInt(match[1]) : null;
+            const right_num = match[2] ? parseInt(match[2]) : null;
+            if (left_num && right_num) {
+                if (
+                    !(
+                        (this_value * right_num === other_value * left_num) ||
+                        (other_value * right_num === this_value * left_num)
+                    )
+                ) {
+                    return false;
+                }
             }
         }
     }
-
     return true;
 }
