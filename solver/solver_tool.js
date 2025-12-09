@@ -5,6 +5,7 @@ import { get_all_mark_lines, get_cells_on_line } from "../modules/multi_diagonal
 import { get_extra_region_cells } from '../modules/extra_region.js';
 import { get_renban_cells, is_valid_renban } from '../modules/renban.js';
 import { is_valid_fortress } from "../modules/fortress.js";
+import { is_valid_clone, get_clone_cells, are_regions_same_shape } from "../modules/clone.js";
 import { apply_exclusion_marks, is_valid_exclusion } from "../modules/exclusion.js";
 import { apply_quadruple_marks, is_valid_quadruple } from "../modules/quadruple.js";
 import { is_valid_add } from "../modules/add.js";
@@ -1161,6 +1162,52 @@ export function get_special_combination_regions(size, mode = 'classic') {
             });
         }
     }
+    else if (mode === 'clone') {
+        const clone_regions = get_clone_cells();
+        if (Array.isArray(clone_regions) && clone_regions.length > 0) {
+            // 遍历所有克隆区域对
+            for (let i = 0; i < clone_regions.length; i++) {
+                for (let j = i + 1; j < clone_regions.length; j++) {
+                    const region_i = clone_regions[i];
+                    const region_j = clone_regions[j];
+
+                    // // 必须形状一致（格子数相同）
+                    // if (region_i.length !== region_j.length) {
+                    //     continue;
+                    // }
+
+                    // 必须形状一致（相对坐标相同）
+                    if (!are_regions_same_shape(region_i, region_j)) {
+                        continue;
+                    }
+
+                    // 将两个区域按坐标排序，建立对应关系
+                    const sorted_i = [...region_i].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+                    const sorted_j = [...region_j].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+
+                    // 为每对对应的格子创建特定组合区域
+                    for (let k = 0; k < sorted_i.length; k++) {
+                        const cell_i = sorted_i[k];
+                        const cell_j = sorted_j[k];
+
+                        // 创建包含对应位置两个格子的特定组合
+                        const cells = [cell_i, cell_j];
+                        const index = cells
+                            .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                            .join('-');
+
+                        regions.push({
+                            type: '特定组合',
+                            index,
+                            cells: cells,
+                            // clue_nums: Array.from({ length: size }, (_, n) => n + 1)
+                            clue_nums: Array.from({length: size * cells.length}, (_, n) => (n % size) + 1)
+                        });
+                    }
+                }
+            }
+        }
+    }
     else if (mode === 'quadruple') {
         const container = document.querySelector('.sudoku-container');
         if (container) {
@@ -1860,6 +1907,8 @@ export function isValid(board, size, row, col, num) {
         return is_valid_renban(board, size, row, col, num);
     } else if (state.current_mode === 'fortress') {
         return is_valid_fortress(board, size, row, col, num);
+    } else if (state.current_mode === 'clone') {
+        return is_valid_clone(board, size, row, col, num);
     } else if (state.current_mode === 'inequality') {
         return is_valid_inequality(board, size, row, col, num);
     } else if (state.current_mode === 'odd') {

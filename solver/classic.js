@@ -14,6 +14,7 @@ import { create_isomorphic_sudoku } from '../modules/isomorphic.js';
 import { create_extra_region_sudoku } from '../modules/extra_region.js';
 import { create_renban_sudoku } from '../modules/renban.js';
 import { create_fortress_sudoku } from '../modules/fortress.js';
+import { create_clone_sudoku } from '../modules/clone.js';
 import { create_anti_king_sudoku } from '../modules/anti_king.js';
 import { create_anti_knight_sudoku } from '../modules/anti_knight.js';
 import { create_anti_elephant_sudoku } from '../modules/anti_elephant.js';
@@ -273,6 +274,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('额外区域', () => create_extra_region_sudoku(4));
         add_Extra_Button('灰格连续', () => create_renban_sudoku(4));
         add_Extra_Button('堡垒', () => create_fortress_sudoku(4));
+        add_Extra_Button('克隆', () => create_clone_sudoku(4));
         add_Extra_Button('无马', () => create_anti_knight_sudoku(4));
         add_Extra_Button('无象', () => create_anti_elephant_sudoku(4));
         add_Extra_Button('排除', () => create_exclusion_sudoku(4));
@@ -301,6 +303,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('额外区域', () => create_extra_region_sudoku(6));
         add_Extra_Button('灰格连续', () => create_renban_sudoku(6));
         add_Extra_Button('堡垒', () => create_fortress_sudoku(6));
+        add_Extra_Button('克隆', () => create_clone_sudoku(6));
         add_Extra_Button('无缘', () => create_anti_king_sudoku(6));
         add_Extra_Button('无马', () => create_anti_knight_sudoku(6));
         add_Extra_Button('无象', () => create_anti_elephant_sudoku(6));
@@ -333,6 +336,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('额外区域', () => create_extra_region_sudoku(9));
         add_Extra_Button('灰格连续', () => create_renban_sudoku(9));
         add_Extra_Button('堡垒', () => create_fortress_sudoku(9));
+        add_Extra_Button('克隆', () => create_clone_sudoku(9));
         add_Extra_Button('无缘', () => create_anti_king_sudoku(9));
         add_Extra_Button('无马', () => create_anti_knight_sudoku(9));
         add_Extra_Button('无象', () => create_anti_elephant_sudoku(9));

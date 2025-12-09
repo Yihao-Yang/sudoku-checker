@@ -45,6 +45,7 @@ export function set_current_mode(mode) {
         'extra_region',
         'renban',
         'fortress',
+        'clone',
         'exclusion',
         'quadruple',
         'add',
