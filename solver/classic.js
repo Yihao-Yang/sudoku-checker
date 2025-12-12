@@ -47,7 +47,7 @@ import {
     change_candidates_mode,
     show_logical_solution
 } from './core.js';
-import { solve, isValid, eliminate_candidates } from './solver_tool.js';
+import { solve, isValid, eliminate_candidates, invalidate_regions_cache } from './solver_tool.js';
 
 // 最关键的创建数独函数
 export function create_sudoku_grid(size) {
@@ -62,6 +62,7 @@ export function create_sudoku_grid(size) {
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
+    invalidate_regions_cache();
 
     // // 移除旧的事件监听器
     // const toggleBtn = document.getElementById('toggleCandidatesMode');
@@ -391,9 +392,9 @@ export function create_technique_panel() {
             name: '排除',
             items: [
                 { id: 'Box_Elimination', name: '宫排除', default: true },
-                { id: 'Box_One_Cut', name: '一刀流宫排除', default: true },
+                // { id: 'Box_One_Cut', name: '一刀流宫排除', default: true },
                 { id: 'Row_Col_Elimination', name: '行列排除', default: true },
-                { id: 'Variant_Elimination', name: '变型排除', default: false },
+                { id: 'Extra_Region_Elimination', name: '额外区域排除', default: false },
                 // { id: 'Special_Combination_Region_Elimination', name: '特定组合排除', default: false },
                 // { id: 'Multi_Special_Combination_Region_Elimination', name: '多特定组合排除', default: false }
             ]
@@ -403,11 +404,14 @@ export function create_technique_panel() {
             name: '区块',
         items: [
             { id: 'Box_Block', name: '宫区块', default: true },
-            { id: 'Box_Block_One_Cut', name: '一刀流宫区块', default: true },
+            { id: 'Variant_Box_Block', name: '变型宫区块', default: false },
+            // { id: 'Box_Block_One_Cut', name: '一刀流宫区块', default: true },
             { id: 'Box_Pair_Block', name: '宫组合区块', default: true },
-            { id: 'Variant_Pair_Block', name: '变型组合区块', default: false },
+            { id: 'Extra_Region_Pair_Block', name: '额外区域组合区块', default: false },
             { id: 'Row_Col_Block', name: '行列区块', default: true },
-            { id: 'Variant_Block', name: '变型区块', default: false },
+            { id: 'Variant_Row_Col_Block', name: '变型行列区块', default: false },
+            { id: 'Extra_Region_Block', name: '额外区域区块', default: false },
+            { id: 'Variant_Extra_Region_Block', name: '变型额外区域区块', default: false },
             // { id: 'Special_Combination_Region_Block', name: '特定组合区块', default: false }, // 新增特定组合区块
             // { id: 'Multi_Special_Combination_Region_Block', name: '多特定组合区块', default: false } // 新增多特定组合区块
         ]
@@ -465,12 +469,12 @@ export function create_technique_panel() {
                 // 隐性数对
                 { id: 'Box_Hidden_Pair', name: '宫隐性数对', default: true },
                 { id: 'Row_Col_Hidden_Pair', name: '行列隐性数对', default: true },
-                { id: 'Variant_Hidden_Pair', name: '变型隐性数对', default: state.techniqueSettings?.Variant_Elimination ?? false },
+                { id: 'Extra_Region_Hidden_Pair', name: '额外区域隐性数对', default: state.techniqueSettings?.Extra_Region_Elimination ?? false },
                 
                 // 显性数对
                 { id: 'Box_Naked_Pair', name: '宫显性数对', default: true },
                 { id: 'Row_Col_Naked_Pair', name: '行列显性数对', default: true },
-                { id: 'Variant_Naked_Pair', name: '变型显性数对', default: state.techniqueSettings?.Variant_Elimination ?? false },
+                { id: 'Extra_Region_Naked_Pair', name: '额外区域显性数对', default: state.techniqueSettings?.Extra_Region_Elimination ?? false },
             ]
         },
         {
@@ -480,13 +484,13 @@ export function create_technique_panel() {
                 // 隐性数组
                 { id: 'Box_Hidden_Triple', name: '宫隐性三数组', default: true },
                 { id: 'Row_Col_Hidden_Triple', name: '行列隐性三数组', default: true },
-                { id: 'Variant_Hidden_Triple', name: '变型隐性三数组', default: state.techniqueSettings?.Variant_Elimination ?? false },
+                { id: 'Extra_Region_Hidden_Triple', name: '额外区域隐性三数组', default: state.techniqueSettings?.Extra_Region_Elimination ?? false },
                 // 显性数组
                 { id: 'Box_Naked_Triple', name: '宫显性三数组', default: true },
                 { id: 'Row_Col_Naked_Triple', name: '行列显性三数组', default: true },
-                { id: 'Variant_Naked_Triple', name: '变型显性三数组', default: state.techniqueSettings?.Variant_Elimination ?? false },
+                { id: 'Extra_Region_Naked_Triple', name: '额外区域显性三数组', default: state.techniqueSettings?.Extra_Region_Elimination ?? false },
                 // 合并所有四数组为一个开关
-                { id: 'All_Quad', name: '四数组(显性+隐性)(可能有bug，慎用)', default: false },
+                { id: 'All_Quad', name: '四数组(显性+隐性)', default: false },
             ]
         },
         {
@@ -558,11 +562,19 @@ export function create_technique_panel() {
                 subGroupCheckbox.id = `tech_${item.id}`;
 
                 const updateSubGroupCheckbox = () => {
-                        // const allChecked = item.items.every(subItem => state.techniqueSettings[subItem.id]);
-                        // subGroupCheckbox.checked = allChecked;
                     const allChecked = item.items.every(subItem => state.techniqueSettings[subItem.id]);
-                    subGroupCheckbox.checked = allChecked;
-                    // 当子分组状态发生变化时，向上传递给父级以更新父级复选框（支持多层嵌套）
+                    const noneChecked = item.items.every(subItem => !state.techniqueSettings[subItem.id]);
+                    
+                    if (allChecked) {
+                        subGroupCheckbox.checked = true;
+                        subGroupCheckbox.indeterminate = false;
+                    } else if (noneChecked) {
+                        subGroupCheckbox.checked = false;
+                        subGroupCheckbox.indeterminate = false;
+                    } else {
+                        subGroupCheckbox.checked = false;
+                        subGroupCheckbox.indeterminate = true;
+                    }
                     if (updateParentCheckbox) updateParentCheckbox();
                 };
 
@@ -645,14 +657,40 @@ export function create_technique_panel() {
         groupCheckbox.style.marginRight = '10px';
 
         const updateGroupCheckbox = () => {
-            const allChecked = group.items.every(item => {
-                if (item.items) {
-                    return item.items.every(subItem => state.techniqueSettings[subItem.id]);
-                } else {
-                    return state.techniqueSettings[item.id];
-                }
-            });
-            groupCheckbox.checked = allChecked;
+            // 递归检查所有子项的状态
+            const checkAllItems = (items) => {
+                return items.every(item => {
+                    if (item.items) {
+                        return checkAllItems(item.items);
+                    } else {
+                        return state.techniqueSettings[item.id];
+                    }
+                });
+            };
+            
+            const checkNoneItems = (items) => {
+                return items.every(item => {
+                    if (item.items) {
+                        return checkNoneItems(item.items);
+                    } else {
+                        return !state.techniqueSettings[item.id];
+                    }
+                });
+            };
+            
+            const allChecked = checkAllItems(group.items);
+            const noneChecked = checkNoneItems(group.items);
+            
+            if (allChecked) {
+                groupCheckbox.checked = true;
+                groupCheckbox.indeterminate = false;
+            } else if (noneChecked) {
+                groupCheckbox.checked = false;
+                groupCheckbox.indeterminate = false;
+            } else {
+                groupCheckbox.checked = false;
+                groupCheckbox.indeterminate = true;
+            }
         };
 
         updateGroupCheckbox();
@@ -677,9 +715,13 @@ export function create_technique_panel() {
             group.items.forEach(item => {
                 if (item.items) {
                     const subGroupCheckbox = document.getElementById(`tech_${item.id}`);
-                    if (subGroupCheckbox) subGroupCheckbox.checked = isChecked;
+                    if (subGroupCheckbox) {
+                        subGroupCheckbox.checked = isChecked;
+                        subGroupCheckbox.indeterminate = false;
+                    }
                 }
             });
+            updateGroupCheckbox();
         });
 
         const groupTitle = document.createElement('span');
@@ -733,6 +775,7 @@ export function create_technique_panel() {
     //                 return state.techniqueSettings[item.id];
     //             }
     //         });
+    
     //         groupCheckbox.checked = allChecked;
     //     };
     
@@ -891,6 +934,7 @@ export function check_uniqueness() {
     const start_time = performance.now();
     // 清空之前的日志
     log_process('', true);
+    invalidate_regions_cache();
     state.candidate_elimination_score = {};
     state.total_score_sum = 0;
 

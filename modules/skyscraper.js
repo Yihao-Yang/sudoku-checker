@@ -2,7 +2,7 @@
 import { state, set_current_mode } from '../solver/state.js';
 import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, add_Extra_Button, clear_inner_numbers, clear_outer_clues } from '../solver/core.js';
 import { create_technique_panel } from '../solver/classic.js';
-import { get_all_regions, isValid, solve } from '../solver/solver_tool.js';
+import { get_all_regions, isValid, solve, invalidate_regions_cache } from '../solver/solver_tool.js';
 import { generate_solution, shuffle } from '../solver/generate.js';
 
 // 新数独主入口
@@ -12,6 +12,7 @@ export function create_skyscraper_sudoku(size) {
 
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
+    invalidate_regions_cache();
 
     // 技巧设置（可根据需要调整）
     state.techniqueSettings = {
@@ -137,6 +138,7 @@ export function generate_skyscraper_puzzle_old(size, score_lower_limit = 0, hole
     if (!container) return;
     const grid = container.querySelector('.sudoku-grid');
     if (!grid) return;
+    invalidate_regions_cache();
 
     // 选取对称类型
     const SYMMETRY_TYPES = [
@@ -294,6 +296,7 @@ export function generate_skyscraper_puzzle_new(size, score_lower_limit = 0, hole
     if (!container) return;
     const grid = container.querySelector('.sudoku-grid');
     if (!grid) return;
+    invalidate_regions_cache();
 
     const interior_size = size - 2;
 

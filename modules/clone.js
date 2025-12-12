@@ -2,7 +2,7 @@ import { state, set_current_mode } from '../solver/state.js';
 import { bold_border, create_base_grid, handle_key_navigation, add_Extra_Button, log_process, create_base_cell } from '../solver/core.js';
 import { create_technique_panel } from '../solver/classic.js';
 import { generate_puzzle } from '../solver/generate.js';
-import { get_all_regions } from '../solver/solver_tool.js';
+import { get_all_regions, invalidate_regions_cache } from '../solver/solver_tool.js';
 
 
 // 克隆数独主入口
@@ -11,6 +11,7 @@ export function create_clone_sudoku(size) {
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
+    invalidate_regions_cache();
 
         // 修改技巧开关
     state.techniqueSettings = {
@@ -75,7 +76,7 @@ export function create_clone_sudoku(size) {
     extra_buttons.innerHTML = '';
     add_Extra_Button('添加标记', toggle_mark_mode, '#2196F3');
     add_Extra_Button('清除标记', () => clear_clone_marks(state.current_grid_size), '#2196F3');
-    add_Extra_Button('自动出题', () => generate_clone_puzzle(size), '#2196F3');
+    // add_Extra_Button('自动出题', () => generate_clone_puzzle(size), '#2196F3');
 
     for (let i = 0; i < size * size; i++) {
         const row = Math.floor(i / size);
@@ -133,6 +134,7 @@ export function create_clone_sudoku(size) {
 // 生成克隆数独题目
 export function generate_clone_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
     clear_clone_marks(size);
+    invalidate_regions_cache();
 
     // 支持的对称类型
     const SYMMETRY_TYPES = [

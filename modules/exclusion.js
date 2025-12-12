@@ -1,6 +1,6 @@
 import { state, set_current_mode } from '../solver/state.js';
 import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, clear_all_inputs, clear_marks } from '../solver/core.js';
-import { solve, isValid, get_all_regions } from '../solver/solver_tool.js';
+import { solve, isValid, get_all_regions, invalidate_regions_cache } from '../solver/solver_tool.js';
 import { create_technique_panel } from '../solver/classic.js';
 import { generate_puzzle } from '../solver/generate.js';
 
@@ -10,6 +10,7 @@ export function create_exclusion_sudoku(size) {
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
+    invalidate_regions_cache();
 
     // 技巧设置（可根据具体规则调整）
     state.techniqueSettings = {
@@ -91,6 +92,7 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
     const container = document.querySelector('.sudoku-container');
     if (!container) return;
     Array.from(container.querySelectorAll('.vx-mark')).forEach(mark => mark.remove());
+    invalidate_regions_cache();
 
     // 生成圆圈数量
     let min_marks = 2, max_marks = 4;

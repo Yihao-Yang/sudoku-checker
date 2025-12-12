@@ -1,7 +1,7 @@
 import { state, set_current_mode } from '../solver/state.js';
 import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell } from '../solver/core.js';
 import { create_technique_panel } from '../solver/classic.js';
-import { get_all_regions } from '../solver/solver_tool.js';
+import { get_all_regions, invalidate_regions_cache } from '../solver/solver_tool.js';
 
 // Anti-Elephant Sudoku entry point
 export function create_anti_elephant_sudoku(size) {
@@ -9,6 +9,7 @@ export function create_anti_elephant_sudoku(size) {
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
+    invalidate_regions_cache();
 
     state.techniqueSettings = {
         Box_Elimination: true,

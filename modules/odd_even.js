@@ -1,7 +1,7 @@
 import { state, set_current_mode } from '../solver/state.js';
 import { create_base_grid, create_base_cell, add_Extra_Button, log_process, backup_original_board, restore_original_board, handle_key_navigation } from '../solver/core.js';
 import { generate_puzzle } from '../solver/generate.js';
-import { get_all_regions, solve } from '../solver/solver_tool.js';
+import { get_all_regions, solve, invalidate_regions_cache } from '../solver/solver_tool.js';
 import { create_technique_panel } from '../solver/classic.js';
 
 // 奇偶数独主入口
@@ -10,6 +10,7 @@ export function create_odd_even_sudoku(size) {
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
+    invalidate_regions_cache();
 
     // 修改技巧开关
         state.techniqueSettings = {
@@ -87,6 +88,7 @@ export function generate_odd_even_puzzle(size, score_lower_limit = 0, holes_coun
     const grid = document.querySelector('.sudoku-grid');
     if (!grid) return;
     Array.from(grid.querySelectorAll('.odd_even-mark')).forEach(mark => mark.remove());
+    invalidate_regions_cache();
 
     let odd_even_marks_count = undefined; // 可选参数：奇偶标记数量
     // 按宫大小调整奇偶标记数量

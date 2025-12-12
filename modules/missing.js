@@ -12,7 +12,7 @@ import {
     backup_original_board
 } from '../solver/core.js';
 import { state, set_current_mode } from '../solver/state.js';
-import { solve } from '../solver/solver_tool.js';
+import { solve, invalidate_regions_cache } from '../solver/solver_tool.js';
 import { create_technique_panel } from '../solver/classic.js';
 import { shuffle,get_symmetric_positions } from '../solver/generate.js';
 
@@ -36,6 +36,7 @@ export function create_missing_sudoku(size) {
     set_current_mode('missing');
     // state.is_missing_mode = true;
     clear_result();
+    invalidate_regions_cache();
     missing_cells = [];
 
     // 清空网格显示区域
@@ -215,6 +216,7 @@ export function generate_missing_puzzle(size) {
     state.box_missing_subsets = {};
     state.row_missing_subsets = {};
     state.col_missing_subsets = {};
+    invalidate_regions_cache();
 
     let puzzle, solution, missingCells;
 

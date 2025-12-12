@@ -14,7 +14,7 @@ import {
 import { state, set_current_mode } from '../solver/state.js';
 import { create_technique_panel } from '../solver/classic.js';
 import { generate_solved_board_brute_force, generate_puzzle } from '../solver/generate.js';
-import { get_all_regions } from '../solver/solver_tool.js';
+import { get_all_regions, invalidate_regions_cache } from '../solver/solver_tool.js';
 
 const MARK_WIDTH = 32;
 const MARK_HEIGHT = 26;
@@ -28,6 +28,7 @@ export function create_kropki_sudoku(size) {
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
+    invalidate_regions_cache();
 
     state.techniqueSettings = {
         Box_Elimination: true,
@@ -105,7 +106,7 @@ export function create_kropki_sudoku(size) {
     container.appendChild(grid);
     gridDisplay.appendChild(container);
 
-    enable_kropki_mark_mode(size);
+    // enable_kropki_mark_mode(size);
 
     const extraButtons = document.getElementById('extraButtons');
     if (extraButtons) {
@@ -171,6 +172,7 @@ export function generate_kropki_puzzle(size, score_lower_limit = 0, holes_count 
     log_process('', true);
     reset_kropki_highlights(container);
     clear_marks();
+    invalidate_regions_cache();
 
     log_process('第一步：生成黑白点数独终盘...');
     const solvedBoard = generate_solved_board_brute_force(effectiveSize);
@@ -411,10 +413,10 @@ function create_or_update_kropki_mark(container, size, row1, col1, row2, col2, t
         apply_kropki_dot_style(dot, normalized_type);
         mark.appendChild(dot);
 
-        mark.addEventListener('dblclick', (evt) => {
-            evt.stopPropagation();
-            mark.remove();
-        });
+        // mark.addEventListener('dblclick', (evt) => {
+        //     evt.stopPropagation();
+        //     mark.remove();
+        // });
 
         container.appendChild(mark);
     } else {

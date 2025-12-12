@@ -1,7 +1,7 @@
 import { state, set_current_mode } from '../solver/state.js';
 import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, add_Extra_Button, clear_all_inputs, clear_marks } from '../solver/core.js';
 import { create_technique_panel } from '../solver/classic.js';
-import { get_all_regions, solve } from '../solver/solver_tool.js';
+import { get_all_regions, solve, invalidate_regions_cache } from '../solver/solver_tool.js';
 import { generate_puzzle, generate_solution, generate_solution_old, generate_solved_board_brute_force } from '../solver/generate.js';
 
 // 新数独主入口
@@ -10,6 +10,7 @@ export function create_add_sudoku(size) {
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
+    invalidate_regions_cache();
 
     // 技巧设置（可根据需要调整）
     state.techniqueSettings = {
@@ -451,6 +452,7 @@ export function generate_add_puzzle(size, score_lower_limit = 0, holes_count = u
     // 记录开始时间
     const start_time = performance.now();
     clear_all_inputs();
+    invalidate_regions_cache();
     log_process('', true);
     // 清除已有圆圈
     const container = document.querySelector('.sudoku-container');

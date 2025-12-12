@@ -1,6 +1,6 @@
 import { state, set_current_mode } from '../solver/state.js';
 import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, show_logical_solution } from '../solver/core.js';
-import { eliminate_candidates, getRowLetter, isValid } from '../solver/solver_tool.js';
+import { eliminate_candidates, getRowLetter, isValid, invalidate_regions_cache } from '../solver/solver_tool.js';
 import { solve_By_Elimination } from '../solver/Technique.js';
 
 
@@ -11,6 +11,7 @@ export function create_candidates_sudoku(size) {
     // state.is_vx_mode = false;
     // state.is_candidates_mode = true; // 强制为候选数模式
     const { container, grid } = create_base_grid(size, false);
+    invalidate_regions_cache();
     
 
     // 存储所有输入框的引用

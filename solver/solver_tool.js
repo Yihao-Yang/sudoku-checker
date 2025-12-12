@@ -26,6 +26,50 @@ import { is_valid_X_sums, apply_X_sums_marks } from "../modules/X_sums.js";
 import { is_valid_skyscraper } from "../modules/skyscraper.js";
 import { is_valid_sandwich } from "../modules/sandwich.js";
 
+export function eliminate_candidates_classic(board, size, i, j, num, calc_score = true) {
+    const eliminations = [];
+    // 根据当前模式获取所有区域
+    const mode = (typeof state !== "undefined" && state.current_mode) ? state.current_mode : "classic";
+
+    // 满格区域
+    const regions = get_all_regions(size, mode);
+    const related_regions = regions.filter(region =>
+        region.cells.some(([r, c]) => r === i && c === j)
+    );
+
+    for (const region of related_regions) {
+        // 只有区域名字是宫、行、列才会进行删数
+        if (region.type !== '宫' && region.type !== '行' && region.type !== '列') {
+            continue;
+        }
+        
+        for (const [r, c] of region.cells) {
+            if (Array.isArray(board[r][c])) {
+                // 新增：无论是否真的被消除，都加分
+                if (calc_score) {
+                    const key = `${r},${c},${num}`;
+                    if (!state.candidate_elimination_score[key]) {
+                        state.candidate_elimination_score[key] = 0;
+                    }
+                    state.candidate_elimination_score[key] += 1;
+                    // log_process(`候选数消除分值: [${getRowLetter(r+1)}${c+1}] 候选${num} -> 分值=${state.candidate_elimination_score[key]}`);
+                }
+
+                // 只有真的被消除才记录eliminations
+                if (Array.isArray(board[r][c])) {
+                    const before = board[r][c].slice();
+                    board[r][c] = board[r][c].filter(candidate_num => candidate_num !== num);
+                    const eliminated = before.filter(candidate_num => candidate_num === num);
+                    if (eliminated.length > 0) {
+                        eliminations.push({ row: r, col: c, eliminated });
+                    }
+                }
+            }
+        }
+    }
+    return eliminations;
+}
+
 /**
  * 从所有相关区域移除指定数字的候选数
  */
@@ -593,8 +637,28 @@ export function eliminate_candidates(board, size, i, j, num, calc_score = true) 
     return eliminations;
 }
 
+// 在文件顶部添加缓存变量
+let _regions_cache = null;
+let _regions_cache_size = 0;
+let _regions_cache_mode = '';
+// 在文件顶部添加特定组合区域的缓存变量（放在 _regions_cache 附近）
+let _special_regions_cache = null;
+let _special_regions_cache_size = 0;
+let _special_regions_cache_mode = '';
+
+// 添加一个使缓存失效的函数（当标记改变时调用）
+export function invalidate_regions_cache() {
+    _regions_cache = null;
+    _special_regions_cache = null;
+}
+
 // 获取所有区域（宫、行、列、对角线、额外区域）格子坐标
 export function get_all_regions(size, mode = 'classic') {
+    // 检查缓存是否有效
+    if (_regions_cache && _regions_cache_size === size && _regions_cache_mode === mode) {
+        return _regions_cache;
+    }
+
     const regions = [];
     const box_size = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
 
@@ -1112,200 +1176,1143 @@ export function get_all_regions(size, mode = 'classic') {
             }
         }
     }
+
+    // 计算完成后缓存结果
+    _regions_cache = regions;
+    _regions_cache_size = size;
+    _regions_cache_mode = mode;
     return regions;
 }
 
 // 获取所有特定组合（如四格提示区域）
+// export function get_special_combination_regions(size, mode = 'classic') {
+//     const regions = [];
+//     if (mode === 'fortress') {
+//         const fortressCells = Array.from(state.fortress_cells).map(key => key.split(',').map(Number));
+//         const directions = [
+//             [-1, 0], // 上
+//             [1, 0],  // 下
+//             [0, -1], // 左
+//             [0, 1],  // 右
+//         ];
+
+//         for (const [row, col] of fortressCells) {
+//             const region = [[row, col]]; // 包含灰格本身
+
+//             for (const [dr, dc] of directions) {
+//                 const neighborRow = row + dr;
+//                 const neighborCol = col + dc;
+
+//                 // 检查是否在边界内且是白格
+//                 if (
+//                     neighborRow >= 0 && neighborRow < size &&
+//                     neighborCol >= 0 && neighborCol < size &&
+//                     !state.fortress_cells.has(`${neighborRow},${neighborCol}`)
+//                 ) {
+//                     region.push([neighborRow, neighborCol]);
+//                 }
+//             }
+//             // clue_nums 包含与格子数量相同的 1-size 数字集合
+//             const clue_nums = [];
+//             for (let i = 0; i < region.length; i++) {
+//                 clue_nums.push(...Array.from({ length: size }, (_, idx) => idx + 1));
+//             }
+//             // 生成区域的 index
+//             const index = region
+//                 .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+//                 .join('-');
+
+//             // 将灰格及其邻居作为一个特定组合区域
+//             regions.push({
+//                 type: '特定组合',
+//                 index,
+//                 cells: region,
+//                 clue_nums, // 可根据需求填充线索数字
+//             });
+//         }
+//     }
+//     else if (mode === 'clone') {
+//         const clone_regions = get_clone_cells();
+//         if (Array.isArray(clone_regions) && clone_regions.length > 0) {
+//             // 遍历所有克隆区域对
+//             for (let i = 0; i < clone_regions.length; i++) {
+//                 for (let j = i + 1; j < clone_regions.length; j++) {
+//                     const region_i = clone_regions[i];
+//                     const region_j = clone_regions[j];
+
+//                     // // 必须形状一致（格子数相同）
+//                     // if (region_i.length !== region_j.length) {
+//                     //     continue;
+//                     // }
+
+//                     // 必须形状一致（相对坐标相同）
+//                     if (!are_regions_same_shape(region_i, region_j)) {
+//                         continue;
+//                     }
+
+//                     // 将两个区域按坐标排序，建立对应关系
+//                     const sorted_i = [...region_i].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+//                     const sorted_j = [...region_j].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+
+//                     // 为每对对应的格子创建特定组合区域
+//                     for (let k = 0; k < sorted_i.length; k++) {
+//                         const cell_i = sorted_i[k];
+//                         const cell_j = sorted_j[k];
+
+//                         // 创建包含对应位置两个格子的特定组合
+//                         const cells = [cell_i, cell_j];
+//                         const index = cells
+//                             .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+//                             .join('-');
+
+//                         regions.push({
+//                             type: '特定组合',
+//                             index,
+//                             cells: cells,
+//                             // clue_nums: Array.from({ length: size }, (_, n) => n + 1)
+//                             clue_nums: Array.from({length: size * cells.length}, (_, n) => (n % size) + 1)
+//                         });
+//                     }
+//                 }
+//             }
+//         }
+//     }
+//     else if (mode === 'quadruple') {
+//         const container = document.querySelector('.sudoku-container');
+//         if (container) {
+//             const marks = container.querySelectorAll('.vx-mark');
+//             let region_index = 1;
+//             for (const mark of marks) {
+//                 const left = parseInt(mark.style.left);
+//                 const top = parseInt(mark.style.top);
+
+//                 const grid = container.querySelector('.sudoku-grid');
+//                 const grid_offset_left = grid.offsetLeft;
+//                 const grid_offset_top = grid.offsetTop;
+//                 const cell_width = grid.offsetWidth / size;
+//                 const cell_height = grid.offsetHeight / size;
+
+//                 const col_mark = Math.round((left - grid_offset_left + 15) / cell_width);
+//                 const row_mark = Math.round((top - grid_offset_top + 15) / cell_height);
+
+//                 // 四个相邻格子的坐标
+//                 const positions = [
+//                     [row_mark - 1, col_mark - 1],
+//                     [row_mark - 1, col_mark],
+//                     [row_mark, col_mark - 1],
+//                     [row_mark, col_mark]
+//                 ];
+
+//                 // 只加入有效区域
+//                 const valid_positions = positions.filter(([r, c]) =>
+//                     r >= 0 && r < size && c >= 0 && c < size
+//                 );
+//                 if (valid_positions.length === 4) {
+//                     // 获取圆圈内的数字
+//                     const input = mark.querySelector('input');
+//                     let nums = [];
+//                     if (input && input.value) {
+//                         nums = input.value.split('').map(Number).filter(n => !isNaN(n));
+//                     }
+//                     // 判断是否有重复
+//                     const has_duplicate = nums.length !== new Set(nums).size;
+//                     // 生成区域的 index
+//                     const index = valid_positions
+//                         .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+//                         .join('-');
+//                     if (has_duplicate) {
+//                         regions.push({
+//                             type: '特定组合',
+//                             index,
+//                             cells: valid_positions,
+//                             clue_nums: nums
+//                         });
+//                     }
+//                 }
+//             }
+//         }
+//     } else if (mode === 'add') {
+//         const container = document.querySelector('.sudoku-container');
+//         if (!container) return regions;
+//         const marks = container.querySelectorAll('.vx-mark');
+//         let region_index = 1;
+//         for (const mark of marks) {
+//             const input = mark.querySelector('input');
+//             const value = input && input.value.trim();
+//             // 只处理有效的和数字
+//             const sum = parseInt(value, 10);
+//             if (isNaN(sum) || sum <= 0) continue;
+
+//             // 解析标记的唯一key（v-/h- 表示两格；无 key 表示交点四格）
+//             const key = mark.dataset.key;
+
+//             // ----- 两格提示（竖/横线） -----
+//             if (key && (key.startsWith('v-') || key.startsWith('h-'))) {
+//                 let cell_a, cell_b;
+//                 if (key.startsWith('v-')) {
+//                     const [_, row_str, col_str] = key.split('-');
+//                     const r = parseInt(row_str, 10);
+//                     const c = parseInt(col_str, 10);
+//                     cell_a = [r, c - 1];
+//                     cell_b = [r, c];
+//                 } else {
+//                     const [_, row_str, col_str] = key.split('-');
+//                     const r = parseInt(row_str, 10);
+//                     const c = parseInt(col_str, 10);
+//                     cell_a = [r - 1, c];
+//                     cell_b = [r, c];
+//                 }
+
+//                 if (
+//                     !cell_a || !cell_b ||
+//                     cell_a.some(n => !Number.isInteger(n)) ||
+//                     cell_b.some(n => !Number.isInteger(n)) ||
+//                     cell_a[0] < 0 || cell_a[0] >= size || cell_a[1] < 0 || cell_a[1] >= size ||
+//                     cell_b[0] < 0 || cell_b[0] >= size || cell_b[1] < 0 || cell_b[1] >= size
+//                 ) continue;
+
+//                 const clue_nums_set = new Set();
+//                 for (let a = 1; a <= size; a++) {
+//                     for (let b = 1; b <= size; b++) {
+//                         if (a + b === sum) {
+//                             clue_nums_set.add(a);
+//                             clue_nums_set.add(b);
+//                         }
+//                     }
+//                 }
+//                 const clue_nums = Array.from(clue_nums_set).sort((x, y) => x - y);
+
+//                 // 生成区域的 index
+//                 const index = [cell_a, cell_b]
+//                     .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+//                     .join('-');
+
+//                 regions.push({
+//                     type: '特定组合',
+//                     index,
+//                     cells: [cell_a, cell_b],
+//                     clue_nums
+//                 });
+//                 continue;
+//             }
+
+//             // ----- 四格交点提示 -----
+//             let row_mark, col_mark;
+//             if (key && key.startsWith('x-')) {
+//                 const [_, row_str, col_str] = key.split('-');
+//                 row_mark = parseInt(row_str, 10);
+//                 col_mark = parseInt(col_str, 10);
+//                 if (!Number.isInteger(row_mark) || !Number.isInteger(col_mark)) continue;
+//             } else {
+//                 if (!grid) continue;
+//                 const grid_offset_left = grid.offsetLeft;
+//                 const grid_offset_top = grid.offsetTop;
+//                 const cell_width = grid.offsetWidth / size;
+//                 const cell_height = grid.offsetHeight / size;
+
+//                 const left = parseInt(mark.style.left, 10);
+//                 const top = parseInt(mark.style.top, 10);
+//                 if (isNaN(left) || isNaN(top)) continue;
+
+//                 row_mark = Math.round((top - grid_offset_top + 15) / cell_height);
+//                 col_mark = Math.round((left - grid_offset_left + 15) / cell_width);
+//             }
+
+//             const cells = [
+//                 [row_mark - 1, col_mark - 1],
+//                 [row_mark - 1, col_mark],
+//                 [row_mark, col_mark - 1],
+//                 [row_mark, col_mark]
+//             ].filter(([r, c]) => r >= 0 && r < size && c >= 0 && c < size);
+
+//             // 只有完整四格才作为四格提示处理
+//             if (cells.length !== 4) continue;
+
+//             // 计算所有满足四数和为 sum 的组合（允许数字相同，但任一数字在组合中最多出现两次）
+//             // 枚举非递减四元组 a <= b <= c <= d，统计每个数字在任一合法组合中的最大出现次数（0/1/2）
+//             const maxCount = new Array(size + 1).fill(0); // 下标 1..size
+//             let foundCombo = false;
+
+//             for (let n = 1; n <= size; n++) {
+//                 // 该数字出现2次：剩余两数和为 remain2 = sum - 2n
+//                 const remain2 = sum - 2 * n;
+//                 if (remain2 >= 2 && remain2 <= 2 * size) {
+//                     // 检查是否存在两个数 a, b (1 <= a, b <= size) 使得 a + b = remain2
+//                     // 条件：remain2 <= 2*size 且 remain2 >= 2
+//                     // 简化：只要 2 <= remain2 <= 2*size 就一定有解
+//                     foundCombo = true;
+//                     maxCount[n] = 2;
+//                     continue;
+//                 }
+                
+//                 // 该数字出现1次：剩余三数和为 remain1 = sum - n
+//                 const remain1 = sum - n;
+//                 if (remain1 >= 3 && remain1 <= 3 * size) {
+//                     // 检查是否存在三个数 a, b, c (1 <= a,b,c <= size) 使得 a+b+c = remain1
+//                     // 可以允许重复，所以条件简化为：3 <= remain1 <= 3*size
+//                     foundCombo = true;
+//                     maxCount[n] = Math.max(maxCount[n], 1);
+//                     continue;
+//                 }
+                
+//                 // 该数字出现0次：四数和为 sum，且都不等于 n
+//                 // 最小和：4个1（或4个最小可用数）
+//                 // 最大和：4个size（或4个最大可用数）
+//                 const minSum = (n === 1) ? 8 : 4; // 如果排除1，最小和是4*2=8
+//                 const maxSum = (n === size) ? 4 * (size - 1) : 4 * size;
+//                 if (sum >= minSum && sum <= maxSum) {
+//                     foundCombo = true;
+//                     maxCount[n] = Math.max(maxCount[n], 0);
+//                 }
+//             }
+
+//             if (!foundCombo) continue; // 没有合法四元组合则跳过
+
+//             // 构造 clue_nums：按数字从小到大，把每个数字重复 maxCount 次（0/1/2）
+//             const clue_nums = [];
+//             for (let n = 1; n <= size; n++) {
+//                 for (let t = 0; t < maxCount[n]; t++) {
+//                     clue_nums.push(n);
+//                 }
+//             }
+//             if (clue_nums.length === 0) continue;
+
+//             const index = cells
+//                     .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+//                     .join('-');
+
+//             regions.push({
+//                 type: '特定组合',
+//                 index,
+//                 cells,
+//                 clue_nums
+//             });
+//         }
+//     } else if (mode === 'product') {
+//         const container = document.querySelector('.sudoku-container');
+//         if (!container) return regions;
+//         const marks = container.querySelectorAll('.vx-mark');
+//         let region_index = 1;
+//         for (const mark of marks) {
+//             const input = mark.querySelector('input');
+//             const value = input && input.value.trim();
+//             // 只处理有效的乘积数字
+//             const product = parseInt(value, 10);
+//             if (isNaN(product) || product <= 0) continue;
+
+//             // 解析标记的唯一key
+//             const key = mark.dataset.key;
+//             if (!key) continue;
+
+//             // 解析标记对应的两格
+//             // 竖线：v-row-col，横线：h-row-col
+//             let cell_a, cell_b;
+//             if (key.startsWith('v-')) {
+//                 // 竖线，row、col
+//                 const [_, row_str, col_str] = key.split('-');
+//                 const r = parseInt(row_str);
+//                 const c = parseInt(col_str);
+//                 cell_a = [r, c - 1];
+//                 cell_b = [r, c];
+//             } else if (key.startsWith('h-')) {
+//                 // 横线，row、col
+//                 const [_, row_str, col_str] = key.split('-');
+//                 const r = parseInt(row_str);
+//                 const c = parseInt(col_str);
+//                 cell_a = [r - 1, c];
+//                 cell_b = [r, c];
+//             } else {
+//                 continue;
+//             }
+
+//             // 计算所有满足乘积的数字组合
+//             const clue_nums_set = new Set();
+//             for (let a = 1; a <= size; a++) {
+//                 for (let b = 1; b <= size; b++) {
+//                     if (a * b === product) {
+//                         clue_nums_set.add(a);
+//                         clue_nums_set.add(b);
+//                     }
+//                 }
+//             }
+//             const clue_nums = Array.from(clue_nums_set).sort((x, y) => x - y);
+
+//             // 生成区域的 index
+//             const index = [cell_a, cell_b]
+//                 .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+//                 .join('-');
+
+//             regions.push({
+//                 type: '特定组合',
+//                 index,
+//                 cells: [cell_a, cell_b],
+//                 clue_nums: clue_nums
+//             });
+//         }
+//     } else if (mode === 'ratio') {
+//         const container = document.querySelector('.sudoku-container');
+//         if (!container) return regions;
+//         const marks = container.querySelectorAll('.vx-mark');
+//         let region_index = 1;
+//         for (const mark of marks) {
+//             const input = mark.querySelector('input');
+//             const value = input && input.value.trim();
+//             // 只处理形如 "a/b" 的比例
+//             if (!value || !/^(\d*)\/(\d*)$/.test(value)) continue;
+//             const match = value.match(/^(\d*)\/(\d*)$/);
+//             const left_num = match[1] ? parseInt(match[1]) : null;
+//             const right_num = match[2] ? parseInt(match[2]) : null;
+//             if (!left_num && !right_num) continue;
+//             // 解析标记的唯一key
+//             const key = mark.dataset.key;
+//             if (!key) continue;
+//             // 解析标记对应的两格
+//             // 竖线：v-row-col，横线：h-row-col
+//             let cell_a, cell_b;
+//             if (key.startsWith('v-')) {
+//                 // 竖线，row、col
+//                 const [_, row_str, col_str] = key.split('-');
+//                 const r = parseInt(row_str);
+//                 const c = parseInt(col_str);
+//                 cell_a = [r, c - 1];
+//                 cell_b = [r, c];
+//             } else if (key.startsWith('h-')) {
+//                 // 横线，row、col
+//                 const [_, row_str, col_str] = key.split('-');
+//                 const r = parseInt(row_str);
+//                 const c = parseInt(col_str);
+//                 cell_a = [r - 1, c];
+//                 cell_b = [r, c];
+//             } else {
+//                 continue;
+//             }
+
+//             // 计算所有满足比例的数字组合
+//             const clue_nums_set = new Set();
+//             for (let a = 1; a <= size; a++) {
+//                 for (let b = 1; b <= size; b++) {
+//                     if (
+//                         (a * right_num === b * left_num) ||
+//                         (b * right_num === a * left_num)
+//                     ) {
+//                         clue_nums_set.add(a);
+//                         clue_nums_set.add(b);
+//                     }
+//                 }
+//             }
+//             const clue_nums = Array.from(clue_nums_set).sort((x, y) => x - y);
+
+//             const index = [cell_a, cell_b]
+//                     .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+//                     .join('-');
+
+//             regions.push({
+//                 type: '特定组合',
+//                 index,
+//                 cells: [cell_a, cell_b],
+//                 clue_nums: clue_nums
+//             });
+//         }
+//     } else if (mode === 'inequality') {
+//         const container = document.querySelector('.sudoku-container');
+//         if (container) {
+//             const marks = container.querySelectorAll('.vx-mark');
+//             for (const mark of marks) {
+//                 const key = mark.dataset.key;
+//                 if (!key) continue;
+
+//                 let cell_a, cell_b;
+//                 if (key.startsWith('v-')) {
+//                     const [_, row_str, col_str] = key.split('-');
+//                     const r = parseInt(row_str);
+//                     const c = parseInt(col_str);
+//                     cell_a = [r, c - 1];
+//                     cell_b = [r, c];
+//                 } else if (key.startsWith('h-')) {
+//                     const [_, row_str, col_str] = key.split('-');
+//                     const r = parseInt(row_str);
+//                     const c = parseInt(col_str);
+//                     cell_a = [r - 1, c];
+//                     cell_b = [r, c];
+//                 } else {
+//                     continue;
+//                 }
+
+//                 if (cell_a[0] >= 0 && cell_a[0] < size && cell_a[1] >= 0 && cell_a[1] < size &&
+//                     cell_b[0] >= 0 && cell_b[0] < size && cell_b[1] >= 0 && cell_b[1] < size) {
+                    
+//                     // const index = `${getRowLetter(cell_a[0] + 1)}${cell_a[1] + 1}-${getRowLetter(cell_b[0] + 1)}${cell_b[1] + 1}`;
+//                     const index = [cell_a, cell_b]
+//                     .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+//                     .join('-');
+//                     regions.push({
+//                         type: '特定组合',
+//                         index,
+//                         cells: [cell_a, cell_b],
+//                         // clue_nums: Array.from({ length: size }, (_, n) => n + 1)
+//                     });
+//                 }
+//             }
+//         }
+//     } else if (mode === 'kropki') {
+//         const container = document.querySelector('.sudoku-container');
+//         if (!container) return regions;
+//         const marks = container.querySelectorAll('.vx-mark[data-key]');
+//         let region_index = 1;
+
+//         const parsePairFromKey = (key) => {
+//             if (!key) return null;
+//             if (key.startsWith('v-')) {
+//                 const [, rowStr, colStr] = key.split('-');
+//                 const row = Number.parseInt(rowStr, 10);
+//                 const col = Number.parseInt(colStr, 10) - 1;
+//                 if (Number.isNaN(row) || Number.isNaN(col)) return null;
+//                 return { row1: row, col1: col, row2: row, col2: col + 1 };
+//             }
+//             if (key.startsWith('h-')) {
+//                 const [, rowStr, colStr] = key.split('-');
+//                 const row = Number.parseInt(rowStr, 10) - 1;
+//                 const col = Number.parseInt(colStr, 10);
+//                 if (Number.isNaN(row) || Number.isNaN(col)) return null;
+//                 return { row1: row, col1: col, row2: row + 1, col2: col };
+//             }
+//             return null;
+//         };
+
+//         const readKropkiType = (mark) => {
+//             const raw = (mark.dataset.kropkiType || mark.querySelector('input')?.value || '').trim().toUpperCase();
+//             return raw === 'B' || raw === 'W' ? raw : null;
+//         };
+
+//         for (const mark of marks) {
+//             const key = mark.dataset.key;
+//             const pair = parsePairFromKey(key);
+//             const type = readKropkiType(mark);
+//             if (!pair || !type) continue;
+
+//             const clueNumsSet = new Set();
+//             if (type === 'B') {
+//                 for (let a = 1; a <= size; a++) {
+//                     const doubled = a * 2;
+//                     if (doubled >= 1 && doubled <= size) {
+//                         clueNumsSet.add(a);
+//                         clueNumsSet.add(doubled);
+//                     }
+//                     const halved = a / 2;
+//                     if (Number.isInteger(halved) && halved >= 1 && halved <= size) {
+//                         clueNumsSet.add(a);
+//                         clueNumsSet.add(halved);
+//                     }
+//                 }
+//             } else {
+//                 for (let a = 1; a <= size; a++) {
+//                     const neighbors = [a - 1, a + 1];
+//                     for (const b of neighbors) {
+//                         if (b >= 1 && b <= size) {
+//                             clueNumsSet.add(a);
+//                             clueNumsSet.add(b);
+//                         }
+//                     }
+//                 }
+//             }
+
+//             const clue_nums = Array.from(clueNumsSet).sort((x, y) => x - y);
+//             if (clue_nums.length === 0) continue;
+
+//             const index = [
+//                     [pair.row1, pair.col1],
+//                     [pair.row2, pair.col2],
+//                 ]
+//                     .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+//                     .join('-');
+
+//             regions.push({
+//                 type: '特定组合',
+//                 index,
+//                 cells: [
+//                     [pair.row1, pair.col1],
+//                     [pair.row2, pair.col2],
+//                 ],
+//                 clue_nums,
+//             });
+//         }
+//     }
+//     // VX 特定组合：将带 V/X 的相邻两格作为两格提示区域（用于逻辑消除）；
+//     // clue_nums 包含所有可能出现在这两个格子中的数字（即能与另一数和为 5 或 10 的数）
+//     else if (mode === 'VX' || mode === 'vx') {
+//         const container = document.querySelector('.sudoku-container');
+//         if (!container) return regions;
+//         const marks = container.querySelectorAll('.vx-mark[data-key]');
+//         let region_index = 1;
+//         for (const mark of marks) {
+//             const key = mark.dataset.key;
+//             if (!key) continue;
+
+//             // 解析两格坐标（与 product/ratio 保持一致的 key 规则）
+//             let cell_a, cell_b;
+//             if (key.startsWith('v-')) {
+//                 const [, row_str, col_str] = key.split('-');
+//                 const r = parseInt(row_str, 10);
+//                 const c = parseInt(col_str, 10);
+//                 if (Number.isNaN(r) || Number.isNaN(c)) continue;
+//                 cell_a = [r, c - 1];
+//                 cell_b = [r, c];
+//             } else if (key.startsWith('h-')) {
+//                 const [, row_str, col_str] = key.split('-');
+//                 const r = parseInt(row_str, 10);
+//                 const c = parseInt(col_str, 10);
+//                 if (Number.isNaN(r) || Number.isNaN(c)) continue;
+//                 cell_a = [r - 1, c];
+//                 cell_b = [r, c];
+//             } else {
+//                 continue;
+//             }
+
+//             // 读取标记类型 V / X（优先 dataset，回退到输入框文本）
+//             const rawType = (mark.dataset.vxType || mark.querySelector('input')?.value || '').toUpperCase();
+//             const type = (rawType === 'V' || rawType === 'X') ? rawType : null;
+//             if (!type) continue;
+//             const requiredSum = type === 'V' ? 5 : 10;
+
+//             // 计算所有可能出现在这两个格子中的数字（1..size 中与另一数能和为 requiredSum 的数）
+//             const clue_nums_set = new Set();
+//             for (let a = 1; a <= size; a++) {
+//                 for (let b = 1; b <= size; b++) {
+//                     if (a + b === requiredSum) {
+//                         clue_nums_set.add(a);
+//                         clue_nums_set.add(b);
+//                     }
+//                 }
+//             }
+//             const clue_nums = Array.from(clue_nums_set).sort((x, y) => x - y);
+//             if (clue_nums.length === 0) continue;
+
+//             const index = [cell_a, cell_b]
+//                     .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+//                     .join('-');
+
+//             regions.push({
+//                 type: '特定组合',
+//                 index,
+//                 cells: [cell_a, cell_b],
+//                 clue_nums
+//             });
+//         }
+//     }
+//     else if (mode === 'palindrome') {
+//         const mark_lines = get_all_mark_lines();
+//         // 合并首尾相接的线段
+//         // 先把每条线段扩展为经过的所有格子
+//         const size = state.current_grid_size || size;
+//         const expanded_lines = mark_lines.map(line => get_cells_on_line(size, line[0], line[1]));
+//         // 合并线段
+//         const merged_lines = merge_connected_lines(expanded_lines);
+//         let regionIndex = 1;
+//         for (const cells of merged_lines) {
+//             const len = cells.length;
+//             for (let i = 0; i < Math.floor(len / 2); i++) {
+//                 const cell_a = cells[i];
+//                 const cell_b = cells[len - 1 - i];
+
+//                 const index = [cell_a, cell_b]
+//                     .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+//                     .join('-');
+//                 regions.push({
+//                     type: '特定组合',
+//                     index,
+//                     cells: [cell_a, cell_b],
+//                     clue_nums: Array.from({length: size * 2}, (_, n) => (n % size) + 1)
+//                 });
+//             }
+//         }
+//         // log_process(`合并后的回文线段数：${regions.length}`);、
+//     } else if (mode === 'consecutive') {
+//         // 处理连续数独的白点标记
+//         const container = document.querySelector('.sudoku-container');
+//         if (container) {
+//             container.querySelectorAll('.vx-mark[data-key]').forEach(mark => {
+//                 const key = mark.dataset.key;
+//                 const type = (mark.dataset.consecutiveType || '').toUpperCase();
+//                 if (type !== 'W') return; // 只处理白点标记
+
+//                 const parts = key.split('-');
+//                 if (parts.length < 3) return;
+
+//                 const rowToken = Number(parts[1]);
+//                 const colToken = Number(parts[2]);
+//                 if (Number.isNaN(rowToken) || Number.isNaN(colToken)) return;
+
+//                 let pair = null;
+//                 if (key.startsWith('v-')) {
+//                     pair = { row1: rowToken, col1: colToken - 1, row2: rowToken, col2: colToken };
+//                 } else if (key.startsWith('h-')) {
+//                     pair = { row1: rowToken - 1, col1: colToken, row2: rowToken, col2: colToken };
+//                 }
+
+//                 if (pair) {
+//                     regions.push({
+//                         type: '连续数独白点',
+//                         index: `${pair.row1},${pair.col1}-${pair.row2},${pair.col2}`,
+//                         cells: [
+//                             [pair.row1, pair.col1],
+//                             [pair.row2, pair.col2]
+//                         ]
+//                     });
+//                 }
+//             });
+//         }
+    
+//     } 
+//     // 灰格连续数独：将手动标记的格子作为一个灰格连续区域
+//     else if (mode === 'renban' && typeof get_renban_cells === 'function') {
+//         const renban_cells = get_renban_cells();
+//         if (Array.isArray(renban_cells) && renban_cells.length > 0) {
+//             // 判断是单区域还是多区域
+//             if (Array.isArray(renban_cells[0][0])) {
+//                 // 多个区域
+//                 renban_cells.forEach((region_cells) => {
+//                     const index = region_cells
+//                     .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+//                     .join('-');
+
+//                     if (region_cells.length > 0) {
+//                         regions.push({ type: '特定组合', index, cells: region_cells, clue_nums: Array.from({ length: size }, (_, n) => n + 1), });
+//                     }
+//                 });
+//             } else {
+//                 // 单个区域
+//                 const index = renban_cells
+//                     .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+//                     .join('-');
+//                 regions.push({ type: '特定组合', index, cells: renban_cells, clue_nums: Array.from({ length: size }, (_, n) => n + 1), });
+//             }
+//         }
+//     }
+//     else if (mode === 'X_sums' || mode === 'sandwich' || mode === 'skyscraper') {
+//         const container = document.querySelector('.sudoku-container');
+//         if (!container) return regions;
+
+//         // 遍历每一行，检查行首或行尾是否有外提示数
+//         for (let row = 1; row <= size; row++) {
+//             const left_clue_input = container.querySelector(`input[data-row="${row}"][data-col="0"]`);
+//             // log_process(`检查行 ${row} 的左侧提示数: ${left_clue_input ? left_clue_input.value : ''}`);
+//             const right_clue_input = container.querySelector(`input[data-row="${row}"][data-col="${size + 1}"]`);
+//             const left_clue = left_clue_input ? parseInt(left_clue_input.value) : null;
+//             const right_clue = right_clue_input ? parseInt(right_clue_input.value) : null;
+
+//             if (left_clue || left_clue === 0 || right_clue || right_clue === 0) {
+//                 const row_cells = [];
+//                 for (let col = 1; col <= size; col++) {
+//                     row_cells.push([row - 1, col - 1]); // 转换为 0 索引
+//                 }
+
+//                 const index = row_cells
+//                     .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+//                     .join('-');
+
+//                 regions.push({
+//                     type: '特定组合',
+//                     index,
+//                     cells: row_cells,
+//                     clue_nums: Array.from({ length: size }, (_, n) => n + 1),
+//                 });
+//                 // log_process(`发现特定组合：row-${row}，提示数：${left_clue || ''} ${right_clue || ''}`);
+//             }
+//         }
+
+//         // 遍历每一列，检查列首或列尾是否有外提示数
+//         for (let col = 1; col <= size; col++) {
+//             const top_clue_input = container.querySelector(`input[data-row="0"][data-col="${col}"]`);
+//             const bottom_clue_input = container.querySelector(`input[data-row="${size + 1}"][data-col="${col}"]`);
+//             const top_clue = top_clue_input ? parseInt(top_clue_input.value) : null;
+//             const bottom_clue = bottom_clue_input ? parseInt(bottom_clue_input.value) : null;
+
+//             if (top_clue || top_clue === 0 || bottom_clue || bottom_clue === 0) {
+//                 const col_cells = [];
+//                 for (let row = 1; row <= size; row++) {
+//                     col_cells.push([row - 1, col - 1]); // 转换为 0 索引
+//                 }
+//                 const index = col_cells
+//                     .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+//                     .join('-');
+//                 regions.push({
+//                     type: '特定组合',
+//                     index,
+//                     cells: col_cells,
+//                     clue_nums: Array.from({ length: size }, (_, n) => n + 1),
+//                 });
+//             }
+//         }
+//     }
+//     // return regions;
+//     // 合并有共同格子的特定组合
+//     const merged_regions = merge_regions_with_common_cells(regions);
+
+//     // 返回原始区域和合并后的区域
+//     return [...regions, ...merged_regions];
+// }
+
 export function get_special_combination_regions(size, mode = 'classic') {
+    // 检查缓存是否有效
+    if (
+        _special_regions_cache &&
+        _special_regions_cache_size === size &&
+        _special_regions_cache_mode === mode
+        // _special_regions_cache_mark_count === current_mark_count
+    ) {
+        return _special_regions_cache;
+    }
     const regions = [];
-    if (mode === 'fortress') {
-        const fortressCells = Array.from(state.fortress_cells).map(key => key.split(',').map(Number));
-        const directions = [
-            [-1, 0], // 上
-            [1, 0],  // 下
-            [0, -1], // 左
-            [0, 1],  // 右
-        ];
+    switch (mode) {
+        case 'fortress': {
+            const fortressCells = Array.from(state.fortress_cells).map(key => key.split(',').map(Number));
+            const directions = [
+                [-1, 0], // 上
+                [1, 0],  // 下
+                [0, -1], // 左
+                [0, 1],  // 右
+            ];
 
-        for (const [row, col] of fortressCells) {
-            const region = [[row, col]]; // 包含灰格本身
+            for (const [row, col] of fortressCells) {
+                const region = [[row, col]]; // 包含灰格本身
 
-            for (const [dr, dc] of directions) {
-                const neighborRow = row + dr;
-                const neighborCol = col + dc;
+                for (const [dr, dc] of directions) {
+                    const neighborRow = row + dr;
+                    const neighborCol = col + dc;
 
-                // 检查是否在边界内且是白格
-                if (
-                    neighborRow >= 0 && neighborRow < size &&
-                    neighborCol >= 0 && neighborCol < size &&
-                    !state.fortress_cells.has(`${neighborRow},${neighborCol}`)
-                ) {
-                    region.push([neighborRow, neighborCol]);
+                    // 检查是否在边界内且是白格
+                    if (
+                        neighborRow >= 0 && neighborRow < size &&
+                        neighborCol >= 0 && neighborCol < size &&
+                        !state.fortress_cells.has(`${neighborRow},${neighborCol}`)
+                    ) {
+                        region.push([neighborRow, neighborCol]);
+                    }
+                }
+                // clue_nums 包含与格子数量相同的 1-size 数字集合
+                const clue_nums = [];
+                for (let i = 0; i < region.length; i++) {
+                    clue_nums.push(...Array.from({ length: size }, (_, idx) => idx + 1));
+                }
+                // 生成区域的 index
+                const index = region
+                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                    .join('-');
+
+                // 将灰格及其邻居作为一个特定组合区域
+                regions.push({
+                    type: '特定组合',
+                    index,
+                    cells: region,
+                    // clue_nums, // 可根据需求填充线索数字
+                });
+            }
+            break;
+        }
+        case 'clone': {
+            const clone_regions = get_clone_cells();
+            if (Array.isArray(clone_regions) && clone_regions.length > 0) {
+                // 遍历所有克隆区域对
+                for (let i = 0; i < clone_regions.length; i++) {
+                    for (let j = i + 1; j < clone_regions.length; j++) {
+                        const region_i = clone_regions[i];
+                        const region_j = clone_regions[j];
+
+                        // // 必须形状一致（格子数相同）
+                        // if (region_i.length !== region_j.length) {
+                        //     continue;
+                        // }
+
+                        // 必须形状一致（相对坐标相同）
+                        if (!are_regions_same_shape(region_i, region_j)) {
+                            continue;
+                        }
+
+                        // 将两个区域按坐标排序，建立对应关系
+                        const sorted_i = [...region_i].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+                        const sorted_j = [...region_j].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+
+                        // 为每对对应的格子创建特定组合区域
+                        for (let k = 0; k < sorted_i.length; k++) {
+                            const cell_i = sorted_i[k];
+                            const cell_j = sorted_j[k];
+
+                            // 创建包含对应位置两个格子的特定组合
+                            const cells = [cell_i, cell_j];
+                            const index = cells
+                                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                                .join('-');
+
+                            regions.push({
+                                type: '特定组合',
+                                index,
+                                cells: cells,
+                                // clue_nums: Array.from({ length: size }, (_, n) => n + 1)
+                                clue_nums: Array.from({length: size * cells.length}, (_, n) => (n % size) + 1)
+                            });
+                        }
+                    }
                 }
             }
-            // clue_nums 包含与格子数量相同的 1-size 数字集合
-            const clue_nums = [];
-            for (let i = 0; i < region.length; i++) {
-                clue_nums.push(...Array.from({ length: size }, (_, idx) => idx + 1));
-            }
-            // 生成区域的 index
-            const index = region
-                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
-                .join('-');
-
-            // 将灰格及其邻居作为一个特定组合区域
-            regions.push({
-                type: '特定组合',
-                index,
-                cells: region,
-                clue_nums, // 可根据需求填充线索数字
-            });
+            break;
         }
-    }
-    else if (mode === 'clone') {
-        const clone_regions = get_clone_cells();
-        if (Array.isArray(clone_regions) && clone_regions.length > 0) {
-            // 遍历所有克隆区域对
-            for (let i = 0; i < clone_regions.length; i++) {
-                for (let j = i + 1; j < clone_regions.length; j++) {
-                    const region_i = clone_regions[i];
-                    const region_j = clone_regions[j];
+        case 'quadruple': {
+            const container = document.querySelector('.sudoku-container');
+            if (container) {
+                const marks = container.querySelectorAll('.vx-mark');
+                let region_index = 1;
+                for (const mark of marks) {
+                    const left = parseInt(mark.style.left);
+                    const top = parseInt(mark.style.top);
 
-                    // // 必须形状一致（格子数相同）
-                    // if (region_i.length !== region_j.length) {
-                    //     continue;
-                    // }
+                    const grid = container.querySelector('.sudoku-grid');
+                    const grid_offset_left = grid.offsetLeft;
+                    const grid_offset_top = grid.offsetTop;
+                    const cell_width = grid.offsetWidth / size;
+                    const cell_height = grid.offsetHeight / size;
 
-                    // 必须形状一致（相对坐标相同）
-                    if (!are_regions_same_shape(region_i, region_j)) {
-                        continue;
-                    }
+                    const col_mark = Math.round((left - grid_offset_left + 15) / cell_width);
+                    const row_mark = Math.round((top - grid_offset_top + 15) / cell_height);
 
-                    // 将两个区域按坐标排序，建立对应关系
-                    const sorted_i = [...region_i].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-                    const sorted_j = [...region_j].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+                    // 四个相邻格子的坐标
+                    const positions = [
+                        [row_mark - 1, col_mark - 1],
+                        [row_mark - 1, col_mark],
+                        [row_mark, col_mark - 1],
+                        [row_mark, col_mark]
+                    ];
 
-                    // 为每对对应的格子创建特定组合区域
-                    for (let k = 0; k < sorted_i.length; k++) {
-                        const cell_i = sorted_i[k];
-                        const cell_j = sorted_j[k];
-
-                        // 创建包含对应位置两个格子的特定组合
-                        const cells = [cell_i, cell_j];
-                        const index = cells
+                    // 只加入有效区域
+                    const valid_positions = positions.filter(([r, c]) =>
+                        r >= 0 && r < size && c >= 0 && c < size
+                    );
+                    if (valid_positions.length === 4) {
+                        // 获取圆圈内的数字
+                        const input = mark.querySelector('input');
+                        let nums = [];
+                        if (input && input.value) {
+                            nums = input.value.split('').map(Number).filter(n => !isNaN(n));
+                        }
+                        // 判断是否有重复
+                        const has_duplicate = nums.length !== new Set(nums).size;
+                        // 生成区域的 index
+                        const index = valid_positions
                             .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
                             .join('-');
-
-                        regions.push({
-                            type: '特定组合',
-                            index,
-                            cells: cells,
-                            // clue_nums: Array.from({ length: size }, (_, n) => n + 1)
-                            clue_nums: Array.from({length: size * cells.length}, (_, n) => (n % size) + 1)
-                        });
+                        if (has_duplicate) {
+                            regions.push({
+                                type: '特定组合',
+                                index,
+                                cells: valid_positions,
+                                // clue_nums: nums
+                            });
+                        }
                     }
                 }
             }
+            break;
         }
-    }
-    else if (mode === 'quadruple') {
-        const container = document.querySelector('.sudoku-container');
-        if (container) {
+        case 'add': {
+            const container = document.querySelector('.sudoku-container');
+            if (!container) return regions;
             const marks = container.querySelectorAll('.vx-mark');
             let region_index = 1;
             for (const mark of marks) {
-                const left = parseInt(mark.style.left);
-                const top = parseInt(mark.style.top);
+                const input = mark.querySelector('input');
+                const value = input && input.value.trim();
+                // 只处理有效的和数字
+                const sum = parseInt(value, 10);
+                if (isNaN(sum) || sum <= 0) continue;
 
-                const grid = container.querySelector('.sudoku-grid');
-                const grid_offset_left = grid.offsetLeft;
-                const grid_offset_top = grid.offsetTop;
-                const cell_width = grid.offsetWidth / size;
-                const cell_height = grid.offsetHeight / size;
+                // 解析标记的唯一key（v-/h- 表示两格；无 key 表示交点四格）
+                const key = mark.dataset.key;
 
-                const col_mark = Math.round((left - grid_offset_left + 15) / cell_width);
-                const row_mark = Math.round((top - grid_offset_top + 15) / cell_height);
+                // ----- 两格提示（竖/横线） -----
+                if (key && (key.startsWith('v-') || key.startsWith('h-'))) {
+                    let cell_a, cell_b;
+                    if (key.startsWith('v-')) {
+                        const [_, row_str, col_str] = key.split('-');
+                        const r = parseInt(row_str, 10);
+                        const c = parseInt(col_str, 10);
+                        cell_a = [r, c - 1];
+                        cell_b = [r, c];
+                    } else {
+                        const [_, row_str, col_str] = key.split('-');
+                        const r = parseInt(row_str, 10);
+                        const c = parseInt(col_str, 10);
+                        cell_a = [r - 1, c];
+                        cell_b = [r, c];
+                    }
 
-                // 四个相邻格子的坐标
-                const positions = [
+                    if (
+                        !cell_a || !cell_b ||
+                        cell_a.some(n => !Number.isInteger(n)) ||
+                        cell_b.some(n => !Number.isInteger(n)) ||
+                        cell_a[0] < 0 || cell_a[0] >= size || cell_a[1] < 0 || cell_a[1] >= size ||
+                        cell_b[0] < 0 || cell_b[0] >= size || cell_b[1] < 0 || cell_b[1] >= size
+                    ) continue;
+
+                    const clue_nums_set = new Set();
+                    for (let a = 1; a <= size; a++) {
+                        for (let b = 1; b <= size; b++) {
+                            if (a + b === sum) {
+                                clue_nums_set.add(a);
+                                clue_nums_set.add(b);
+                            }
+                        }
+                    }
+                    const clue_nums = Array.from(clue_nums_set).sort((x, y) => x - y);
+
+                    // 生成区域的 index
+                    const index = [cell_a, cell_b]
+                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                        .join('-');
+
+                    regions.push({
+                        type: '特定组合',
+                        index,
+                        cells: [cell_a, cell_b],
+                        // clue_nums
+                    });
+                    continue;
+                }
+
+                // ----- 四格交点提示 -----
+                let row_mark, col_mark;
+                if (key && key.startsWith('x-')) {
+                    const [_, row_str, col_str] = key.split('-');
+                    row_mark = parseInt(row_str, 10);
+                    col_mark = parseInt(col_str, 10);
+                    if (!Number.isInteger(row_mark) || !Number.isInteger(col_mark)) continue;
+                } else {
+                    if (!grid) continue;
+                    const grid_offset_left = grid.offsetLeft;
+                    const grid_offset_top = grid.offsetTop;
+                    const cell_width = grid.offsetWidth / size;
+                    const cell_height = grid.offsetHeight / size;
+
+                    const left = parseInt(mark.style.left, 10);
+                    const top = parseInt(mark.style.top, 10);
+                    if (isNaN(left) || isNaN(top)) continue;
+
+                    row_mark = Math.round((top - grid_offset_top + 15) / cell_height);
+                    col_mark = Math.round((left - grid_offset_left + 15) / cell_width);
+                }
+
+                const cells = [
                     [row_mark - 1, col_mark - 1],
                     [row_mark - 1, col_mark],
                     [row_mark, col_mark - 1],
                     [row_mark, col_mark]
-                ];
+                ].filter(([r, c]) => r >= 0 && r < size && c >= 0 && c < size);
 
-                // 只加入有效区域
-                const valid_positions = positions.filter(([r, c]) =>
-                    r >= 0 && r < size && c >= 0 && c < size
-                );
-                if (valid_positions.length === 4) {
-                    // 获取圆圈内的数字
-                    const input = mark.querySelector('input');
-                    let nums = [];
-                    if (input && input.value) {
-                        nums = input.value.split('').map(Number).filter(n => !isNaN(n));
+                // 只有完整四格才作为四格提示处理
+                if (cells.length !== 4) continue;
+
+                // 计算所有满足四数和为 sum 的组合（允许数字相同，但任一数字在组合中最多出现两次）
+                // 枚举非递减四元组 a <= b <= c <= d，统计每个数字在任一合法组合中的最大出现次数（0/1/2）
+                const maxCount = new Array(size + 1).fill(0); // 下标 1..size
+                let foundCombo = false;
+
+                for (let n = 1; n <= size; n++) {
+                    // 该数字出现2次：剩余两数和为 remain2 = sum - 2n
+                    const remain2 = sum - 2 * n;
+                    if (remain2 >= 2 && remain2 <= 2 * size) {
+                        // 检查是否存在两个数 a, b (1 <= a, b <= size) 使得 a + b = remain2
+                        // 条件：remain2 <= 2*size 且 remain2 >= 2
+                        // 简化：只要 2 <= remain2 <= 2*size 就一定有解
+                        foundCombo = true;
+                        maxCount[n] = 2;
+                        continue;
                     }
-                    // 判断是否有重复
-                    const has_duplicate = nums.length !== new Set(nums).size;
-                    // 生成区域的 index
-                    const index = valid_positions
+                    
+                    // 该数字出现1次：剩余三数和为 remain1 = sum - n
+                    const remain1 = sum - n;
+                    if (remain1 >= 3 && remain1 <= 3 * size) {
+                        // 检查是否存在三个数 a, b, c (1 <= a,b,c <= size) 使得 a+b+c = remain1
+                        // 可以允许重复，所以条件简化为：3 <= remain1 <= 3*size
+                        foundCombo = true;
+                        maxCount[n] = Math.max(maxCount[n], 1);
+                        continue;
+                    }
+                    
+                    // 该数字出现0次：四数和为 sum，且都不等于 n
+                    // 最小和：4个1（或4个最小可用数）
+                    // 最大和：4个size（或4个最大可用数）
+                    const minSum = (n === 1) ? 8 : 4; // 如果排除1，最小和是4*2=8
+                    const maxSum = (n === size) ? 4 * (size - 1) : 4 * size;
+                    if (sum >= minSum && sum <= maxSum) {
+                        foundCombo = true;
+                        maxCount[n] = Math.max(maxCount[n], 0);
+                    }
+                }
+
+                if (!foundCombo) continue; // 没有合法四元组合则跳过
+
+                // 构造 clue_nums：按数字从小到大，把每个数字重复 maxCount 次（0/1/2）
+                const clue_nums = [];
+                for (let n = 1; n <= size; n++) {
+                    for (let t = 0; t < maxCount[n]; t++) {
+                        clue_nums.push(n);
+                    }
+                }
+                if (clue_nums.length === 0) continue;
+
+                const index = cells
                         .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
                         .join('-');
-                    if (has_duplicate) {
-                        regions.push({
-                            type: '特定组合',
-                            index,
-                            cells: valid_positions,
-                            clue_nums: nums
-                        });
-                    }
-                }
+
+                regions.push({
+                    type: '特定组合',
+                    index,
+                    cells,
+                    // clue_nums
+                });
             }
+            break;
         }
-    } else if (mode === 'add') {
-        const container = document.querySelector('.sudoku-container');
-        if (!container) return regions;
-        const marks = container.querySelectorAll('.vx-mark');
-        let region_index = 1;
-        for (const mark of marks) {
-            const input = mark.querySelector('input');
-            const value = input && input.value.trim();
-            // 只处理有效的和数字
-            const sum = parseInt(value, 10);
-            if (isNaN(sum) || sum <= 0) continue;
+        case 'product': {
+            const container = document.querySelector('.sudoku-container');
+            if (!container) return regions;
+            const marks = container.querySelectorAll('.vx-mark');
+            let region_index = 1;
+            for (const mark of marks) {
+                const input = mark.querySelector('input');
+                const value = input && input.value.trim();
+                // 只处理有效的乘积数字
+                const product = parseInt(value, 10);
+                if (isNaN(product) || product <= 0) continue;
 
-            // 解析标记的唯一key（v-/h- 表示两格；无 key 表示交点四格）
-            const key = mark.dataset.key;
+                // 解析标记的唯一key
+                const key = mark.dataset.key;
+                if (!key) continue;
 
-            // ----- 两格提示（竖/横线） -----
-            if (key && (key.startsWith('v-') || key.startsWith('h-'))) {
+                // 解析标记对应的两格
+                // 竖线：v-row-col，横线：h-row-col
                 let cell_a, cell_b;
                 if (key.startsWith('v-')) {
+                    // 竖线，row、col
                     const [_, row_str, col_str] = key.split('-');
-                    const r = parseInt(row_str, 10);
-                    const c = parseInt(col_str, 10);
+                    const r = parseInt(row_str);
+                    const c = parseInt(col_str);
                     cell_a = [r, c - 1];
                     cell_b = [r, c];
-                } else {
+                } else if (key.startsWith('h-')) {
+                    // 横线，row、col
                     const [_, row_str, col_str] = key.split('-');
-                    const r = parseInt(row_str, 10);
-                    const c = parseInt(col_str, 10);
+                    const r = parseInt(row_str);
+                    const c = parseInt(col_str);
                     cell_a = [r - 1, c];
                     cell_b = [r, c];
+                } else {
+                    continue;
                 }
 
-                if (
-                    !cell_a || !cell_b ||
-                    cell_a.some(n => !Number.isInteger(n)) ||
-                    cell_b.some(n => !Number.isInteger(n)) ||
-                    cell_a[0] < 0 || cell_a[0] >= size || cell_a[1] < 0 || cell_a[1] >= size ||
-                    cell_b[0] < 0 || cell_b[0] >= size || cell_b[1] < 0 || cell_b[1] >= size
-                ) continue;
-
+                // 计算所有满足乘积的数字组合
                 const clue_nums_set = new Set();
                 for (let a = 1; a <= size; a++) {
                     for (let b = 1; b <= size; b++) {
-                        if (a + b === sum) {
+                        if (a * b === product) {
                             clue_nums_set.add(a);
                             clue_nums_set.add(b);
                         }
@@ -1322,244 +2329,40 @@ export function get_special_combination_regions(size, mode = 'classic') {
                     type: '特定组合',
                     index,
                     cells: [cell_a, cell_b],
-                    clue_nums
+                    // clue_nums: clue_nums
                 });
-                continue;
             }
-
-            // ----- 四格交点提示 -----
-            let row_mark, col_mark;
-            if (key && key.startsWith('x-')) {
-                const [_, row_str, col_str] = key.split('-');
-                row_mark = parseInt(row_str, 10);
-                col_mark = parseInt(col_str, 10);
-                if (!Number.isInteger(row_mark) || !Number.isInteger(col_mark)) continue;
-            } else {
-                if (!grid) continue;
-                const grid_offset_left = grid.offsetLeft;
-                const grid_offset_top = grid.offsetTop;
-                const cell_width = grid.offsetWidth / size;
-                const cell_height = grid.offsetHeight / size;
-
-                const left = parseInt(mark.style.left, 10);
-                const top = parseInt(mark.style.top, 10);
-                if (isNaN(left) || isNaN(top)) continue;
-
-                row_mark = Math.round((top - grid_offset_top + 15) / cell_height);
-                col_mark = Math.round((left - grid_offset_left + 15) / cell_width);
-            }
-
-            const cells = [
-                [row_mark - 1, col_mark - 1],
-                [row_mark - 1, col_mark],
-                [row_mark, col_mark - 1],
-                [row_mark, col_mark]
-            ].filter(([r, c]) => r >= 0 && r < size && c >= 0 && c < size);
-
-            // 只有完整四格才作为四格提示处理
-            if (cells.length !== 4) continue;
-
-            // 计算所有满足四数和为 sum 的组合（允许数字相同，但任一数字在组合中最多出现两次）
-            // 枚举非递减四元组 a <= b <= c <= d，统计每个数字在任一合法组合中的最大出现次数（0/1/2）
-            const maxCount = new Array(size + 1).fill(0); // 下标 1..size
-            let foundCombo = false;
-
-            for (let n = 1; n <= size; n++) {
-                // 该数字出现2次：剩余两数和为 remain2 = sum - 2n
-                const remain2 = sum - 2 * n;
-                if (remain2 >= 2 && remain2 <= 2 * size) {
-                    // 检查是否存在两个数 a, b (1 <= a, b <= size) 使得 a + b = remain2
-                    // 条件：remain2 <= 2*size 且 remain2 >= 2
-                    // 简化：只要 2 <= remain2 <= 2*size 就一定有解
-                    foundCombo = true;
-                    maxCount[n] = 2;
-                    continue;
-                }
-                
-                // 该数字出现1次：剩余三数和为 remain1 = sum - n
-                const remain1 = sum - n;
-                if (remain1 >= 3 && remain1 <= 3 * size) {
-                    // 检查是否存在三个数 a, b, c (1 <= a,b,c <= size) 使得 a+b+c = remain1
-                    // 可以允许重复，所以条件简化为：3 <= remain1 <= 3*size
-                    foundCombo = true;
-                    maxCount[n] = Math.max(maxCount[n], 1);
-                    continue;
-                }
-                
-                // 该数字出现0次：四数和为 sum，且都不等于 n
-                // 最小和：4个1（或4个最小可用数）
-                // 最大和：4个size（或4个最大可用数）
-                const minSum = (n === 1) ? 8 : 4; // 如果排除1，最小和是4*2=8
-                const maxSum = (n === size) ? 4 * (size - 1) : 4 * size;
-                if (sum >= minSum && sum <= maxSum) {
-                    foundCombo = true;
-                    maxCount[n] = Math.max(maxCount[n], 0);
-                }
-            }
-
-            if (!foundCombo) continue; // 没有合法四元组合则跳过
-
-            // 构造 clue_nums：按数字从小到大，把每个数字重复 maxCount 次（0/1/2）
-            const clue_nums = [];
-            for (let n = 1; n <= size; n++) {
-                for (let t = 0; t < maxCount[n]; t++) {
-                    clue_nums.push(n);
-                }
-            }
-            if (clue_nums.length === 0) continue;
-
-            const index = cells
-                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
-                    .join('-');
-
-            regions.push({
-                type: '特定组合',
-                index,
-                cells,
-                clue_nums
-            });
+            break;
         }
-    } else if (mode === 'product') {
-        const container = document.querySelector('.sudoku-container');
-        if (!container) return regions;
-        const marks = container.querySelectorAll('.vx-mark');
-        let region_index = 1;
-        for (const mark of marks) {
-            const input = mark.querySelector('input');
-            const value = input && input.value.trim();
-            // 只处理有效的乘积数字
-            const product = parseInt(value, 10);
-            if (isNaN(product) || product <= 0) continue;
-
-            // 解析标记的唯一key
-            const key = mark.dataset.key;
-            if (!key) continue;
-
-            // 解析标记对应的两格
-            // 竖线：v-row-col，横线：h-row-col
-            let cell_a, cell_b;
-            if (key.startsWith('v-')) {
-                // 竖线，row、col
-                const [_, row_str, col_str] = key.split('-');
-                const r = parseInt(row_str);
-                const c = parseInt(col_str);
-                cell_a = [r, c - 1];
-                cell_b = [r, c];
-            } else if (key.startsWith('h-')) {
-                // 横线，row、col
-                const [_, row_str, col_str] = key.split('-');
-                const r = parseInt(row_str);
-                const c = parseInt(col_str);
-                cell_a = [r - 1, c];
-                cell_b = [r, c];
-            } else {
-                continue;
-            }
-
-            // 计算所有满足乘积的数字组合
-            const clue_nums_set = new Set();
-            for (let a = 1; a <= size; a++) {
-                for (let b = 1; b <= size; b++) {
-                    if (a * b === product) {
-                        clue_nums_set.add(a);
-                        clue_nums_set.add(b);
-                    }
-                }
-            }
-            const clue_nums = Array.from(clue_nums_set).sort((x, y) => x - y);
-
-            // 生成区域的 index
-            const index = [cell_a, cell_b]
-                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
-                .join('-');
-
-            regions.push({
-                type: '特定组合',
-                index,
-                cells: [cell_a, cell_b],
-                clue_nums: clue_nums
-            });
-        }
-    } else if (mode === 'ratio') {
-        const container = document.querySelector('.sudoku-container');
-        if (!container) return regions;
-        const marks = container.querySelectorAll('.vx-mark');
-        let region_index = 1;
-        for (const mark of marks) {
-            const input = mark.querySelector('input');
-            const value = input && input.value.trim();
-            // 只处理形如 "a/b" 的比例
-            if (!value || !/^(\d*)\/(\d*)$/.test(value)) continue;
-            const match = value.match(/^(\d*)\/(\d*)$/);
-            const left_num = match[1] ? parseInt(match[1]) : null;
-            const right_num = match[2] ? parseInt(match[2]) : null;
-            if (!left_num && !right_num) continue;
-            // 解析标记的唯一key
-            const key = mark.dataset.key;
-            if (!key) continue;
-            // 解析标记对应的两格
-            // 竖线：v-row-col，横线：h-row-col
-            let cell_a, cell_b;
-            if (key.startsWith('v-')) {
-                // 竖线，row、col
-                const [_, row_str, col_str] = key.split('-');
-                const r = parseInt(row_str);
-                const c = parseInt(col_str);
-                cell_a = [r, c - 1];
-                cell_b = [r, c];
-            } else if (key.startsWith('h-')) {
-                // 横线，row、col
-                const [_, row_str, col_str] = key.split('-');
-                const r = parseInt(row_str);
-                const c = parseInt(col_str);
-                cell_a = [r - 1, c];
-                cell_b = [r, c];
-            } else {
-                continue;
-            }
-
-            // 计算所有满足比例的数字组合
-            const clue_nums_set = new Set();
-            for (let a = 1; a <= size; a++) {
-                for (let b = 1; b <= size; b++) {
-                    if (
-                        (a * right_num === b * left_num) ||
-                        (b * right_num === a * left_num)
-                    ) {
-                        clue_nums_set.add(a);
-                        clue_nums_set.add(b);
-                    }
-                }
-            }
-            const clue_nums = Array.from(clue_nums_set).sort((x, y) => x - y);
-
-            const index = [cell_a, cell_b]
-                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
-                    .join('-');
-
-            regions.push({
-                type: '特定组合',
-                index,
-                cells: [cell_a, cell_b],
-                clue_nums: clue_nums
-            });
-        }
-    } else if (mode === 'inequality') {
-        const container = document.querySelector('.sudoku-container');
-        if (container) {
+        case 'ratio': {
+            const container = document.querySelector('.sudoku-container');
+            if (!container) return regions;
             const marks = container.querySelectorAll('.vx-mark');
+            let region_index = 1;
             for (const mark of marks) {
+                const input = mark.querySelector('input');
+                const value = input && input.value.trim();
+                // 只处理形如 "a/b" 的比例
+                if (!value || !/^(\d*)\/(\d*)$/.test(value)) continue;
+                const match = value.match(/^(\d*)\/(\d*)$/);
+                const left_num = match[1] ? parseInt(match[1]) : null;
+                const right_num = match[2] ? parseInt(match[2]) : null;
+                if (!left_num && !right_num) continue;
+                // 解析标记的唯一key
                 const key = mark.dataset.key;
                 if (!key) continue;
-
+                // 解析标记对应的两格
+                // 竖线：v-row-col，横线：h-row-col
                 let cell_a, cell_b;
                 if (key.startsWith('v-')) {
+                    // 竖线，row、col
                     const [_, row_str, col_str] = key.split('-');
                     const r = parseInt(row_str);
                     const c = parseInt(col_str);
                     cell_a = [r, c - 1];
                     cell_b = [r, c];
                 } else if (key.startsWith('h-')) {
+                    // 横线，row、col
                     const [_, row_str, col_str] = key.split('-');
                     const r = parseInt(row_str);
                     const c = parseInt(col_str);
@@ -1569,318 +2372,393 @@ export function get_special_combination_regions(size, mode = 'classic') {
                     continue;
                 }
 
-                if (cell_a[0] >= 0 && cell_a[0] < size && cell_a[1] >= 0 && cell_a[1] < size &&
-                    cell_b[0] >= 0 && cell_b[0] < size && cell_b[1] >= 0 && cell_b[1] < size) {
-                    
-                    // const index = `${getRowLetter(cell_a[0] + 1)}${cell_a[1] + 1}-${getRowLetter(cell_b[0] + 1)}${cell_b[1] + 1}`;
-                    const index = [cell_a, cell_b]
-                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
-                    .join('-');
-                    regions.push({
-                        type: '特定组合',
-                        index,
-                        cells: [cell_a, cell_b],
-                        clue_nums: Array.from({ length: size }, (_, n) => n + 1)
-                    });
-                }
-            }
-        }
-    } else if (mode === 'kropki') {
-        const container = document.querySelector('.sudoku-container');
-        if (!container) return regions;
-        const marks = container.querySelectorAll('.vx-mark[data-key]');
-        let region_index = 1;
-
-        const parsePairFromKey = (key) => {
-            if (!key) return null;
-            if (key.startsWith('v-')) {
-                const [, rowStr, colStr] = key.split('-');
-                const row = Number.parseInt(rowStr, 10);
-                const col = Number.parseInt(colStr, 10) - 1;
-                if (Number.isNaN(row) || Number.isNaN(col)) return null;
-                return { row1: row, col1: col, row2: row, col2: col + 1 };
-            }
-            if (key.startsWith('h-')) {
-                const [, rowStr, colStr] = key.split('-');
-                const row = Number.parseInt(rowStr, 10) - 1;
-                const col = Number.parseInt(colStr, 10);
-                if (Number.isNaN(row) || Number.isNaN(col)) return null;
-                return { row1: row, col1: col, row2: row + 1, col2: col };
-            }
-            return null;
-        };
-
-        const readKropkiType = (mark) => {
-            const raw = (mark.dataset.kropkiType || mark.querySelector('input')?.value || '').trim().toUpperCase();
-            return raw === 'B' || raw === 'W' ? raw : null;
-        };
-
-        for (const mark of marks) {
-            const key = mark.dataset.key;
-            const pair = parsePairFromKey(key);
-            const type = readKropkiType(mark);
-            if (!pair || !type) continue;
-
-            const clueNumsSet = new Set();
-            if (type === 'B') {
+                // 计算所有满足比例的数字组合
+                const clue_nums_set = new Set();
                 for (let a = 1; a <= size; a++) {
-                    const doubled = a * 2;
-                    if (doubled >= 1 && doubled <= size) {
-                        clueNumsSet.add(a);
-                        clueNumsSet.add(doubled);
-                    }
-                    const halved = a / 2;
-                    if (Number.isInteger(halved) && halved >= 1 && halved <= size) {
-                        clueNumsSet.add(a);
-                        clueNumsSet.add(halved);
-                    }
-                }
-            } else {
-                for (let a = 1; a <= size; a++) {
-                    const neighbors = [a - 1, a + 1];
-                    for (const b of neighbors) {
-                        if (b >= 1 && b <= size) {
-                            clueNumsSet.add(a);
-                            clueNumsSet.add(b);
+                    for (let b = 1; b <= size; b++) {
+                        if (
+                            (a * right_num === b * left_num) ||
+                            (b * right_num === a * left_num)
+                        ) {
+                            clue_nums_set.add(a);
+                            clue_nums_set.add(b);
                         }
                     }
                 }
-            }
-
-            const clue_nums = Array.from(clueNumsSet).sort((x, y) => x - y);
-            if (clue_nums.length === 0) continue;
-
-            const index = [
-                    [pair.row1, pair.col1],
-                    [pair.row2, pair.col2],
-                ]
-                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
-                    .join('-');
-
-            regions.push({
-                type: '特定组合',
-                index,
-                cells: [
-                    [pair.row1, pair.col1],
-                    [pair.row2, pair.col2],
-                ],
-                clue_nums,
-            });
-        }
-    }
-    // VX 特定组合：将带 V/X 的相邻两格作为两格提示区域（用于逻辑消除）；
-    // clue_nums 包含所有可能出现在这两个格子中的数字（即能与另一数和为 5 或 10 的数）
-    else if (mode === 'VX' || mode === 'vx') {
-        const container = document.querySelector('.sudoku-container');
-        if (!container) return regions;
-        const marks = container.querySelectorAll('.vx-mark[data-key]');
-        let region_index = 1;
-        for (const mark of marks) {
-            const key = mark.dataset.key;
-            if (!key) continue;
-
-            // 解析两格坐标（与 product/ratio 保持一致的 key 规则）
-            let cell_a, cell_b;
-            if (key.startsWith('v-')) {
-                const [, row_str, col_str] = key.split('-');
-                const r = parseInt(row_str, 10);
-                const c = parseInt(col_str, 10);
-                if (Number.isNaN(r) || Number.isNaN(c)) continue;
-                cell_a = [r, c - 1];
-                cell_b = [r, c];
-            } else if (key.startsWith('h-')) {
-                const [, row_str, col_str] = key.split('-');
-                const r = parseInt(row_str, 10);
-                const c = parseInt(col_str, 10);
-                if (Number.isNaN(r) || Number.isNaN(c)) continue;
-                cell_a = [r - 1, c];
-                cell_b = [r, c];
-            } else {
-                continue;
-            }
-
-            // 读取标记类型 V / X（优先 dataset，回退到输入框文本）
-            const rawType = (mark.dataset.vxType || mark.querySelector('input')?.value || '').toUpperCase();
-            const type = (rawType === 'V' || rawType === 'X') ? rawType : null;
-            if (!type) continue;
-            const requiredSum = type === 'V' ? 5 : 10;
-
-            // 计算所有可能出现在这两个格子中的数字（1..size 中与另一数能和为 requiredSum 的数）
-            const clue_nums_set = new Set();
-            for (let a = 1; a <= size; a++) {
-                for (let b = 1; b <= size; b++) {
-                    if (a + b === requiredSum) {
-                        clue_nums_set.add(a);
-                        clue_nums_set.add(b);
-                    }
-                }
-            }
-            const clue_nums = Array.from(clue_nums_set).sort((x, y) => x - y);
-            if (clue_nums.length === 0) continue;
-
-            const index = [cell_a, cell_b]
-                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
-                    .join('-');
-
-            regions.push({
-                type: '特定组合',
-                index,
-                cells: [cell_a, cell_b],
-                clue_nums
-            });
-        }
-    }
-    else if (mode === 'palindrome') {
-        const mark_lines = get_all_mark_lines();
-        // 合并首尾相接的线段
-        // 先把每条线段扩展为经过的所有格子
-        const size = state.current_grid_size || size;
-        const expanded_lines = mark_lines.map(line => get_cells_on_line(size, line[0], line[1]));
-        // 合并线段
-        const merged_lines = merge_connected_lines(expanded_lines);
-        let regionIndex = 1;
-        for (const cells of merged_lines) {
-            const len = cells.length;
-            for (let i = 0; i < Math.floor(len / 2); i++) {
-                const cell_a = cells[i];
-                const cell_b = cells[len - 1 - i];
+                const clue_nums = Array.from(clue_nums_set).sort((x, y) => x - y);
 
                 const index = [cell_a, cell_b]
-                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
-                    .join('-');
+                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                        .join('-');
+
                 regions.push({
                     type: '特定组合',
                     index,
                     cells: [cell_a, cell_b],
-                    clue_nums: Array.from({length: size * 2}, (_, n) => (n % size) + 1)
+                    // clue_nums: clue_nums
                 });
             }
+            break;
         }
-        // log_process(`合并后的回文线段数：${regions.length}`);、
-    } else if (mode === 'consecutive') {
-        // 处理连续数独的白点标记
-        const container = document.querySelector('.sudoku-container');
-        if (container) {
-            container.querySelectorAll('.vx-mark[data-key]').forEach(mark => {
-                const key = mark.dataset.key;
-                const type = (mark.dataset.consecutiveType || '').toUpperCase();
-                if (type !== 'W') return; // 只处理白点标记
+        case 'inequality': {
+            const container = document.querySelector('.sudoku-container');
+            if (container) {
+                const marks = container.querySelectorAll('.vx-mark');
+                for (const mark of marks) {
+                    const key = mark.dataset.key;
+                    if (!key) continue;
 
-                const parts = key.split('-');
-                if (parts.length < 3) return;
+                    let cell_a, cell_b;
+                    if (key.startsWith('v-')) {
+                        const [_, row_str, col_str] = key.split('-');
+                        const r = parseInt(row_str);
+                        const c = parseInt(col_str);
+                        cell_a = [r, c - 1];
+                        cell_b = [r, c];
+                    } else if (key.startsWith('h-')) {
+                        const [_, row_str, col_str] = key.split('-');
+                        const r = parseInt(row_str);
+                        const c = parseInt(col_str);
+                        cell_a = [r - 1, c];
+                        cell_b = [r, c];
+                    } else {
+                        continue;
+                    }
 
-                const rowToken = Number(parts[1]);
-                const colToken = Number(parts[2]);
-                if (Number.isNaN(rowToken) || Number.isNaN(colToken)) return;
+                    if (cell_a[0] >= 0 && cell_a[0] < size && cell_a[1] >= 0 && cell_a[1] < size &&
+                        cell_b[0] >= 0 && cell_b[0] < size && cell_b[1] >= 0 && cell_b[1] < size) {
+                        
+                        // const index = `${getRowLetter(cell_a[0] + 1)}${cell_a[1] + 1}-${getRowLetter(cell_b[0] + 1)}${cell_b[1] + 1}`;
+                        const index = [cell_a, cell_b]
+                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                        .join('-');
+                        regions.push({
+                            type: '特定组合',
+                            index,
+                            cells: [cell_a, cell_b],
+                            // clue_nums: Array.from({ length: size }, (_, n) => n + 1)
+                        });
+                    }
+                }
+            }
+            break;
+        }
+        case 'kropki': {
+            const container = document.querySelector('.sudoku-container');
+            if (!container) return regions;
+            const marks = container.querySelectorAll('.vx-mark[data-key]');
+            let region_index = 1;
 
-                let pair = null;
+            const parsePairFromKey = (key) => {
+                if (!key) return null;
                 if (key.startsWith('v-')) {
-                    pair = { row1: rowToken, col1: colToken - 1, row2: rowToken, col2: colToken };
-                } else if (key.startsWith('h-')) {
-                    pair = { row1: rowToken - 1, col1: colToken, row2: rowToken, col2: colToken };
+                    const [, rowStr, colStr] = key.split('-');
+                    const row = Number.parseInt(rowStr, 10);
+                    const col = Number.parseInt(colStr, 10) - 1;
+                    if (Number.isNaN(row) || Number.isNaN(col)) return null;
+                    return { row1: row, col1: col, row2: row, col2: col + 1 };
+                }
+                if (key.startsWith('h-')) {
+                    const [, rowStr, colStr] = key.split('-');
+                    const row = Number.parseInt(rowStr, 10) - 1;
+                    const col = Number.parseInt(colStr, 10);
+                    if (Number.isNaN(row) || Number.isNaN(col)) return null;
+                    return { row1: row, col1: col, row2: row + 1, col2: col };
+                }
+                return null;
+            };
+
+            const readKropkiType = (mark) => {
+                const raw = (mark.dataset.kropkiType || mark.querySelector('input')?.value || '').trim().toUpperCase();
+                return raw === 'B' || raw === 'W' ? raw : null;
+            };
+
+            for (const mark of marks) {
+                const key = mark.dataset.key;
+                const pair = parsePairFromKey(key);
+                const type = readKropkiType(mark);
+                if (!pair || !type) continue;
+
+                const clueNumsSet = new Set();
+                if (type === 'B') {
+                    for (let a = 1; a <= size; a++) {
+                        const doubled = a * 2;
+                        if (doubled >= 1 && doubled <= size) {
+                            clueNumsSet.add(a);
+                            clueNumsSet.add(doubled);
+                        }
+                        const halved = a / 2;
+                        if (Number.isInteger(halved) && halved >= 1 && halved <= size) {
+                            clueNumsSet.add(a);
+                            clueNumsSet.add(halved);
+                        }
+                    }
+                } else {
+                    for (let a = 1; a <= size; a++) {
+                        const neighbors = [a - 1, a + 1];
+                        for (const b of neighbors) {
+                            if (b >= 1 && b <= size) {
+                                clueNumsSet.add(a);
+                                clueNumsSet.add(b);
+                            }
+                        }
+                    }
                 }
 
-                if (pair) {
+                const clue_nums = Array.from(clueNumsSet).sort((x, y) => x - y);
+                if (clue_nums.length === 0) continue;
+
+                const index = [
+                        [pair.row1, pair.col1],
+                        [pair.row2, pair.col2],
+                    ]
+                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                        .join('-');
+
+                regions.push({
+                    type: '特定组合',
+                    index,
+                    cells: [
+                        [pair.row1, pair.col1],
+                        [pair.row2, pair.col2],
+                    ],
+                    // clue_nums,
+                });
+            }
+            break;
+        }
+        case 'VX':
+        case 'vx': {
+            const container = document.querySelector('.sudoku-container');
+            if (!container) return regions;
+            const marks = container.querySelectorAll('.vx-mark[data-key]');
+            let region_index = 1;
+            for (const mark of marks) {
+                const key = mark.dataset.key;
+                if (!key) continue;
+
+                // 解析两格坐标（与 product/ratio 保持一致的 key 规则）
+                let cell_a, cell_b;
+                if (key.startsWith('v-')) {
+                    const [, row_str, col_str] = key.split('-');
+                    const r = parseInt(row_str, 10);
+                    const c = parseInt(col_str, 10);
+                    if (Number.isNaN(r) || Number.isNaN(c)) continue;
+                    cell_a = [r, c - 1];
+                    cell_b = [r, c];
+                } else if (key.startsWith('h-')) {
+                    const [, row_str, col_str] = key.split('-');
+                    const r = parseInt(row_str, 10);
+                    const c = parseInt(col_str, 10);
+                    if (Number.isNaN(r) || Number.isNaN(c)) continue;
+                    cell_a = [r - 1, c];
+                    cell_b = [r, c];
+                } else {
+                    continue;
+                }
+
+                // 读取标记类型 V / X（优先 dataset，回退到输入框文本）
+                const rawType = (mark.dataset.vxType || mark.querySelector('input')?.value || '').toUpperCase();
+                const type = (rawType === 'V' || rawType === 'X') ? rawType : null;
+                if (!type) continue;
+                const requiredSum = type === 'V' ? 5 : 10;
+
+                // 计算所有可能出现在这两个格子中的数字（1..size 中与另一数能和为 requiredSum 的数）
+                const clue_nums_set = new Set();
+                for (let a = 1; a <= size; a++) {
+                    for (let b = 1; b <= size; b++) {
+                        if (a + b === requiredSum) {
+                            clue_nums_set.add(a);
+                            clue_nums_set.add(b);
+                        }
+                    }
+                }
+                const clue_nums = Array.from(clue_nums_set).sort((x, y) => x - y);
+                if (clue_nums.length === 0) continue;
+
+                const index = [cell_a, cell_b]
+                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                        .join('-');
+
+                regions.push({
+                    type: '特定组合',
+                    index,
+                    cells: [cell_a, cell_b],
+                    // clue_nums
+                });
+            }
+            break;
+        }
+        case 'palindrome': {
+            const mark_lines = get_all_mark_lines();
+            // 合并首尾相接的线段
+            // 先把每条线段扩展为经过的所有格子
+            const size = state.current_grid_size || size;
+            const expanded_lines = mark_lines.map(line => get_cells_on_line(size, line[0], line[1]));
+            // 合并线段
+            const merged_lines = merge_connected_lines(expanded_lines);
+            let regionIndex = 1;
+            for (const cells of merged_lines) {
+                const len = cells.length;
+                for (let i = 0; i < Math.floor(len / 2); i++) {
+                    const cell_a = cells[i];
+                    const cell_b = cells[len - 1 - i];
+
+                    const index = [cell_a, cell_b]
+                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                        .join('-');
                     regions.push({
-                        type: '连续数独白点',
-                        index: `${pair.row1},${pair.col1}-${pair.row2},${pair.col2}`,
-                        cells: [
-                            [pair.row1, pair.col1],
-                            [pair.row2, pair.col2]
-                        ]
+                        type: '特定组合',
+                        index,
+                        cells: [cell_a, cell_b],
+                        // clue_nums: Array.from({length: size * 2}, (_, n) => (n % size) + 1)
                     });
                 }
-            });
+            }
+            // log_process(`合并后的回文线段数：${regions.length}`);、
+            break;
         }
-    
-    } 
-    // 灰格连续数独：将手动标记的格子作为一个灰格连续区域
-    else if (mode === 'renban' && typeof get_renban_cells === 'function') {
-        const renban_cells = get_renban_cells();
-        if (Array.isArray(renban_cells) && renban_cells.length > 0) {
-            // 判断是单区域还是多区域
-            if (Array.isArray(renban_cells[0][0])) {
-                // 多个区域
-                renban_cells.forEach((region_cells) => {
-                    const index = region_cells
-                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
-                    .join('-');
+        case 'consecutive': {
+            // 处理连续数独的白点标记
+            const container = document.querySelector('.sudoku-container');
+            if (container) {
+                container.querySelectorAll('.vx-mark[data-key]').forEach(mark => {
+                    const key = mark.dataset.key;
+                    const type = (mark.dataset.consecutiveType || '').toUpperCase();
+                    if (type !== 'W') return; // 只处理白点标记
 
-                    if (region_cells.length > 0) {
-                        regions.push({ type: '特定组合', index, cells: region_cells, clue_nums: Array.from({ length: size }, (_, n) => n + 1), });
+                    const parts = key.split('-');
+                    if (parts.length < 3) return;
+
+                    const rowToken = Number(parts[1]);
+                    const colToken = Number(parts[2]);
+                    if (Number.isNaN(rowToken) || Number.isNaN(colToken)) return;
+
+                    let pair = null;
+                    if (key.startsWith('v-')) {
+                        pair = { row1: rowToken, col1: colToken - 1, row2: rowToken, col2: colToken };
+                    } else if (key.startsWith('h-')) {
+                        pair = { row1: rowToken - 1, col1: colToken, row2: rowToken, col2: colToken };
+                    }
+
+                    if (pair) {
+                        regions.push({
+                            type: '连续数独白点',
+                            index: `${pair.row1},${pair.col1}-${pair.row2},${pair.col2}`,
+                            cells: [
+                                [pair.row1, pair.col1],
+                                [pair.row2, pair.col2]
+                            ]
+                        });
                     }
                 });
-            } else {
-                // 单个区域
-                const index = renban_cells
-                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
-                    .join('-');
-                regions.push({ type: '特定组合', index, cells: renban_cells, clue_nums: Array.from({ length: size }, (_, n) => n + 1), });
             }
+            break;
         }
-    }
-    else if (mode === 'X_sums' || mode === 'sandwich' || mode === 'skyscraper') {
-        const container = document.querySelector('.sudoku-container');
-        if (!container) return regions;
+        case 'renban': {
+            if (typeof get_renban_cells === 'function') {
+                const renban_cells = get_renban_cells();
+                if (Array.isArray(renban_cells) && renban_cells.length > 0) {
+                    // 判断是单区域还是多区域
+                    if (Array.isArray(renban_cells[0][0])) {
+                        // 多个区域
+                        renban_cells.forEach((region_cells) => {
+                            const index = region_cells
+                            .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                            .join('-');
 
-        // 遍历每一行，检查行首或行尾是否有外提示数
-        for (let row = 1; row <= size; row++) {
-            const left_clue_input = container.querySelector(`input[data-row="${row}"][data-col="0"]`);
-            // log_process(`检查行 ${row} 的左侧提示数: ${left_clue_input ? left_clue_input.value : ''}`);
-            const right_clue_input = container.querySelector(`input[data-row="${row}"][data-col="${size + 1}"]`);
-            const left_clue = left_clue_input ? parseInt(left_clue_input.value) : null;
-            const right_clue = right_clue_input ? parseInt(right_clue_input.value) : null;
-
-            if (left_clue || left_clue === 0 || right_clue || right_clue === 0) {
-                const row_cells = [];
-                for (let col = 1; col <= size; col++) {
-                    row_cells.push([row - 1, col - 1]); // 转换为 0 索引
+                            if (region_cells.length > 0) {
+                                regions.push({ type: '特定组合', index, cells: region_cells, });
+                            }
+                        });
+                    } else {
+                        // 单个区域
+                        const index = renban_cells
+                            .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                            .join('-');
+                        regions.push({ type: '特定组合', index, cells: renban_cells, });
+                    }
                 }
-
-                const index = row_cells
-                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
-                    .join('-');
-
-                regions.push({
-                    type: '特定组合',
-                    index,
-                    cells: row_cells,
-                    clue_nums: Array.from({ length: size }, (_, n) => n + 1),
-                });
-                // log_process(`发现特定组合：row-${row}，提示数：${left_clue || ''} ${right_clue || ''}`);
             }
+            break;
         }
+        case 'X_sums':
+        case 'sandwich':
+        case 'skyscraper': {
+            const container = document.querySelector('.sudoku-container');
+            if (!container) return regions;
 
-        // 遍历每一列，检查列首或列尾是否有外提示数
-        for (let col = 1; col <= size; col++) {
-            const top_clue_input = container.querySelector(`input[data-row="0"][data-col="${col}"]`);
-            const bottom_clue_input = container.querySelector(`input[data-row="${size + 1}"][data-col="${col}"]`);
-            const top_clue = top_clue_input ? parseInt(top_clue_input.value) : null;
-            const bottom_clue = bottom_clue_input ? parseInt(bottom_clue_input.value) : null;
+            // 遍历每一行，检查行首或行尾是否有外提示数
+            for (let row = 1; row <= size; row++) {
+                const left_clue_input = container.querySelector(`input[data-row="${row}"][data-col="0"]`);
+                // log_process(`检查行 ${row} 的左侧提示数: ${left_clue_input ? left_clue_input.value : ''}`);
+                const right_clue_input = container.querySelector(`input[data-row="${row}"][data-col="${size + 1}"]`);
+                const left_clue = left_clue_input ? parseInt(left_clue_input.value) : null;
+                const right_clue = right_clue_input ? parseInt(right_clue_input.value) : null;
 
-            if (top_clue || top_clue === 0 || bottom_clue || bottom_clue === 0) {
-                const col_cells = [];
-                for (let row = 1; row <= size; row++) {
-                    col_cells.push([row - 1, col - 1]); // 转换为 0 索引
+                if (left_clue || left_clue === 0 || right_clue || right_clue === 0) {
+                    const row_cells = [];
+                    for (let col = 1; col <= size; col++) {
+                        row_cells.push([row - 1, col - 1]); // 转换为 0 索引
+                    }
+
+                    const index = row_cells
+                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                        .join('-');
+
+                    regions.push({
+                        type: '特定组合',
+                        index,
+                        cells: row_cells,
+                        // clue_nums: Array.from({ length: size }, (_, n) => n + 1),
+                    });
+                    // log_process(`发现特定组合：row-${row}，提示数：${left_clue || ''} ${right_clue || ''}`);
                 }
-                const index = col_cells
-                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
-                    .join('-');
-                regions.push({
-                    type: '特定组合',
-                    index,
-                    cells: col_cells,
-                    clue_nums: Array.from({ length: size }, (_, n) => n + 1),
-                });
             }
+
+            // 遍历每一列，检查列首或列尾是否有外提示数
+            for (let col = 1; col <= size; col++) {
+                const top_clue_input = container.querySelector(`input[data-row="0"][data-col="${col}"]`);
+                const bottom_clue_input = container.querySelector(`input[data-row="${size + 1}"][data-col="${col}"]`);
+                const top_clue = top_clue_input ? parseInt(top_clue_input.value) : null;
+                const bottom_clue = bottom_clue_input ? parseInt(bottom_clue_input.value) : null;
+
+                if (top_clue || top_clue === 0 || bottom_clue || bottom_clue === 0) {
+                    const col_cells = [];
+                    for (let row = 1; row <= size; row++) {
+                        col_cells.push([row - 1, col - 1]); // 转换为 0 索引
+                    }
+                    const index = col_cells
+                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                        .join('-');
+                    regions.push({
+                        type: '特定组合',
+                        index,
+                        cells: col_cells,
+                        // clue_nums: Array.from({ length: size }, (_, n) => n + 1),
+                    });
+                }
+            }
+            break;
         }
+        default:
+            // 默认情况下，不添加任何区域
+            break;
     }
     // return regions;
     // 合并有共同格子的特定组合
     const merged_regions = merge_regions_with_common_cells(regions);
 
-    // 返回原始区域和合并后的区域
-    return [...regions, ...merged_regions];
+    // // 返回原始区域和合并后的区域
+    // return [...regions, ...merged_regions];
+    // 缓存结果
+    const result = [...regions, ...merged_regions];
+    _special_regions_cache = result;
+    _special_regions_cache_size = size;
+    _special_regions_cache_mode = mode;
+    // _special_regions_cache_mark_count = current_mark_count;
+
+    return result;
 }
 
 /**
@@ -2077,6 +2955,7 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
     //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
     //         .join('\n')
     // );
+    invalidate_regions_cache();
     if (state.current_mode === 'X_sums') {
         apply_X_sums_marks(currentBoard, currentSize);
     }

@@ -648,7 +648,6 @@ export function clear_all_inputs() {
     
     show_result("已清除所有数字！", 'info');
 }
-// ...existing code...
 export function clear_inner_numbers() {
     const container = document.querySelector('.sudoku-container');
     if (!container) return;
@@ -688,7 +687,6 @@ export function clear_inner_numbers() {
 
     show_result("已清除所有内部数字！", 'info');
 }
-// ...existing code...
 export function clear_outer_clues() {
     const container = document.querySelector('.sudoku-container');
     if (!container) return;
@@ -938,18 +936,87 @@ export function save_sudoku_as_image(is_puzzle = true) {
     // 统计信息
     const score = state.solve_stats.total_score || 0;
     const technique_counts = state.solve_stats.technique_counts || {};
+    // 获取当前题型
+    const mode = state.current_mode || 'classic';
+    // 题型中文名称映射表
+    const mode_name_map = {
+        'classic': '标准',
+        'candidates': '候选数',
+        'diagonal': '对角线',
+        'anti_diagonal': '反对角',
+        'hashtag': '斜井',
+        'multi_diagonal': '斜线',
+        'VX': 'VX',
+        'kropki': '黑白点',
+        'consecutive': '连续',
+        'missing': '缺一门',
+        'window': '窗口',
+        'pyramid': '金字塔',
+        'isomorphic': '同位',
+        'extra_region': '额外区域',
+        'renban': '灰格连续',
+        'fortress': '堡垒',
+        'clone': '克隆',
+        'anti_king': '无缘',
+        'anti_knight': '无马',
+        'anti_elephant': '无象',
+        'exclusion': '排除',
+        'quadruple': '四格提示',
+        'add': '加法',
+        'product': '乘积',
+        'ratio': '比例',
+        'inequality': '不等号',
+        'odd': '奇数',
+        'odd_even': '奇偶',
+        'palindrome': '回文',
+        'skyscraper': '摩天楼',
+        'X_sums': 'X和',
+        'sandwich': '三明治',
+        'new': '新'
+    };
+    // 获取题型中文名称
+    const mode_name = mode_name_map[mode] || mode;
+    
     // // technique_counts 转为字符串，如 naked_single_2_hidden_pair_1
-    // const technique_str = Object.entries(technique_counts)
     // 判断是否有非零技巧
     const hasTechnique = Object.values(technique_counts).some(count => count > 0);
 
     // 仅当有技巧统计且次数大于0时才输出技巧字符串
-    const technique_str = hasTechnique
-        ? Object.entries(technique_counts)
-            .filter(([_, count]) => count > 0)
-            .map(([tech, count]) => `${tech.replace(/([A-Z])/g, '_$1').toLowerCase()}_${count}`)
-            .join('_')
-        : '';
+    let technique_str = '';
+    if (hasTechnique) {
+        const counts = Object.entries(technique_counts).filter(([_, count]) => count > 0);
+        
+        // 分组
+        const groups = {};
+        counts.forEach(([tech, count]) => {
+            // 匹配 "名称_数字" 格式，例如 "宫排除_3"
+            const match = tech.match(/^(.*)_(\d+)$/);
+            if (match) {
+                const name = match[1];
+                const num = match[2];
+                if (!groups[name]) groups[name] = [];
+                groups[name].push(`${num}x${count}`); // 使用 x 连接后缀和次数
+            } else {
+                // 不带数字后缀的技巧
+                if (!groups[tech]) groups[tech] = [];
+                groups[tech].push(`${count}`);
+            }
+        });
+
+        // 拼接
+        technique_str = Object.entries(groups).map(([name, values]) => {
+            // 检查 values 中的元素是否包含 x，判断是否是带后缀的技巧
+            const isSuffixGroup = values.some(v => v.includes('x'));
+            
+            if (isSuffixGroup) {
+                // 带后缀的技巧，合并为：名称_后缀x次数_后缀x次数...
+                return `${name}_${values.join('_')}`;
+            } else {
+                // 不带后缀的技巧，直接：名称_次数
+                return `${name}_${values[0]}`;
+            }
+        }).join('_');
+    }
 
     // 创建临时容器只包含需要截图的部分
     const tempContainer = document.createElement('div');
@@ -1001,7 +1068,7 @@ export function save_sudoku_as_image(is_puzzle = true) {
         document.body.removeChild(tempContainer);
 
         // 文件名唯一性处理
-    const key = `分值_${score}_${technique_str}_${is_puzzle ? '题目' : '答案'}`;
+    const key = `${mode_name}_分值_${score}_${technique_str}_${is_puzzle ? '题目' : '答案'}`;
     if (!fileNameCounter[key]) {
         fileNameCounter[key] = 1;
     } else {
@@ -1010,7 +1077,7 @@ export function save_sudoku_as_image(is_puzzle = true) {
     const count = fileNameCounter[key];
 
     // 文件名格式：分值_分值_技巧_题目/答案_序号.png
-    const fileName = `分值_${score}_${technique_str}_${count}_${is_puzzle ? '题目' : '答案'}.png`;
+    const fileName = `${mode_name}_分值_${score}_${technique_str}_${count}_${is_puzzle ? '题目' : '答案'}.png`;
         
         // // 创建下载链接
         // const link = document.createElement('a');

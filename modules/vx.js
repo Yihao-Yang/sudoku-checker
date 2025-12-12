@@ -14,7 +14,7 @@ import {
 import { state, set_current_mode } from '../solver/state.js';
 import { create_technique_panel } from '../solver/classic.js';
 import { generate_solved_board_brute_force, generate_puzzle } from '../solver/generate.js';
-import { get_all_regions } from '../solver/solver_tool.js';
+import { get_all_regions, invalidate_regions_cache } from '../solver/solver_tool.js';
 
 const MARK_WIDTH = 32;
 const MARK_HEIGHT = 26;
@@ -26,6 +26,7 @@ export function create_vx_sudoku(size = 9) {
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
+    invalidate_regions_cache();
 
     state.techniqueSettings = {
         Box_Elimination: true,
@@ -103,7 +104,7 @@ export function create_vx_sudoku(size = 9) {
     container.appendChild(grid);
     gridDisplay.appendChild(container);
 
-    enable_vx_mark_mode(size);
+    // enable_vx_mark_mode(size);
 
     const extraButtons = document.getElementById('extraButtons');
     if (extraButtons) {
@@ -146,7 +147,7 @@ function auto_mark_vx() {
 
     reset_vx_highlights(container);
     // clear_vx_marks(true);
-    clear_marks;
+    clear_marks();
 
     const size = state.current_grid_size;
     let added = 0;
@@ -173,6 +174,7 @@ export function generate_vx_puzzle(size, score_lower_limit = 0, holes_count = un
     const effectiveSize = size || state.current_grid_size || 9;
     const container = get_vx_container();
     if (!container) return;
+    invalidate_regions_cache();
 
     // 如果调用方未传入分值下限或提示数，尝试从页面输入框读取（与 main.js 行为一致）
     if (score_lower_limit === null) {
@@ -194,7 +196,7 @@ export function generate_vx_puzzle(size, score_lower_limit = 0, holes_count = un
     log_process('', true);
     reset_vx_highlights(container);
     // clear_vx_marks(true);
-    clear_marks;
+    clear_marks();
 
     log_process('第一步：生成VX数独终盘...');
     const solvedBoard = generate_solved_board_brute_force(effectiveSize);
@@ -360,7 +362,7 @@ function enable_vx_mark_mode(size) {
         const dist_to_horizontal = Math.abs(y - (row + 1) * cell_height);
         const threshold = Math.max(
             EDGE_CLICK_THRESHOLD_MIN,
-            Math.min(cell_width, cell_height) * 0.25
+            Math.min(cell_width, cell_height) * 0.10
         );
 
         let orientation = null;
@@ -408,7 +410,7 @@ function enable_vx_mark_mode(size) {
         const dist_to_horizontal = Math.abs(y - (row + 1) * cell_height);
         const threshold = Math.max(
             EDGE_CLICK_THRESHOLD_MIN,
-            Math.min(cell_width, cell_height) * 0.25
+            Math.min(cell_width, cell_height) * 0.10
         );
 
         if (dist_to_vertical < dist_to_horizontal && dist_to_vertical < threshold && col < size - 1) {
@@ -539,8 +541,8 @@ function create_or_update_vx_mark(container, size, row1, col1, row2, col2, type 
         mark.dataset.key = key;
         mark.style.position = 'absolute';
         // 使用与 product 模块相同的尺寸和布局
-        mark.style.width = '30px';
-        mark.style.height = '30px';
+        mark.style.width = '22px';
+        mark.style.height = '22px';
         mark.style.display = 'block';
         mark.style.zIndex = '5';
 
@@ -550,9 +552,9 @@ function create_or_update_vx_mark(container, size, row1, col1, row2, col2, type 
         input.autocomplete = 'off';
         input.value = normalized_type;
         // 与 product 标记相同的居中绝对定位样式（透明背景）
-        input.style.width = '38px';
-        input.style.height = '38px';
-        input.style.fontSize = '22px';
+        input.style.width = '22px';
+        input.style.height = '22px';
+        input.style.fontSize = '18px';
         input.style.textAlign = 'center';
         input.style.border = 'none';
         input.style.background = 'transparent';
@@ -590,15 +592,15 @@ function create_or_update_vx_mark(container, size, row1, col1, row2, col2, type 
         mark.appendChild(input);
         mark.dataset.vxType = normalized_type;
 
-        // 双击移除（阻止事件冒泡以免被网格处理）
-        mark.addEventListener('dblclick', (evt) => {
-            evt.stopPropagation();
-            mark.remove();
-        });
-        input.addEventListener('dblclick', (evt) => {
-            evt.stopPropagation();
-            mark.remove();
-        });
+        // // 双击移除（阻止事件冒泡以免被网格处理）
+        // mark.addEventListener('dblclick', (evt) => {
+        //     evt.stopPropagation();
+        //     mark.remove();
+        // });
+        // input.addEventListener('dblclick', (evt) => {
+        //     evt.stopPropagation();
+        //     mark.remove();
+        // });
 
         container.appendChild(mark);
         if (focus_input) {
@@ -616,8 +618,8 @@ function create_or_update_vx_mark(container, size, row1, col1, row2, col2, type 
     }
 
     // 与 product 模块一致的定位偏移（15x10）
-    mark.style.left = `${grid.offsetLeft + mark_x - 15}px`;
-    mark.style.top = `${grid.offsetTop + mark_y - 15}px`;
+    mark.style.left = `${grid.offsetLeft + mark_x - 11}px`;
+    mark.style.top = `${grid.offsetTop + mark_y - 11}px`;
 
     return { mark, created };
 }

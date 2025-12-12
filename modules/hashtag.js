@@ -1,6 +1,6 @@
 import { state, set_current_mode } from '../solver/state.js';
 import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell } from '../solver/core.js';
-import { solve, isValid, get_all_regions } from '../solver/solver_tool.js';
+import { solve, isValid, get_all_regions, invalidate_regions_cache } from '../solver/solver_tool.js';
 import { create_technique_panel } from '../solver/classic.js';
 
 // 斜井线数独主入口
@@ -9,18 +9,27 @@ export function create_hashtag_sudoku(size) {
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
+    invalidate_regions_cache();
 
     // 修改技巧开关
     state.techniqueSettings = {
         Box_Elimination: true,
         Row_Col_Elimination: true,
+        // 区块技巧全部打开
         Box_Block: true,
+        Variant_Box_Block: true,
         Box_Pair_Block: true,
+        Extra_Region_Pair_Block: true,
         Row_Col_Block: true,
+        Variant_Row_Col_Block: true,
+        Extra_Region_Block: true,
+        Variant_Extra_Region_Block: true,
+        // 数对技巧
         Box_Naked_Pair: true,
         Row_Col_Naked_Pair: true,
         Box_Hidden_Pair: true,
         Row_Col_Hidden_Pair: true,
+        // 数组技巧
         Box_Naked_Triple: true,
         Row_Col_Naked_Triple: true,
         Box_Hidden_Triple: true,
@@ -28,12 +37,12 @@ export function create_hashtag_sudoku(size) {
         All_Quad: false,
         Cell_Elimination: true,
         Brute_Force: false,
-        Variant_Elimination: true,
-        Variant_Block: true,
-        Variant_Naked_Pair: true,
-        Variant_Hidden_Pair: true,
-        Variant_Naked_Triple: true,
-        Variant_Hidden_Triple: true
+        // 额外区域技巧
+        Extra_Region_Elimination: true,
+        Extra_Region_Naked_Pair: true,
+        Extra_Region_Hidden_Pair: true,
+        Extra_Region_Naked_Triple: true,
+        Extra_Region_Hidden_Triple: true
     };
     // 唯余法全部默认开启
     for (let i = 1; i <= size; i++) {

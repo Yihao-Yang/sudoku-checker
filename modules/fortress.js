@@ -2,7 +2,7 @@ import { state, set_current_mode } from '../solver/state.js';
 import { bold_border, create_base_grid, handle_key_navigation, add_Extra_Button, log_process, create_base_cell } from '../solver/core.js';
 import { create_technique_panel } from '../solver/classic.js';
 import { generate_puzzle } from '../solver/generate.js';
-import { get_all_regions } from '../solver/solver_tool.js';
+import { get_all_regions, invalidate_regions_cache } from '../solver/solver_tool.js';
 
 
 // 额外区域数独主入口
@@ -11,6 +11,7 @@ export function create_fortress_sudoku(size) {
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
+    invalidate_regions_cache();
 
         // 修改技巧开关
     state.techniqueSettings = {
@@ -146,6 +147,7 @@ export function create_fortress_sudoku(size) {
 // 生成额外区域数独题目
 export function generate_fortress_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
     clear_fortress_marks(size);
+    invalidate_regions_cache();
 
     // 支持的对称类型
     const SYMMETRY_TYPES = [

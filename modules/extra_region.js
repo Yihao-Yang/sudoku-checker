@@ -2,6 +2,7 @@ import { state, set_current_mode } from '../solver/state.js';
 import { bold_border, create_base_grid, handle_key_navigation, add_Extra_Button, log_process, create_base_cell } from '../solver/core.js';
 import { create_technique_panel } from '../solver/classic.js';
 import { generate_puzzle } from '../solver/generate.js';
+import { invalidate_regions_cache } from '../solver/solver_tool.js';
 
 
 // 额外区域数独主入口
@@ -10,32 +11,40 @@ export function create_extra_region_sudoku(size) {
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
+    invalidate_regions_cache();
 
         // 修改技巧开关
     state.techniqueSettings = {
         Box_Elimination: true,
         Row_Col_Elimination: true,
-        Box_Block: true,        // 
+        // 区块技巧全部打开
+        Box_Block: true,
+        Variant_Box_Block: true,
         Box_Pair_Block: true,
-        Row_Col_Block: true,    // 
-        Box_Naked_Pair: true,   // 
-        Row_Col_Naked_Pair: true, // 
-        Box_Hidden_Pair: true,  // 
-        Row_Col_Hidden_Pair: true, // 
-        Box_Naked_Triple: true, // 
-        Row_Col_Naked_Triple: true, // 
-        Box_Hidden_Triple: true, // 
-        Row_Col_Hidden_Triple: true, // 
-        All_Quad: false,         // 
-        Cell_Elimination: true,  // 
+        Extra_Region_Pair_Block: true,
+        Row_Col_Block: true,
+        Variant_Row_Col_Block: true,
+        Extra_Region_Block: true,
+        Variant_Extra_Region_Block: true,
+        // 数对技巧
+        Box_Naked_Pair: true,
+        Row_Col_Naked_Pair: true,
+        Box_Hidden_Pair: true,
+        Row_Col_Hidden_Pair: true,
+        // 数组技巧
+        Box_Naked_Triple: true,
+        Row_Col_Naked_Triple: true,
+        Box_Hidden_Triple: true,
+        Row_Col_Hidden_Triple: true,
+        All_Quad: false,
+        Cell_Elimination: true,
         Brute_Force: false,
-        Variant_Elimination: true,
-        Variant_Block: true,
-        Variant_Pair_Block: true,
-        Variant_Naked_Pair: true,
-        Variant_Hidden_Pair: true,
-        Variant_Naked_Triple: true,
-        Variant_Hidden_Triple: true
+        // 额外区域技巧
+        Extra_Region_Elimination: true,
+        Extra_Region_Naked_Pair: true,
+        Extra_Region_Hidden_Pair: true,
+        Extra_Region_Naked_Triple: true,
+        Extra_Region_Hidden_Triple: true
     };
     // 唯余法全部默认开启
     for (let i = 1; i <= size; i++) {
@@ -129,6 +138,7 @@ export function create_extra_region_sudoku(size) {
 // 生成额外区域数独题目
 export function generate_extra_region_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
     clear_extra_region_marks(size);
+    invalidate_regions_cache();
 
     // 支持的对称类型
     const SYMMETRY_TYPES = [

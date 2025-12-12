@@ -2,7 +2,7 @@ import { state, set_current_mode } from '../solver/state.js';
 import { bold_border, create_base_grid, handle_key_navigation, add_Extra_Button, log_process, create_base_cell } from '../solver/core.js';
 import { create_technique_panel } from '../solver/classic.js';
 import { generate_puzzle } from '../solver/generate.js';
-import { get_all_regions } from '../solver/solver_tool.js';
+import { get_all_regions, invalidate_regions_cache } from '../solver/solver_tool.js';
 
 
 // 额外区域数独主入口
@@ -11,32 +11,40 @@ export function create_renban_sudoku(size) {
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
+    invalidate_regions_cache();
 
         // 修改技巧开关
     state.techniqueSettings = {
         Box_Elimination: true,
         Row_Col_Elimination: true,
-        Box_Block: true,        // 
+        // 区块技巧全部打开
+        Box_Block: true,
+        Variant_Box_Block: true,
         Box_Pair_Block: true,
-        Row_Col_Block: true,    // 
-        Box_Naked_Pair: true,   // 
-        Row_Col_Naked_Pair: true, // 
-        Box_Hidden_Pair: true,  // 
-        Row_Col_Hidden_Pair: true, // 
-        Box_Naked_Triple: true, // 
-        Row_Col_Naked_Triple: true, // 
-        Box_Hidden_Triple: true, // 
-        Row_Col_Hidden_Triple: true, // 
-        All_Quad: false,         // 
-        Cell_Elimination: true,  // 
+        Extra_Region_Pair_Block: true,
+        Row_Col_Block: true,
+        Variant_Row_Col_Block: true,
+        Extra_Region_Block: true,
+        Variant_Extra_Region_Block: true,
+        // 数对技巧
+        Box_Naked_Pair: true,
+        Row_Col_Naked_Pair: true,
+        Box_Hidden_Pair: true,
+        Row_Col_Hidden_Pair: true,
+        // 数组技巧
+        Box_Naked_Triple: true,
+        Row_Col_Naked_Triple: true,
+        Box_Hidden_Triple: true,
+        Row_Col_Hidden_Triple: true,
+        All_Quad: false,
+        Cell_Elimination: true,
         Brute_Force: false,
-        Variant_Elimination: true,
-        Variant_Block: true,
-        Variant_Pair_Block: true,
-        Variant_Naked_Pair: true,
-        Variant_Hidden_Pair: true,
-        Variant_Naked_Triple: true,
-        Variant_Hidden_Triple: true,
+        // 额外区域技巧
+        Extra_Region_Elimination: true,
+        Extra_Region_Naked_Pair: true,
+        Extra_Region_Hidden_Pair: true,
+        Extra_Region_Naked_Triple: true,
+        Extra_Region_Hidden_Triple: true,
         Special_Combination_Region_Elimination_1: true,
         Special_Combination_Region_Elimination_2: true,
         Special_Combination_Region_Elimination_3: true,
@@ -44,7 +52,7 @@ export function create_renban_sudoku(size) {
         Multi_Special_Combination_Region_Elimination_1: true,
         Multi_Special_Combination_Region_Elimination_2: true,
         Multi_Special_Combination_Region_Elimination_3: true,
-        Multi_Special_Combination_Region_Elimination_4: true,
+        // Multi_Special_Combination_Region_Elimination_4: true,
         Special_Combination_Region_Block_1: true,
         Special_Combination_Region_Block_2: true,
         Special_Combination_Region_Block_3: true,
@@ -52,7 +60,7 @@ export function create_renban_sudoku(size) {
         Multi_Special_Combination_Region_Block_1: true,
         Multi_Special_Combination_Region_Block_2: true,
         Multi_Special_Combination_Region_Block_3: true,
-        Multi_Special_Combination_Region_Block_4: true,
+        // Multi_Special_Combination_Region_Block_4: true,
     };
     // 唯余法全部默认开启
     for (let i = 1; i <= size; i++) {
@@ -143,9 +151,254 @@ export function create_renban_sudoku(size) {
     gridDisplay.appendChild(container);
 }
 
+// // 生成额外区域数独题目
+// export function generate_renban_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
+//     clear_renban_marks(size);
+
+//     // 区域数量限制
+//     let min_region_count = 2, max_region_count = 4;
+//     if (size === 4) {
+//         min_region_count = 1;
+//         max_region_count = 2;
+//     } else if (size === 6) {
+//         min_region_count = 2;
+//         max_region_count = 4;
+//     } else if (size === 9) {
+//         min_region_count = 2;
+//         max_region_count = 6;
+//     }
+
+//     // 支持的对称类型
+//     const SYMMETRY_TYPES = [
+//         'central','central','central','central','central',
+//         'diagonal','diagonal',
+//         'anti-diagonal','anti-diagonal',
+//         'horizontal',
+//         'vertical',
+//     ];
+//     const symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
+
+//     // 生成对称点
+//     function get_symmetric_pos(row, col, size, symmetry) {
+//         switch (symmetry) {
+//             case 'horizontal':
+//                 return [size - 1 - row, col];
+//             case 'vertical':
+//                 return [row, size - 1 - col];
+//             case 'central':
+//                 return [size - 1 - row, size - 1 - col];
+//             case 'diagonal':
+//                 return [col, row];
+//             case 'anti-diagonal':
+//                 return [size - 1 - col, size - 1 - row];
+//             default:
+//                 return [row, col];
+//         }
+//     }
+
+//     function shuffle(arr) {
+//         for (let i = arr.length - 1; i > 0; i--) {
+//             const j = Math.floor(Math.random() * (i + 1));
+//             [arr[i], arr[j]] = [arr[j], arr[i]];
+//         }
+//     }
+
+//     // // 生成一个对称区域（不要求连通，只要求对称且数量为size）
+//     // function generate_single_region() {
+//     //     // 随机选格子并对称填充，直到达到size
+//     //     let attempts = 0;
+//     //     while (attempts < 1000) {
+//     //         attempts++;
+//     //         let regionSet = new Set();
+//     //         // 找到所有格子
+//     //         let all_cells = [];
+//     //         for (let row = 0; row < size; row++) {
+//     //             for (let col = 0; col < size; col++) {
+//     //                 all_cells.push([row, col]);
+//     //             }
+//     //         }
+//     //         shuffle(all_cells);
+//     //         for (let [row, col] of all_cells) {
+//     //             let key = `${row},${col}`;
+//     //             let [sym_row, sym_col] = get_symmetric_pos(row, col, size, symmetry);
+//     //             let sym_key = `${sym_row},${sym_col}`;
+//     //             regionSet.add(key);
+//     //             regionSet.add(sym_key);
+//     //             if (regionSet.size >= size) break;
+//     //         }
+//     //         // 转为数组
+//     //         let region = Array.from(regionSet).map(s => s.split(',').map(Number));
+//     //         if (region.length === size) {
+//     //             return [region];
+//     //         }
+//     //     }
+//     //     return [];
+//     // }
+
+//     // 方式二：生成两个对称区域
+//     function generate_double_symmetric_regions(size, symmetry, get_symmetric_pos) {
+//         // // 随机选择连通方式
+//         // const directions = Math.random() < 0.5
+//         //     ? [
+//         //         [-1, 0], [1, 0], [0, -1], [0, 1]
+//         //     ]
+//         //     : [
+//         //         [-1, 0], [1, 0], [0, -1], [0, 1],
+//         //         [-1, -1], [-1, 1], [1, -1], [1, 1]
+//         //     ];
+//         // 固定为四连通方向
+//         const directions = [
+//             [-1, 0], [1, 0], [0, -1], [0, 1]
+//         ];
+    
+//         function is_adjacent(cell_a, cell_b) {
+//             const [r1, c1] = cell_a;
+//             const [r2, c2] = cell_b;
+//             for (const [dr, dc] of directions) {
+//                 if (r1 + dr === r2 && c1 + dc === c2) {
+//                     return true;
+//                 }
+//             }
+//             return false;
+//         }
+    
+//         function cell_key(row, col) {
+//             return `${row},${col}`;
+//         }
+    
+//         let attempts = 0;
+//         while (attempts < 100) {
+//             attempts++;
+//             // 1. 随机选一个格子
+//             let all_cells = [];
+//             for (let row = 0; row < size; row++) {
+//                 for (let col = 0; col < size; col++) {
+//                     all_cells.push([row, col]);
+//                 }
+//             }
+//             // 洗牌
+//             for (let i = all_cells.length - 1; i > 0; i--) {
+//                 const j = Math.floor(Math.random() * (i + 1));
+//                 [all_cells[i], all_cells[j]] = [all_cells[j], all_cells[i]];
+//             }
+//             let [start_row, start_col] = all_cells[0];
+//             let [sym_row, sym_col] = get_symmetric_pos(start_row, start_col, size, symmetry);
+    
+//             // 2. 检查不是同一格且不连通
+//             if (start_row === sym_row && start_col === sym_col) continue;
+//             if (is_adjacent([start_row, start_col], [sym_row, sym_col])) continue;
+    
+//             // 3. 初始化区域
+//             let region_1 = [[start_row, start_col]];
+//             let region_2 = [[sym_row, sym_col]];
+//             let region_1_set = new Set([cell_key(start_row, start_col)]);
+//             let region_2_set = new Set([cell_key(sym_row, sym_col)]);
+    
+//             // 4. 随机确定区域大小（3 到 size-1）
+//             const target_size = Math.floor(Math.random() * (size - 3)) + 3;
+
+//             // 4. 循环扩展
+//             while (region_1.length < target_size) {
+//                 // 在region_1的随机一个格子的8连通位置找可加入的格子
+//                 let candidates = [];
+//                 for (let [r, c] of region_1) {
+//                     for (const [dr, dc] of directions) {
+//                         let nr = r + dr, nc = c + dc;
+//                         let key = cell_key(nr, nc);
+//                         let [sym_nr, sym_nc] = get_symmetric_pos(nr, nc, size, symmetry);
+//                         let sym_key = cell_key(sym_nr, sym_nc);
+//                         // 边界判断
+//                         if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
+//                         if (region_1_set.has(key) || region_2_set.has(key)) continue;
+//                         if (region_1_set.has(sym_key) || region_2_set.has(sym_key)) continue;
+//                         candidates.push([nr, nc]);
+//                     }
+//                 }
+//                 if (candidates.length === 0) break;
+//                 // 随机选一个
+//                 const idx = Math.floor(Math.random() * candidates.length);
+//                 let [chosen_r, chosen_c] = candidates[idx];
+//                 let [sym_chosen_r, sym_chosen_c] = get_symmetric_pos(chosen_r, chosen_c, size, symmetry);
+    
+//                 // 5. 判断区域2刚添加的格子是否和区域1的任意一个格子八连通
+//                 let adjacent = false;
+//                 for (let [r1, c1] of region_1) {
+//                     if (is_adjacent([r1, c1], [sym_chosen_r, sym_chosen_c])) {
+//                         adjacent = true;
+//                         break;
+//                     }
+//                     if (is_adjacent([chosen_r, chosen_c], [sym_chosen_r, sym_chosen_c])) {
+//                         adjacent = true;
+//                         break;
+//                     }
+                    
+//                 }
+//                 if (adjacent) continue; // 跳过本次添加
+    
+//                 // 6. 添加到两个区域
+//                 region_1.push([chosen_r, chosen_c]);
+//                 region_1_set.add(cell_key(chosen_r, chosen_c));
+//                 region_2.push([sym_chosen_r, sym_chosen_c]);
+//                 region_2_set.add(cell_key(sym_chosen_r, sym_chosen_c));
+//             }
+    
+//             // 7. 检查数量
+//             if (region_1.length === target_size && region_2.length === target_size) {
+//                 return [region_1, region_2];
+//             }
+//             // 否则重试
+//         }
+//         return [];
+//     }
+//     // ...existing code...
+
+//     // 随机选择生成方式
+//     let regions = [];
+//     // if (Math.random() < 0.3) {
+//     //     regions = generate_single_region();
+//     // // } else if (Math.random() < 0.5) {
+//     // //     regions = generate_single_symmetric_region();
+//     // } else {
+//         regions = generate_double_symmetric_regions(size, symmetry, get_symmetric_pos);
+//     // }
+//     if (regions.length === 0) {
+//         log_process('自动生成额外区域失败，请重试');
+//         return;
+//     }
+
+//     state.renban_cells.clear();
+//     for (const region of regions) {
+//         for (const [row, col] of region) {
+//             let key = `${row},${col}`;
+//             state.renban_cells.add(key);
+//             let cell = document.querySelector(`.sudoku-cell.extra-region-mode[data-row="${row}"][data-col="${col}"]`);
+//             if (cell) cell.classList.add('extra-region-cell');
+//         }
+//     }
+
+//     generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+// }
+
 // 生成额外区域数独题目
 export function generate_renban_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
     clear_renban_marks(size);
+    invalidate_regions_cache();
+
+    // 区域数量限制
+    let min_region_count = 2, max_region_count = 4;
+    if (size === 4) {
+        min_region_count = 1;
+        max_region_count = 2;
+    } else if (size === 6) {
+        min_region_count = 2;
+        max_region_count = 4;
+    } else if (size === 9) {
+        min_region_count = 2;
+        max_region_count = 6;
+    }
+
+    // 随机确定本次生成的区域数量
+    const target_region_count = Math.floor(Math.random() * (max_region_count - min_region_count + 1)) + min_region_count;
 
     // 支持的对称类型
     const SYMMETRY_TYPES = [
@@ -182,50 +435,8 @@ export function generate_renban_puzzle(size, score_lower_limit = 0, holes_count 
         }
     }
 
-    // // 生成一个对称区域（不要求连通，只要求对称且数量为size）
-    // function generate_single_region() {
-    //     // 随机选格子并对称填充，直到达到size
-    //     let attempts = 0;
-    //     while (attempts < 1000) {
-    //         attempts++;
-    //         let regionSet = new Set();
-    //         // 找到所有格子
-    //         let all_cells = [];
-    //         for (let row = 0; row < size; row++) {
-    //             for (let col = 0; col < size; col++) {
-    //                 all_cells.push([row, col]);
-    //             }
-    //         }
-    //         shuffle(all_cells);
-    //         for (let [row, col] of all_cells) {
-    //             let key = `${row},${col}`;
-    //             let [sym_row, sym_col] = get_symmetric_pos(row, col, size, symmetry);
-    //             let sym_key = `${sym_row},${sym_col}`;
-    //             regionSet.add(key);
-    //             regionSet.add(sym_key);
-    //             if (regionSet.size >= size) break;
-    //         }
-    //         // 转为数组
-    //         let region = Array.from(regionSet).map(s => s.split(',').map(Number));
-    //         if (region.length === size) {
-    //             return [region];
-    //         }
-    //     }
-    //     return [];
-    // }
-
-    // 方式二：生成两个对称区域
-    function generate_double_symmetric_regions(size, symmetry, get_symmetric_pos) {
-        // // 随机选择连通方式
-        // const directions = Math.random() < 0.5
-        //     ? [
-        //         [-1, 0], [1, 0], [0, -1], [0, 1]
-        //     ]
-        //     : [
-        //         [-1, 0], [1, 0], [0, -1], [0, 1],
-        //         [-1, -1], [-1, 1], [1, -1], [1, 1]
-        //     ];
-        // 固定为四连通方向
+    // 方式二：生成两个对称区域（排除已占用格子）
+    function generate_double_symmetric_regions(size, symmetry, get_symmetric_pos, occupied_cells) {
         const directions = [
             [-1, 0], [1, 0], [0, -1], [0, 1]
         ];
@@ -248,13 +459,18 @@ export function generate_renban_puzzle(size, score_lower_limit = 0, holes_count 
         let attempts = 0;
         while (attempts < 100) {
             attempts++;
-            // 1. 随机选一个格子
+            // 1. 随机选一个未被占用的格子
             let all_cells = [];
             for (let row = 0; row < size; row++) {
                 for (let col = 0; col < size; col++) {
-                    all_cells.push([row, col]);
+                    const key = cell_key(row, col);
+                    if (!occupied_cells.has(key)) {
+                        all_cells.push([row, col]);
+                    }
                 }
             }
+            if (all_cells.length === 0) return [];
+            
             // 洗牌
             for (let i = all_cells.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -263,22 +479,41 @@ export function generate_renban_puzzle(size, score_lower_limit = 0, holes_count 
             let [start_row, start_col] = all_cells[0];
             let [sym_row, sym_col] = get_symmetric_pos(start_row, start_col, size, symmetry);
     
-            // 2. 检查不是同一格且不连通
+            // 2. 检查对称点是否已被占用
+            if (occupied_cells.has(cell_key(sym_row, sym_col))) continue;
+    
+            // 3. 检查不是同一格且不连通
             if (start_row === sym_row && start_col === sym_col) continue;
             if (is_adjacent([start_row, start_col], [sym_row, sym_col])) continue;
     
-            // 3. 初始化区域
+            // 4. 检查与已有区域是否相邻
+            let adjacent_to_occupied = false;
+            for (const occupied_key of occupied_cells) {
+                const [occ_r, occ_c] = occupied_key.split(',').map(Number);
+                if (is_adjacent([start_row, start_col], [occ_r, occ_c]) ||
+                    is_adjacent([sym_row, sym_col], [occ_r, occ_c])) {
+                    adjacent_to_occupied = true;
+                    break;
+                }
+            }
+            if (adjacent_to_occupied) continue;
+    
+            // 5. 初始化区域
             let region_1 = [[start_row, start_col]];
             let region_2 = [[sym_row, sym_col]];
             let region_1_set = new Set([cell_key(start_row, start_col)]);
             let region_2_set = new Set([cell_key(sym_row, sym_col)]);
     
-            // 4. 随机确定区域大小（3 到 size-1）
-            const target_size = Math.floor(Math.random() * (size - 3)) + 3;
+            // 6. 随机确定区域大小（四宫和六宫：2到size-1，九宫：3到size-1）
+            let min_size = 2;
+            if (size === 9) {
+                min_size = 3;
+            }
+            const max_size = size - 1;
+            const target_size = Math.floor(Math.random() * (max_size - min_size + 1)) + min_size;
 
-            // 4. 循环扩展
+            // 7. 循环扩展
             while (region_1.length < target_size) {
-                // 在region_1的随机一个格子的8连通位置找可加入的格子
                 let candidates = [];
                 for (let [r, c] of region_1) {
                     for (const [dr, dc] of directions) {
@@ -290,6 +525,8 @@ export function generate_renban_puzzle(size, score_lower_limit = 0, holes_count 
                         if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
                         if (region_1_set.has(key) || region_2_set.has(key)) continue;
                         if (region_1_set.has(sym_key) || region_2_set.has(sym_key)) continue;
+                        // 检查是否已被其他区域占用
+                        if (occupied_cells.has(key) || occupied_cells.has(sym_key)) continue;
                         candidates.push([nr, nc]);
                     }
                 }
@@ -299,7 +536,7 @@ export function generate_renban_puzzle(size, score_lower_limit = 0, holes_count 
                 let [chosen_r, chosen_c] = candidates[idx];
                 let [sym_chosen_r, sym_chosen_c] = get_symmetric_pos(chosen_r, chosen_c, size, symmetry);
     
-                // 5. 判断区域2刚添加的格子是否和区域1的任意一个格子八连通
+                // 8. 判断新格子是否与已有区域或对方区域相邻
                 let adjacent = false;
                 for (let [r1, c1] of region_1) {
                     if (is_adjacent([r1, c1], [sym_chosen_r, sym_chosen_c])) {
@@ -310,43 +547,70 @@ export function generate_renban_puzzle(size, score_lower_limit = 0, holes_count 
                         adjacent = true;
                         break;
                     }
-                    
                 }
-                if (adjacent) continue; // 跳过本次添加
+                // 检查与已占用区域是否相邻
+                for (const occupied_key of occupied_cells) {
+                    const [occ_r, occ_c] = occupied_key.split(',').map(Number);
+                    if (is_adjacent([chosen_r, chosen_c], [occ_r, occ_c]) ||
+                        is_adjacent([sym_chosen_r, sym_chosen_c], [occ_r, occ_c])) {
+                        adjacent = true;
+                        break;
+                    }
+                }
+                if (adjacent) continue;
     
-                // 6. 添加到两个区域
+                // 9. 添加到两个区域
                 region_1.push([chosen_r, chosen_c]);
                 region_1_set.add(cell_key(chosen_r, chosen_c));
                 region_2.push([sym_chosen_r, sym_chosen_c]);
                 region_2_set.add(cell_key(sym_chosen_r, sym_chosen_c));
             }
     
-            // 7. 检查数量
+            // 10. 检查数量
             if (region_1.length === target_size && region_2.length === target_size) {
                 return [region_1, region_2];
             }
-            // 否则重试
         }
         return [];
     }
-    // ...existing code...
 
-    // 随机选择生成方式
-    let regions = [];
-    // if (Math.random() < 0.3) {
-    //     regions = generate_single_region();
-    // // } else if (Math.random() < 0.5) {
-    // //     regions = generate_single_symmetric_region();
-    // } else {
-        regions = generate_double_symmetric_regions(size, symmetry, get_symmetric_pos);
-    // }
-    if (regions.length === 0) {
+    // 生成多个区域对
+    let all_regions = [];
+    let occupied_cells = new Set();
+    
+    // 计算需要生成的区域对数量（每次生成2个对称区域）
+    const pair_count = Math.ceil(target_region_count / 2);
+    
+    for (let i = 0; i < pair_count; i++) {
+        const new_regions = generate_double_symmetric_regions(size, symmetry, get_symmetric_pos, occupied_cells);
+        if (new_regions.length === 0) {
+            break;
+        }
+        
+        // 将新区域添加到结果中
+        for (const region of new_regions) {
+            all_regions.push(region);
+            // 标记格子为已占用
+            for (const [row, col] of region) {
+                occupied_cells.add(`${row},${col}`);
+            }
+            // 如果已达到目标数量，停止生成
+            if (all_regions.length >= target_region_count) {
+                break;
+            }
+        }
+        if (all_regions.length >= target_region_count) {
+            break;
+        }
+    }
+
+    if (all_regions.length === 0) {
         log_process('自动生成额外区域失败，请重试');
         return;
     }
 
     state.renban_cells.clear();
-    for (const region of regions) {
+    for (const region of all_regions) {
         for (const [row, col] of region) {
             let key = `${row},${col}`;
             state.renban_cells.add(key);
@@ -481,6 +745,7 @@ export function get_renban_cells() {
 // 清除所有额外区域标记（界面和数据都恢复）
 export function clear_renban_marks(size) {
     state.renban_cells.clear();
+    invalidate_renban_cache(); // 清除缓存
     // 移除所有格子的高亮
     const cells = document.querySelectorAll('.sudoku-cell.extra-region-mode');
     cells.forEach(cell => {
@@ -535,47 +800,204 @@ export function clear_renban_marks(size) {
 //     return true;
 // }
 
-export function is_valid_renban(board, size, row, col, num) {
-    const container = document.querySelector('.sudoku-container');
 
-    // 1. 常规区域判断（与普通数独一致）
-    const mode = state.current_mode || 'renban';
-    const regions = get_all_regions(size, mode);
-    for (const region of regions) {
-        if (region.cells.some(([r, c]) => r === row && c === col)) {
-            for (const [r, c] of region.cells) {
-                if ((r !== row || c !== col) && board[r][c] === num) {
-                    return false;
-                }
-            }
-        }
+// 缓存每个格子的相关格（Peers）
+let _peers_cache = null;
+let _peers_cache_size = 0;
+let _peers_cache_mode = '';
+
+function get_peers(size, mode) {
+    if (_peers_cache && _peers_cache_size === size && _peers_cache_mode === mode) {
+        return _peers_cache;
     }
 
-    // 2. 灰格连续区域判断
-    if (state.renban_cells) {
-        const renban_regions = get_renban_cells(); // 获取所有灰格连续区域
-        for (const region of renban_regions) {
-            // 检查当前格子是否属于该区域
-            if (region.some(([r, c]) => r === row && c === col)) {
-                // 将当前格子视为已填入 num
-                const temp_board = board.map((r, i) => r.map((c, j) => (i === row && j === col ? num : c)));
+    const peers = Array.from({ length: size }, () => Array.from({ length: size }, () => []));
+    const regions = get_all_regions(size, mode);
 
-                // 获取该区域内的所有数字
-                const numbers = region.map(([r, c]) => temp_board[r][c]).filter(n => n > 0);
-
-                // 如果区域未填满，跳过检查
-                if (numbers.length < region.length) {
-                    continue;
-                }
-
-                // 检查数字是否连续
-                const sortedNumbers = [...numbers].sort((a, b) => a - b);
-                for (let i = 1; i < sortedNumbers.length; i++) {
-                    if (sortedNumbers[i] - sortedNumbers[i - 1] !== 1) {
-                        return false; // 数字不连续
+    for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+            const cell_peers = new Set();
+            for (const region of regions) {
+                // 检查当前格是否在该区域
+                if (region.cells.some(([row, col]) => row === r && col === c)) {
+                    for (const [row, col] of region.cells) {
+                        if (row !== r || col !== c) {
+                            // 将坐标编码为整数以存入 Set: r * size + c
+                            cell_peers.add(row * size + col);
+                        }
                     }
                 }
             }
+            // 解码回坐标数组
+            peers[r][c] = Array.from(cell_peers).map(val => [Math.floor(val / size), val % size]);
+        }
+    }
+
+    _peers_cache = peers;
+    _peers_cache_size = size;
+    _peers_cache_mode = mode;
+    return peers;
+}
+
+// export function is_valid_renban(board, size, row, col, num) {
+//     // const container = document.querySelector('.sudoku-container');
+
+//     // // 1. 常规区域判断（与普通数独一致）
+//     // const mode = state.current_mode || 'renban';
+//     // const regions = get_all_regions(size, mode);
+//     // for (const region of regions) {
+//     //     if (region.cells.some(([r, c]) => r === row && c === col)) {
+//     //         for (const [r, c] of region.cells) {
+//     //             if ((r !== row || c !== col) && board[r][c] === num) {
+//     //                 return false;
+//     //             }
+//     //         }
+//     //     }
+//     // }
+
+//     const mode = state.current_mode || 'renban';
+
+//     // 1. 快速常规区域判断（使用预计算 Peers）
+//     const peers = get_peers(size, mode)[row][col];
+//     for (let i = 0; i < peers.length; i++) {
+//         const [r, c] = peers[i];
+//         if (board[r][c] === num) {
+//             return false;
+//         }
+//     }
+
+//     // 2. 灰格连续区域判断
+//     if (state.renban_cells) {
+//         const renban_regions = get_renban_cells(); // 获取所有灰格连续区域
+//         for (const region of renban_regions) {
+//             // 检查当前格子是否属于该区域
+//             if (region.some(([r, c]) => r === row && c === col)) {
+//                 // 将当前格子视为已填入 num
+//                 const temp_board = board.map((r, i) => r.map((c, j) => (i === row && j === col ? num : c)));
+
+//                 // 获取该区域内的所有数字
+//                 const numbers = region.map(([r, c]) => temp_board[r][c]).filter(n => n > 0);
+
+//                 // 如果区域未填满，跳过检查
+//                 if (numbers.length < region.length) {
+//                     continue;
+//                 }
+
+//                 // 检查数字是否连续
+//                 const sortedNumbers = [...numbers].sort((a, b) => a - b);
+//                 for (let i = 1; i < sortedNumbers.length; i++) {
+//                     if (sortedNumbers[i] - sortedNumbers[i - 1] !== 1) {
+//                         return false; // 数字不连续
+//                     }
+//                 }
+//             }
+//         }
+//     }
+
+//     return true;
+// }
+
+// ...existing code...
+
+// 缓存 renban 区域和格子映射
+let _renban_regions_cache = null;
+let _renban_cells_snapshot = null;
+let _renban_cell_to_region_map = null;
+
+function get_renban_regions_cached() {
+    // 检查 renban_cells 是否有变化
+    const current_snapshot = Array.from(state.renban_cells).sort().join('|');
+    if (_renban_regions_cache && _renban_cells_snapshot === current_snapshot) {
+        return { regions: _renban_regions_cache, cell_map: _renban_cell_to_region_map };
+    }
+
+    // 重新计算
+    const regions = get_renban_cells();
+    
+    // 构建格子到区域索引的映射
+    const cell_map = new Map();
+    for (let i = 0; i < regions.length; i++) {
+        for (const [r, c] of regions[i]) {
+            cell_map.set(`${r},${c}`, i);
+        }
+    }
+
+    _renban_regions_cache = regions;
+    _renban_cells_snapshot = current_snapshot;
+    _renban_cell_to_region_map = cell_map;
+
+    return { regions, cell_map };
+}
+
+// 清除 renban 缓存（在标记变化时调用）
+export function invalidate_renban_cache() {
+    _renban_regions_cache = null;
+    _renban_cells_snapshot = null;
+    _renban_cell_to_region_map = null;
+}
+
+export function is_valid_renban(board, size, row, col, num) {
+    const mode = state.current_mode || 'renban';
+
+    // 1. 快速常规区域判断（使用预计算 Peers）
+    const peers = get_peers(size, mode)[row][col];
+    for (let i = 0; i < peers.length; i++) {
+        const [r, c] = peers[i];
+        if (board[r][c] === num) {
+            return false;
+        }
+    }
+
+    // 2. 灰格连续区域判断（优化版）
+    if (state.renban_cells && state.renban_cells.size > 0) {
+        const cell_key = `${row},${col}`;
+        const { regions, cell_map } = get_renban_regions_cached();
+        
+        // 快速查找当前格子所属的区域索引
+        const region_idx = cell_map.get(cell_key);
+        if (region_idx === undefined) {
+            return true; // 当前格子不在任何 renban 区域中
+        }
+
+        const region = regions[region_idx];
+        const region_len = region.length;
+
+        // 统计区域内已填数字，不创建临时数组
+        let filled_count = 0;
+        let min_num = Infinity;
+        let max_num = -Infinity;
+        const num_set = new Set();
+
+        for (let i = 0; i < region_len; i++) {
+            const [r, c] = region[i];
+            let val;
+            if (r === row && c === col) {
+                val = num; // 当前格子视为已填入 num
+            } else {
+                val = board[r][c];
+            }
+            
+            if (typeof val === 'number' && val > 0) {
+                // 检查重复数字
+                if (num_set.has(val)) {
+                    return false; // renban 区域内数字不能重复
+                }
+                num_set.add(val);
+                filled_count++;
+                if (val < min_num) min_num = val;
+                if (val > max_num) max_num = val;
+            }
+        }
+
+        // 如果区域未填满，跳过连续性检查
+        if (filled_count < region_len) {
+            return true;
+        }
+
+        // 检查数字是否连续：最大值 - 最小值 + 1 应等于区域长度
+        // 且没有重复数字（已在上面检查）
+        if (max_num - min_num + 1 !== region_len) {
+            return false;
         }
     }
 
