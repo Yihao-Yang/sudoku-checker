@@ -138,11 +138,24 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
     backup_original_board();
     show_result(`已生成${size}宫格数独题目（不加标记部分用时${elapsed}秒）`);
 
+    // if (result && result.technique_counts) {
+    //     log_process("\n=== 技巧使用统计 ===");
+    //     for (const [technique, count] of Object.entries(result.technique_counts)) {
+    //         if (count > 0) {
+    //             log_process(`${technique}: ${count}次`);
+    //         }
+    //     }
+    //     if (state.solve_stats.total_score !== undefined) {
+    //         log_process(`总分值: ${state.solve_stats.total_score}`);
+    //     }
+    // }
     if (result && result.technique_counts) {
         log_process("\n=== 技巧使用统计 ===");
+        const technique_scores = result.technique_scores || {};
         for (const [technique, count] of Object.entries(result.technique_counts)) {
             if (count > 0) {
-                log_process(`${technique}: ${count}次`);
+                const score = technique_scores[technique] || 0;
+                log_process(`${technique}: ${score}分x${count}次`);
             }
         }
         if (state.solve_stats.total_score !== undefined) {
@@ -515,6 +528,9 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
 // 修改 generate_solution 函数，返回只包含给定数字的题目盘面
 export function generate_solution(sudoku_size, existing_numbers = null, symmetry = 'none', pre_solved_board = null) {
     log_process("生成终盘...");
+    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
+        return generate_solution_old(sudoku_size);
+    }
     
     // 如果没有提供终盘，则用generate_solution_old生成一个终盘
     let use_external_board = false;
