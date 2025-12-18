@@ -278,174 +278,6 @@ export function solve_By_Elimination(board, size) {
         "欠一行列四数组": 800,
     };
 
-    // const techniqueGroups = [
-    //     // 第一优先级：余1数的唯余法
-    //     [() => state.techniqueSettings?.Cell_Elimination_1 && check_cell_elimination(board, size, 1)],
-    //     // 第二优先级：余2数的唯余法
-    //     [() => state.techniqueSettings?.Cell_Elimination_2 && check_cell_elimination(board, size, 2)],
-    //     // // 特定组合排除
-    //     // [() => state.techniqueSettings?.Special_Combination_Region_Elimination && check_special_combination_region_elimination(board, size)],
-        
-        
-    //     // 第三优先级：宫排除法
-    // ...Array.from({length: size}, (_, i) => [() => state.techniqueSettings?.Box_Elimination && check_Box_Elimination(board, size, i + 1)]),
-    //     [() => state.techniqueSettings?.Box_One_Cut && check_Box_Elimination_One_Cut(board, size)],
-    //     // 第三优先级：额外区域排除法
-    // ...Array.from({length: size}, (_, i) => [() => state.current_mode !== 'classic' && state.techniqueSettings?.Extra_Region_Elimination && check_Extra_Region_Elimination(board, size, i + 1)]),
-    //     // 第四优先级：余3数的唯余法
-    //     [() => state.techniqueSettings?.Cell_Elimination_3 && check_cell_elimination(board, size, 3)],
-    //     // 第五优先级：行列排除法
-    //     [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 1)],
-    //     [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 2)],
-    //     [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 3)],
-    //     // 余1特定组合排除
-    //     [() => state.techniqueSettings?.Special_Combination_Region_Elimination_1 && check_special_combination_region_elimination(board, size, 1)],
-    //     // 余2特定组合排除
-    //     [() => state.techniqueSettings?.Special_Combination_Region_Elimination_2 && check_special_combination_region_elimination(board, size, 2)],
-    //     // 余3特定组合排除
-    //     [() => state.techniqueSettings?.Special_Combination_Region_Elimination_3 && check_special_combination_region_elimination(board, size, 3)],
-
-
-
-        
-        
-        
-
-    //     // 第六优先级：宫区块，额外区域区块
-    //     [() => state.techniqueSettings?.Box_Block && check_box_block_elimination(board, size)],
-    //     // 变型宫区块
-    //     [() => state.techniqueSettings?.Variant_Box_Block && check_box_block_elimination(board, size, false)],
-    //     [() => state.techniqueSettings?.Box_Block_One_Cut && check_box_block_elimination_One_Cut(board, size)],
-    //     // 额外区域区块
-    //     [() => state.current_mode !== 'classic' && state.techniqueSettings?.Extra_Region_Block && check_Extra_Region_Block_Elimination(board, size)],
-    //     // 变型额外区域区块
-    //     [() => state.current_mode !== 'classic' && state.techniqueSettings?.Variant_Extra_Region_Block && check_Extra_Region_Block_Elimination(board, size, false)],
-    //     // 特定组合区块1-3
-    //     [() => state.techniqueSettings?.Special_Combination_Region_Block_1 && check_special_combination_region_block_elimination(board, size, 1)],
-    //     [() => state.techniqueSettings?.Special_Combination_Region_Block_2 && check_special_combination_region_block_elimination(board, size, 2)],
-    //     [() => state.techniqueSettings?.Special_Combination_Region_Block_3 && check_special_combination_region_block_elimination(board, size, 3)],
-        
-        
-    //     // 第七优先级：组合区块
-    //     [() => state.techniqueSettings?.Box_Pair_Block && check_box_pair_block_elimination(board, size)],
-    //     [() => state.current_mode !== 'classic' && state.techniqueSettings?.Extra_Region_Pair_Block && check_extra_region_pair_block_elimination(board, size)],
-    //     // 余4-9特定组合排除（放在同一组下）
-    //     [() => state.techniqueSettings?.Special_Combination_Region_Elimination_4 && check_special_combination_region_elimination(board, size, 4)],
-    //     [() => state.techniqueSettings?.Special_Combination_Region_Elimination_4 && check_special_combination_region_elimination(board, size, 5)],
-    //     [() => state.techniqueSettings?.Special_Combination_Region_Elimination_4 && check_special_combination_region_elimination(board, size, 6)],
-    //     [() => state.techniqueSettings?.Special_Combination_Region_Elimination_4 && check_special_combination_region_elimination(board, size, 7)],
-    //     [() => state.techniqueSettings?.Special_Combination_Region_Elimination_4 && check_special_combination_region_elimination(board, size, 8)],
-    //     [() => state.techniqueSettings?.Special_Combination_Region_Elimination_4 && check_special_combination_region_elimination(board, size, 9)],
-
-
-
-    //     // 第八优先级：余4，5数的所有排除法
-    //     [() => state.techniqueSettings?.Cell_Elimination_4 && check_cell_elimination(board, size, 4)],
-    //     [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 4)],
-
-    //     [() => state.techniqueSettings?.Cell_Elimination_5 && check_cell_elimination(board, size, 5)],
-    //     [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 5)],
-
-    //     // 第九优先级：行列区块
-    //     [() => state.techniqueSettings?.Row_Col_Block && check_Row_Col_Block_Elimination(board, size)],
-    //     // 变型行列区块
-    //     [() => state.techniqueSettings?.Variant_Row_Col_Block && check_Row_Col_Block_Elimination(board, size, false)],
-    //     // 特定组合区块4-9
-    //     [() => state.techniqueSettings?.Special_Combination_Region_Block_4 && check_special_combination_region_block_elimination(board, size, 4)],
-    //     [() => state.techniqueSettings?.Special_Combination_Region_Block_4 && check_special_combination_region_block_elimination(board, size, 5)],
-    //     [() => state.techniqueSettings?.Special_Combination_Region_Block_4 && check_special_combination_region_block_elimination(board, size, 6)],
-    //     [() => state.techniqueSettings?.Special_Combination_Region_Block_4 && check_special_combination_region_block_elimination(board, size, 7)],
-    //     [() => state.techniqueSettings?.Special_Combination_Region_Block_4 && check_special_combination_region_block_elimination(board, size, 8)],
-    //     [() => state.techniqueSettings?.Special_Combination_Region_Block_4 && check_special_combination_region_block_elimination(board, size, 9)],
-
-
-
-
-
-    //     // 第十优先级：宫隐性数对，额外区域隐性数对
-    //     [() => state.techniqueSettings?.Box_Hidden_Pair && check_box_hidden_subset_elimination(board, size, 2)],
-    //     [() => state.current_mode !== 'classic' && state.techniqueSettings?.Extra_Region_Hidden_Pair && check_extra_region_hidden_subset_elimination(board, size, 2)],
-    //     // 第十一优先级：余6-9数的所有排除法
-    //     [() => state.techniqueSettings?.Cell_Elimination_6 && check_cell_elimination(board, size, 6)],
-    //     [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 6)],
-    //     [() => state.techniqueSettings?.Cell_Elimination_7 && check_cell_elimination(board, size, 7)],
-    //     [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 7)],
-    //     [() => state.techniqueSettings?.Cell_Elimination_8 && check_cell_elimination(board, size, 8)],
-    //     [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 8)],
-    //     [() => state.techniqueSettings?.Cell_Elimination_9 && check_cell_elimination(board, size, 9)],
-    //     [() => state.techniqueSettings?.Row_Col_Elimination && check_Row_Col_Elimination(board, size, 9)],
-    //     // 多特定组合排除
-    //     [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_1 && check_multi_special_combination_region_elimination(board, size, 1)],
-    //     [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_2 && check_multi_special_combination_region_elimination(board, size, 2)],
-    //     [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_3 && check_multi_special_combination_region_elimination(board, size, 3)],
-    //     [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_4 && check_multi_special_combination_region_elimination(board, size, 4)],
-    //     [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_4 && check_multi_special_combination_region_elimination(board, size, 5)],
-    //     [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_4 && check_multi_special_combination_region_elimination(board, size, 6)],
-    //     [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_4 && check_multi_special_combination_region_elimination(board, size, 7)],
-    //     [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_4 && check_multi_special_combination_region_elimination(board, size, 8)],
-    //     [() => state.techniqueSettings?.Multi_Special_Combination_Region_Elimination_4 && check_multi_special_combination_region_elimination(board, size, 9)],
-    //     // 多特定组合区块
-    //     [() => state.techniqueSettings?.Multi_Special_Combination_Region_Block_1 && check_multi_special_combination_region_block_elimination(board, size, 1)],
-    //     [() => state.techniqueSettings?.Multi_Special_Combination_Region_Block_2 && check_multi_special_combination_region_block_elimination(board, size, 2)],
-    //     [() => state.techniqueSettings?.Multi_Special_Combination_Region_Block_3 && check_multi_special_combination_region_block_elimination(board, size, 3)],
-    //     [() => state.techniqueSettings?.Multi_Special_Combination_Region_Block_4 && check_multi_special_combination_region_block_elimination(board, size, 4)],
-    //     [() => state.techniqueSettings?.Multi_Special_Combination_Region_Block_4 && check_multi_special_combination_region_block_elimination(board, size, 5)],
-    //     [() => state.techniqueSettings?.Multi_Special_Combination_Region_Block_4 && check_multi_special_combination_region_block_elimination(board, size, 6)],
-    //     [() => state.techniqueSettings?.Multi_Special_Combination_Region_Block_4 && check_multi_special_combination_region_block_elimination(board, size, 7)],
-    //     [() => state.techniqueSettings?.Multi_Special_Combination_Region_Block_4 && check_multi_special_combination_region_block_elimination(board, size, 8)],
-    //     [() => state.techniqueSettings?.Multi_Special_Combination_Region_Block_4 && check_multi_special_combination_region_block_elimination(board, size, 9)],
-    //     // 第十二优先级：宫隐性三数组，额外区域隐性三数组
-    //     [() => state.techniqueSettings?.Box_Hidden_Triple && check_box_hidden_subset_elimination(board, size, 3)],
-    //     [() => state.current_mode !== 'classic' && state.techniqueSettings?.Extra_Region_Hidden_Triple && check_extra_region_hidden_subset_elimination(board, size, 3)],
-    //     // 第十三优先级：宫显性数对，额外区域显性数对
-    //     [() => state.techniqueSettings?.Box_Naked_Pair && check_box_naked_subset_elimination(board, size, 2)],
-    //     [() => state.current_mode !== 'classic' && state.techniqueSettings?.Extra_Region_Naked_Pair && check_extra_region_naked_subset_elimination(board, size, 2)],
-    //     // 第十四优先级：行列显性数对
-    //     [() => (state.techniqueSettings?.Row_Col_Naked_Pair) && check_row_col_naked_subset_elimination(board, size, 2)],
-        
-
-    //     // 第十四点五优先级：宫隐性欠一数对
-    //     [() => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Box_Missing_One_Subset_Elimination(board, size, 2)],//缺一门宫隐性欠一数对
-    //     // 第十五优先级：行列隐性数对
-    //     [() => (state.techniqueSettings?.Row_Col_Hidden_Pair) && check_row_col_hidden_subset_elimination(board, size, 2)],
-        
-    //     // 第十六优先级：行列隐性三数组
-    //     [() => (state.techniqueSettings?.Row_Col_Hidden_Triple) && check_row_col_hidden_subset_elimination(board, size, 3)],
-        
-    //     // 第十六点五优先级：行列隐性欠一数对
-    //     [() => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Row_Col_Missing_One_Subset_Elimination(board, size, 2)],//缺一门行列隐性欠一数对
-    //     // 第十七优先级：宫显性三数组，额外区域显性三数组
-    //     [() => state.techniqueSettings?.Box_Naked_Triple && check_box_naked_subset_elimination(board, size, 3)],
-    //     [() => state.current_mode !== 'classic' && state.techniqueSettings?.Extra_Region_Naked_Triple && check_extra_region_naked_subset_elimination(board, size, 3)],
-    //     // 第十八优先级：行列显性三数组
-    //     [() => (state.techniqueSettings?.Row_Col_Naked_Triple) && check_row_col_naked_subset_elimination(board, size, 3)],
-    //     // 第十八点五优先级：宫行列隐性欠一三数组
-    //     [() => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Box_Missing_One_Subset_Elimination(board, size, 3)],//缺一门宫隐性欠一三数组
-    //     [() => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Row_Col_Missing_One_Subset_Elimination(board, size, 3)],//缺一门行列隐性欠一三数组
-
-
-
-
-    //     // 第十九优先级：宫隐性四数组，额外区域隐性四数组
-    //     [() => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Box_Missing_One_Subset_Elimination(board, size, 4)],//缺一门宫隐性欠一四数组
-    //     [() => state.techniqueSettings?.Box_Hidden_Quad && check_box_hidden_subset_elimination(board, size, 4)],
-    //     [() => state.current_mode !== 'classic' && state.techniqueSettings?.Extra_Region_Hidden_Quad && check_extra_region_hidden_subset_elimination(board, size, 4)],
-    //     // 第二十优先级：行列隐性四数组
-    //     [() => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Row_Col_Missing_One_Subset_Elimination(board, size, 4)],
-    //     [() => (state.techniqueSettings?.Row_Col_Hidden_Quad) && check_row_col_hidden_subset_elimination(board, size, 4)],
-        
-
-    //     // 第二十一优先级：宫显性四数组，额外区域显性四数组
-    //     [() => state.techniqueSettings?.Box_Naked_Quad && check_box_naked_subset_elimination(board, size, 4)],
-    //     [() => state.current_mode !== 'classic' && state.techniqueSettings?.Extra_Region_Naked_Quad && check_extra_region_naked_subset_elimination(board, size, 4)],
-    //     // 第二十二优先级：行列显性四数组
-    //     [() => (state.techniqueSettings?.Row_Col_Naked_Quad) && check_row_col_naked_subset_elimination(board, size, 4)],
-        
-    //     // 第二十二点五优先级：宫行列隐性欠一四数组
-    //     [() => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Box_Missing_One_Subset_Elimination(board, size, 4)],//缺一门宫隐性欠一四数组
-    //     [() => state.current_mode === 'missing' && state.techniqueSettings?.Missing_One && check_Row_Col_Missing_One_Subset_Elimination(board, size, 4)],//缺一门行列隐性欠一四数组
-
-    // ];
     const techniqueGroups = [
         // ==================== 第一优先级组（基础排除）====================
         // 唯余法_1
@@ -649,7 +481,8 @@ export function solve_By_Elimination(board, size) {
                     const result = technique();
                     if (result === true) {
                         if (!state.silentMode) log_process("[冲突检测] 发现无解局面");
-                        return { changed: false, hasEmptyCandidate: true, technique_counts };
+                        // return { changed: false, hasEmptyCandidate: true, technique_counts };
+                        return { changed: false, hasEmptyCandidate: true, technique_counts, technique_scores };
                     }
                     if (!groupChanged && !isEqual(board, groupInitialBoard)) {
                         groupChanged = true;
@@ -849,7 +682,8 @@ export function solve_By_Elimination(board, size) {
         }
     } while (changed);
 
-    return { changed, hasEmptyCandidate: false, technique_counts, total_score };
+    // return { changed, hasEmptyCandidate: false, technique_counts, total_score };
+    return { changed, hasEmptyCandidate: false, technique_counts, total_score, technique_scores };
 }
 
 /**
@@ -1697,6 +1531,106 @@ function check_cell_elimination(board, size, nat = 1) {
  */
 // 变型特定组合排除
 function special_combination_region_elimination(board, size, region_cells, region_type, region_index, nat) {
+    let changed = false;
+    
+    // 1. 找到未确定格子，并按候选数数量升序排序
+    const unknown_indices = [];
+    for (let i = 0; i < region_cells.length; i++) {
+        const [r, c] = region_cells[i];
+        if (Array.isArray(board[r][c])) {
+            unknown_indices.push(i);
+        }
+    }
+    
+    // 优化：按候选数数量排序
+    unknown_indices.sort((a, b) => {
+        const [r1, c1] = region_cells[a];
+        const [r2, c2] = region_cells[b];
+        return board[r1][c1].length - board[r2][c2].length;
+    });
+
+    // 2. 记录各格子在合法分配下可以出现的数字
+    const valid_nums_for_cell = region_cells.map(() => new Set());
+    let foundCombo = false;
+
+    if (unknown_indices.length > 0) {
+        // 创建副本用于回溯
+        const board_clone = board.map(row => row.map(cell => Array.isArray(cell) ? [...cell] : cell));
+        const path = new Array(unknown_indices.length);
+        
+        function find_all_solutions(depth) {
+            if (depth === unknown_indices.length) {
+                foundCombo = true;
+                for (let i = 0; i < unknown_indices.length; i++) {
+                    valid_nums_for_cell[unknown_indices[i]].add(path[i]);
+                }
+                return;
+            }
+
+            const idx = unknown_indices[depth];
+            const [r, c] = region_cells[idx];
+            const candidates = board[r][c];
+
+            for (const num of candidates) {
+                const prev = board_clone[r][c];
+                board_clone[r][c] = num;
+
+                if (isValid(board_clone, size, r, c, num)) {
+                    path[depth] = num;
+                    find_all_solutions(depth + 1);
+                }
+
+                board_clone[r][c] = prev;
+            }
+        }
+        
+        find_all_solutions(0);
+
+        if (!foundCombo) {
+             // 无解，清空所有候选数
+             for (const idx of unknown_indices) {
+                const [r, c] = region_cells[idx];
+                if (board[r][c].length > 0) {
+                    board[r][c] = [];
+                    changed = true;
+                }
+            }
+            return changed;
+        }
+    }
+
+    // 3. 过滤候选数
+    for (let idx of unknown_indices) {
+        const [r, c] = region_cells[idx];
+        const valid_nums = valid_nums_for_cell[idx];
+        const before_len = board[r][c].length;
+        
+        const new_candidates = board[r][c].filter(n => valid_nums.has(n));
+        
+        if (new_candidates.length < before_len) {
+            const deleted = board[r][c].filter(n => !valid_nums.has(n));
+            board[r][c] = new_candidates;
+            changed = true;
+            if (!state.silentMode) {
+                log_process(`[${region_type}排除_${nat}] ${region_index}${region_type}的${getRowLetter(r+1)}${c+1}删去${deleted.join('、')}`);
+            }
+        }
+        
+        // 修复：填数逻辑移出到这里。只要剩下一个候选数，就将其转为确定数字
+        if (Array.isArray(board[r][c]) && board[r][c].length === 1) {
+            const num = board[r][c][0];
+            board[r][c] = num;
+            eliminate_candidates(board, size, r, c, num);
+            changed = true;
+            if (!state.silentMode) {
+                log_process(`[${region_type}排除_${nat}] ${region_index}${region_type}的${getRowLetter(r+1)}${c+1}唯一可填${num}，直接确定`);
+            }
+        }
+    }
+    return changed;
+}
+// 变型特定组合排除
+function special_combination_region(board, size, region_cells, region_type, region_index, nat) {
     let changed = false;
     
     // 1. 找到未确定格子，并按候选数数量升序排序
