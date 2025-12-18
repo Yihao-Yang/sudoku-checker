@@ -63,6 +63,7 @@ export function create_window_sudoku(size) {
         // 窗口高亮（以4x4为例，左上/右下4x4区域高亮）
         if (is_window_cell(row, col, size)) {
             cell.classList.add('extra-region-cell');
+            cell.classList.add('gray-cell');
         }
 
         cell.appendChild(main_input);

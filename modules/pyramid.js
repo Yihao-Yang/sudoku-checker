@@ -62,6 +62,7 @@ export function create_pyramid_sudoku(size) {
         // 金字塔高亮（以9x9为例，三角形区域高亮）
         if (is_pyramid_cell(row, col, size)) {
             cell.classList.add('extra-region-cell');
+            cell.classList.add('gray-cell');
         }
 
         cell.appendChild(main_input);

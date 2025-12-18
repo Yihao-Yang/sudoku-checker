@@ -89,8 +89,9 @@ export function create_clone_sudoku(size) {
 
         // 克隆高亮
         const cell_key = `${row},${col}`;
-        if (state.clone_cells.has(cell_key)) {
-            cell.classList.add('extra-region-cell');
+            if (state.clone_cells.has(cell_key)) {
+                cell.classList.add('extra-region-cell');
+                cell.classList.add('gray-cell');
         }
 
         // 点击格子添加/移除克隆
@@ -99,9 +100,11 @@ export function create_clone_sudoku(size) {
             if (state.clone_cells.has(cell_key)) {
                 state.clone_cells.delete(cell_key);
                 cell.classList.remove('extra-region-cell');
+                cell.classList.remove('gray-cell');
             } else {
                 state.clone_cells.add(cell_key);
                 cell.classList.add('extra-region-cell');
+                    cell.classList.add('gray-cell');
             }
         });
 
@@ -582,6 +585,7 @@ export function clear_clone_marks(size) {
     const cells = document.querySelectorAll('.sudoku-cell.extra-region-mode');
     cells.forEach(cell => {
         cell.classList.remove('extra-region-cell');
+            cell.classList.remove('gray-cell');
     });
 }
 

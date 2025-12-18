@@ -1004,18 +1004,34 @@ export function save_sudoku_as_image(is_puzzle = true) {
         });
 
         // 拼接
-        technique_str = Object.entries(groups).map(([name, values]) => {
+        technique_str = Object.entries(groups).reverse().map(([name, values]) => {
             // 检查 values 中的元素是否包含 x，判断是否是带后缀的技巧
             const isSuffixGroup = values.some(v => v.includes('x'));
             
             if (isSuffixGroup) {
                 // 带后缀的技巧，合并为：名称_后缀x次数_后缀x次数...
-                return `${name}_${values.join('_')}`;
+                return `${name}${values.join('_')}`;
             } else {
                 // 不带后缀的技巧，直接：名称_次数
-                return `${name}_${values[0]}`;
+                return `${name}${values[0]}`;
             }
         }).join('_');
+        // }).join('');
+
+        // 简化名称以缩短文件名
+        technique_str = technique_str
+            .replace(/排除/g, '')
+            .replace(/唯余法/g, '余')
+            .replace(/区块/g, '区')
+            .replace(/特定组合/g, '特')
+            .replace(/组合/g, '组')
+            .replace(/额外区域/g, '额')
+            .replace(/行列/g, '行')
+            .replace(/变型/g, '变')
+            .replace(/隐性/g, '隐')
+            .replace(/显性/g, '显')
+            .replace(/数对/g, '对')
+            .replace(/数组/g, '组');
     }
 
     // 创建临时容器只包含需要截图的部分
@@ -1068,7 +1084,7 @@ export function save_sudoku_as_image(is_puzzle = true) {
         document.body.removeChild(tempContainer);
 
         // 文件名唯一性处理
-    const key = `${mode_name}_分值_${score}_${technique_str}_${is_puzzle ? '题目' : '答案'}`;
+    const key = `${mode_name}_${score}_${technique_str}_${is_puzzle ? '题目' : '答案'}`;
     if (!fileNameCounter[key]) {
         fileNameCounter[key] = 1;
     } else {
@@ -1077,7 +1093,7 @@ export function save_sudoku_as_image(is_puzzle = true) {
     const count = fileNameCounter[key];
 
     // 文件名格式：分值_分值_技巧_题目/答案_序号.png
-    const fileName = `${mode_name}_分值_${score}_${technique_str}_${count}_${is_puzzle ? '题目' : '答案'}.png`;
+    const fileName = `${mode_name}_${score}_${technique_str}_${is_puzzle ? '题目' : '答案'}_${count}.png`;
         
         // // 创建下载链接
         // const link = document.createElement('a');

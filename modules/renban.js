@@ -111,6 +111,7 @@ export function create_renban_sudoku(size) {
         const cell_key = `${row},${col}`;
         if (state.renban_cells.has(cell_key)) {
             cell.classList.add('extra-region-cell');
+            cell.classList.add('gray-cell');
         }
 
         // 点击格子添加/移除额外区域
@@ -119,9 +120,12 @@ export function create_renban_sudoku(size) {
             if (state.renban_cells.has(cell_key)) {
                 state.renban_cells.delete(cell_key);
                 cell.classList.remove('extra-region-cell');
+                cell.classList.remove('gray-cell');
+                cell.classList.remove('gray-cell');
             } else {
                 state.renban_cells.add(cell_key);
                 cell.classList.add('extra-region-cell');
+                cell.classList.add('gray-cell');
             }
         });
 
@@ -750,6 +754,7 @@ export function clear_renban_marks(size) {
     const cells = document.querySelectorAll('.sudoku-cell.extra-region-mode');
     cells.forEach(cell => {
         cell.classList.remove('extra-region-cell');
+        cell.classList.remove('gray-cell');
     });
 }
 

@@ -203,11 +203,10 @@ export function generate_odd_even_puzzle(size, score_lower_limit = 0, holes_coun
         newMark.style.pointerEvents = 'none';
         if (markType === 'circle') {
             newMark.style.borderRadius = '50%';
-            newMark.style.background = '#e0e0e0';
         } else {
             newMark.style.borderRadius = '10%';
-            newMark.style.background = '#e0e0e0';
         }
+        newMark.classList.add('gray-cell');
         cell.appendChild(newMark);
     }
 }
@@ -239,9 +238,9 @@ function add_odd_even_mark(size) {
             newMark.style.width = '48px';
             newMark.style.height = '48px';
             newMark.style.borderRadius = '50%';
-            newMark.style.background = '#e0e0e0';
             newMark.style.zIndex = '1';
             newMark.style.pointerEvents = 'none';
+            newMark.classList.add('gray-cell');
             cell.appendChild(newMark);
         } else if (mark.dataset.markType === 'circle') {
             // 圆圈变方框

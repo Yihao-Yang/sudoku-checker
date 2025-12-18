@@ -95,18 +95,22 @@ export function create_extra_region_sudoku(size) {
         const cell_key = `${row},${col}`;
         if (state.extra_region_cells.has(cell_key)) {
             cell.classList.add('extra-region-cell');
+            cell.classList.add('gray-cell');
         }
 
         // 点击格子添加/移除额外区域
         cell.addEventListener('click', function () {
             if (!is_mark_mode) return;
-            if (state.extra_region_cells.has(cell_key)) {
-                state.extra_region_cells.delete(cell_key);
-                cell.classList.remove('extra-region-cell');
-            } else {
-                state.extra_region_cells.add(cell_key);
-                cell.classList.add('extra-region-cell');
-            }
+                if (state.extra_region_cells.has(cell_key)) {
+                    state.extra_region_cells.delete(cell_key);
+                    cell.classList.remove('extra-region-cell');
+                    cell.classList.remove('gray-cell');
+                    cell.classList.remove('gray-cell');
+                } else {
+                    state.extra_region_cells.add(cell_key);
+                    cell.classList.add('extra-region-cell');
+                    cell.classList.add('gray-cell');
+                }
         });
 
         // 添加元素到DOM
