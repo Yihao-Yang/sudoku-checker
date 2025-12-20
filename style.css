@@ -187,9 +187,9 @@ box-sizing: border-box;
 }
 
 /* 向后兼容：将内联 style 中使用 #e0e0e0 的元素也统一为变量色 */
-[style*="#c0c0c0"] {
+/* [style*="#c0c0c0"] {
     background-color: var(--gray-cell-bg) !important;
-}
+} */
 
 .main-input {
     position: absolute;
