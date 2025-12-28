@@ -395,8 +395,8 @@ export function create_technique_panel() {
                 // { id: 'Box_One_Cut', name: '一刀流宫排除', default: true },
                 { id: 'Row_Col_Elimination', name: '行列排除', default: true },
                 { id: 'Extra_Region_Elimination', name: '额外区域排除', default: false },
-                // { id: 'Special_Combination_Region_Elimination', name: '特定组合排除', default: false },
-                // { id: 'Multi_Special_Combination_Region_Elimination', name: '多特定组合排除', default: false }
+                // { id: 'Special_Combination_Region_Elimination', name: '特定组合遍历', default: false },
+                // { id: 'Multi_Special_Combination_Region_Elimination', name: '多特定组合遍历', default: false }
             ]
         },
         {
@@ -421,23 +421,83 @@ export function create_technique_panel() {
             name: '特定组合',
             items: [
                 {
-                    id: 'special_combination_elimination',
+                    id: 'special_combination_must_not_contain',
+                    name: '特定组合必不含',
+                    items: [
+                        { id: 'Special_Combination_Region_Most_Not_Contain_1', name: '特定组合必不含_1', default: false },
+                        { id: 'Special_Combination_Region_Most_Not_Contain_2', name: '特定组合必不含_2', default: false },
+                        { id: 'Special_Combination_Region_Most_Not_Contain_3', name: '特定组合必不含_3', default: false },
+                        { id: 'Special_Combination_Region_Most_Not_Contain_4', name: '特定组合必不含_4', default: false }
+                    ]
+                },
+                {
+                    id: 'multi_special_combination_must_not_contain',
+                    name: '多特定组合必不含',
+                    items: [
+                        { id: 'Multi_Special_Combination_Region_Most_Not_Contain_1', name: '多特定组合必不含_1', default: false },
+                        { id: 'Multi_Special_Combination_Region_Most_Not_Contain_2', name: '多特定组合必不含_2', default: false },
+                        { id: 'Multi_Special_Combination_Region_Most_Not_Contain_3', name: '多特定组合必不含_3', default: false },
+                        { id: 'Multi_Special_Combination_Region_Most_Not_Contain_4', name: '多特定组合必不含_4', default: false }
+                    ]
+                },
+                {
+                    id: 'special_combination_must_contain',
                     name: '特定组合排除',
                     items: [
-                        { id: 'Special_Combination_Region_Elimination_1', name: '特定组合排除_1', default: false },
-                        { id: 'Special_Combination_Region_Elimination_2', name: '特定组合排除_2', default: false },
-                        { id: 'Special_Combination_Region_Elimination_3', name: '特定组合排除_3', default: false },
-                        { id: 'Special_Combination_Region_Elimination_4', name: '特定组合排除_4', default: false }
+                        { id: 'Special_Combination_Region_Most_Contain_1', name: '特定组合排除_1', default: false },
+                        { id: 'Special_Combination_Region_Most_Contain_2', name: '特定组合排除_2', default: false },
+                        { id: 'Special_Combination_Region_Most_Contain_3', name: '特定组合排除_3', default: false },
+                        { id: 'Special_Combination_Region_Most_Contain_4', name: '特定组合排除_4', default: false }
+                    ]
+                },
+                {
+                    id: 'multi_special_combination_must_contain',
+                    name: '多特定组合排除',
+                    items: [
+                        { id: 'Multi_Special_Combination_Region_Most_Contain_1', name: '多特定组合排除_1', default: false },
+                        { id: 'Multi_Special_Combination_Region_Most_Contain_2', name: '多特定组合排除_2', default: false },
+                        { id: 'Multi_Special_Combination_Region_Most_Contain_3', name: '多特定组合排除_3', default: false },
+                        { id: 'Multi_Special_Combination_Region_Most_Contain_4', name: '多特定组合排除_4', default: false }
+                    ]
+                },
+                {
+                    id: 'special_combination_cell_elimination',
+                    name: '特定组合唯余',
+                    items: [
+                        { id: 'Special_Combination_Region_Cell_Elimination_1', name: '特定组合唯余_1', default: false },
+                        { id: 'Special_Combination_Region_Cell_Elimination_2', name: '特定组合唯余_2', default: false },
+                        { id: 'Special_Combination_Region_Cell_Elimination_3', name: '特定组合唯余_3', default: false },
+                        { id: 'Special_Combination_Region_Cell_Elimination_4', name: '特定组合唯余_4', default: false }
+                    ]
+                },
+                {
+                    id: 'multi_special_combination_cell_elimination',
+                    name: '多特定组合唯余',
+                    items: [
+                        { id: 'Multi_Special_Combination_Region_Cell_Elimination_1', name: '多特定组合唯余_1', default: false },
+                        { id: 'Multi_Special_Combination_Region_Cell_Elimination_2', name: '多特定组合唯余_2', default: false },
+                        { id: 'Multi_Special_Combination_Region_Cell_Elimination_3', name: '多特定组合唯余_3', default: false },
+                        { id: 'Multi_Special_Combination_Region_Cell_Elimination_4', name: '多特定组合唯余_4', default: false }
+                    ]
+                },
+                {
+                    id: 'special_combination_elimination',
+                    name: '特定组合遍历',
+                    items: [
+                        { id: 'Special_Combination_Region_Elimination_1', name: '特定组合遍历_1', default: false },
+                        { id: 'Special_Combination_Region_Elimination_2', name: '特定组合遍历_2', default: false },
+                        { id: 'Special_Combination_Region_Elimination_3', name: '特定组合遍历_3', default: false },
+                        { id: 'Special_Combination_Region_Elimination_4', name: '特定组合遍历_4', default: false }
                     ]
                 },
                 {
                     id: 'multi_special_combination_elimination',
-                    name: '多特定组合排除',
+                    name: '多特定组合遍历',
                     items: [
-                        { id: 'Multi_Special_Combination_Region_Elimination_1', name: '多特定组合排除_1', default: false },
-                        { id: 'Multi_Special_Combination_Region_Elimination_2', name: '多特定组合排除_2', default: false },
-                        { id: 'Multi_Special_Combination_Region_Elimination_3', name: '多特定组合排除_3', default: false },
-                        { id: 'Multi_Special_Combination_Region_Elimination_4', name: '多特定组合排除_4', default: false }
+                        { id: 'Multi_Special_Combination_Region_Elimination_1', name: '多特定组合遍历_1', default: false },
+                        { id: 'Multi_Special_Combination_Region_Elimination_2', name: '多特定组合遍历_2', default: false },
+                        { id: 'Multi_Special_Combination_Region_Elimination_3', name: '多特定组合遍历_3', default: false },
+                        { id: 'Multi_Special_Combination_Region_Elimination_4', name: '多特定组合遍历_4', default: false }
                     ]
                 },
                 {
@@ -481,16 +541,28 @@ export function create_technique_panel() {
             id: 'subset',
             name: '数组',
             items: [
-                // 隐性数组
+                // 隐性三数组
                 { id: 'Box_Hidden_Triple', name: '宫隐性三数组', default: true },
                 { id: 'Row_Col_Hidden_Triple', name: '行列隐性三数组', default: true },
                 { id: 'Extra_Region_Hidden_Triple', name: '额外区域隐性三数组', default: state.techniqueSettings?.Extra_Region_Elimination ?? false },
-                // 显性数组
+                // 显性三数组
                 { id: 'Box_Naked_Triple', name: '宫显性三数组', default: true },
                 { id: 'Row_Col_Naked_Triple', name: '行列显性三数组', default: true },
                 { id: 'Extra_Region_Naked_Triple', name: '额外区域显性三数组', default: state.techniqueSettings?.Extra_Region_Elimination ?? false },
-                // 合并所有四数组为一个开关
-                { id: 'All_Quad', name: '四数组(显性+隐性)', default: false },
+                {
+                    id: 'All_Quad',
+                    name: '四数组',
+                    items: [
+                        // 隐性四数组
+                        { id: 'Box_Hidden_Quad', name: '宫隐性四数组', default: true },
+                        { id: 'Row_Col_Hidden_Quad', name: '行列隐性四数组', default: true },
+                        { id: 'Extra_Region_Hidden_Quad', name: '额外区域隐性四数组', default: state.techniqueSettings?.Extra_Region_Elimination ?? false },
+                        // 显性四数组
+                        { id: 'Box_Naked_Quad', name: '宫显性四数组', default: true },
+                        { id: 'Row_Col_Naked_Quad', name: '行列显性四数组', default: true },
+                        { id: 'Extra_Region_Naked_Quad', name: '额外区域显性四数组', default: state.techniqueSettings?.Extra_Region_Elimination ?? false },
+                    ]
+                }
             ]
         },
         {
