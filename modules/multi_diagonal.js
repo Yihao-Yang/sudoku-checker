@@ -1,5 +1,5 @@
 import { state, set_current_mode } from '../solver/state.js';
-import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, show_logical_solution, create_base_cell } from '../solver/core.js';
+import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, show_logical_solution, create_base_cell, show_generating_timer, hide_generating_timer } from '../solver/core.js';
 import { solve, isValid, invalidate_regions_cache } from '../solver/solver_tool.js';
 import { generate_puzzle, get_symmetric_positions } from '../solver/generate.js';
 import { create_technique_panel } from '../solver/classic.js';
@@ -7,6 +7,23 @@ import { create_technique_panel } from '../solver/classic.js';
 // 斜线数独主入口
 export function create_multi_diagonal_sudoku(size) {
     set_current_mode('multi_diagonal');
+    show_result(`当前模式为斜线数独`);
+    log_process('', true);
+    log_process('规则：');
+    log_process('斜线上数字不重复');
+    log_process('');
+    log_process('技巧：');
+    log_process('"变型"：用到变型条件删数的技巧');
+    log_process('"_n"后缀：区域内剩余空格数/区块用到的空格数');
+    log_process('"额外区域"：附加的不可重复区域');
+    // log_process('"特定组合"：受附加条件影响的区域');
+    log_process('');
+    log_process('出题：');
+    log_process('10秒，超1分钟请重启页面或调整限制条件');
+    log_process('');
+    log_process('自动出题：');
+    log_process('蓝色：自动添加标记出题');
+    log_process('绿色：根据给定标记出题');
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
@@ -100,6 +117,7 @@ export function create_multi_diagonal_sudoku(size) {
     // 添加斜线数独专属按钮
     const extra_buttons = document.getElementById('extraButtons');
     extra_buttons.innerHTML = '';
+    add_Extra_Button('斜线', () => {create_multi_diagonal_sudoku(size)}, '#2196F3');
     add_Extra_Button('添加标记', toggle_multi_diagonal_mark_mode, '#2196F3');
     // 标记模式状态
     let is_mark_mode = false;
@@ -135,6 +153,11 @@ export function create_multi_diagonal_sudoku(size) {
         // 保留SVG和已画线，不清除
         show_result('已退出标记模式。');
     }
+    
+    toggle_multi_diagonal_mark_mode();
+    toggle_multi_diagonal_mark_mode();
+    show_result(`当前模式为斜线数独`);
+    // exit_multi_diagonal_mark();
     // add_Extra_Button('验证唯一解', check_multi_diagonal_uniqueness, '#2196F3');
     // add_Extra_Button('隐藏答案', restore_original_board, '#2196F3');
     add_Extra_Button('清除标记', clear_multi_diagonal_marks, '#2196F3');
@@ -350,7 +373,13 @@ export function generate_multi_diagonal_puzzle(size, score_lower_limit = 0, hole
         }
     }
     state.multi_diagonal_lines = all_lines;
-    generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+    // generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+    show_generating_timer();
+
+    setTimeout(() => {
+        generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        hide_generating_timer();
+    }, 0);
 }
 
 // 清除所有斜线标记线

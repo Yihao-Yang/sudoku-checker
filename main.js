@@ -5,7 +5,9 @@ import {
     export_sudoku_to_string,
     restore_original_board,
     save_sudoku_as_image,
-    change_candidates_mode
+    change_candidates_mode,
+    show_generating_timer,
+    hide_generating_timer
 } from './solver/core.js';
 
 import { 
@@ -123,7 +125,7 @@ document.addEventListener('input', function(e) {
     scoreInput.id = 'scoreLowerLimit';
     scoreInput.placeholder = '分值下限';
     scoreInput.value = '';
-    scoreInput.style.width = '40px';
+    scoreInput.style.width = '80px';
     scoreInput.style.marginLeft = '10px';
 
     generatepuzzleBtn.parentNode.insertBefore(scoreInput, generatepuzzleBtn.nextSibling);
@@ -151,8 +153,8 @@ document.addEventListener('input', function(e) {
     batchInput.id = 'batchCount';
     batchInput.placeholder = '题数';
     batchInput.min = '1';
-    batchInput.value = '10';
-    batchInput.style.width = '40px';
+    batchInput.value = '';
+    batchInput.style.width = '50px';
     batchInput.style.marginLeft = '10px';
 
     // generatepuzzleBtn.parentNode.insertBefore(batchBtn, generatepuzzleBtn.nextSibling);
@@ -165,11 +167,17 @@ document.addEventListener('input', function(e) {
         const cluesCount = parseInt(cluesInput.value, 10) || 0;
         const size = state.current_grid_size;
         const holesCount = size * size - (isNaN(cluesCount) ? 0 : cluesCount);
-        generate_puzzle(state.current_grid_size, scoreLowerLimit, holesCount);
+        // generate_puzzle(state.current_grid_size, scoreLowerLimit, holesCount);
+        show_generating_timer();
+
+        setTimeout(() => {
+            generate_puzzle(state.current_grid_size, scoreLowerLimit, holesCount);
+            hide_generating_timer();
+        }, 0);
     });
 
     batchBtn.addEventListener('click', async () => {
-        const count = parseInt(batchInput.value, 10);
+        const count = parseInt(batchInput.value, 10) || 1;
         const score_lower_limit = parseInt(scoreInput.value, 10) || 0;
         const size = state.current_grid_size;
         // 从 cluesInput 读取用户输入的提示数，和单次生成保持一致

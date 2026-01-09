@@ -23,6 +23,24 @@ let current_vx_type = 'V';
 
 export function create_vx_sudoku(size = 9) {
     set_current_mode('VX');
+    show_result(`当前模式为VX数独`);
+    log_process('', true);
+    log_process('规则：');
+    log_process('V(X)：两侧格内数字和为5(10)');
+    log_process('满足条件的V(X)全部标记');
+    log_process('');
+    log_process('技巧：');
+    log_process('"变型"：用到变型条件删数的技巧');
+    log_process('"_n"后缀：区域内剩余空格数/区块用到的空格数');
+    // log_process('"额外区域"：附加的不可重复区域');
+    log_process('"特定组合"：受附加条件影响的区域');
+    log_process('');
+    log_process('出题：');
+    log_process('20秒，超1分钟请刷新页面或调整限制条件');
+    log_process('');
+    log_process('自动出题：');
+    log_process('蓝色：自动添加标记出题');
+    log_process('绿色：根据给定标记出题');
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
@@ -81,7 +99,7 @@ export function create_vx_sudoku(size = 9) {
     }
 
     create_technique_panel();
-    clear_result();
+    // clear_result();
     current_vx_type = 'V';
 
     const { container, grid } = create_base_grid(size);
@@ -129,6 +147,7 @@ export function create_vx_sudoku(size = 9) {
         extraButtons.innerHTML = '';
         // add_Extra_Button('默认V标记', () => set_vx_mode('V'));
         // add_Extra_Button('默认X标记', () => set_vx_mode('X'));
+        add_Extra_Button('VX', () => {create_vx_sudoku(size)}, '#2196F3');
         add_Extra_Button('清除标记', clear_marks);
         add_Extra_Button('一键标记', auto_mark_vx);
         add_Extra_Button('自动出题', () => generate_vx_puzzle(size), '#2196F3');

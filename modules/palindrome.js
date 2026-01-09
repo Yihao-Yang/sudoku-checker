@@ -141,7 +141,7 @@ export function create_palindrome_sudoku(size) {
         // add_Extra_Button('验证唯一解', check_multi_diagonal_uniqueness, '#2196F3');
         // add_Extra_Button('隐藏答案', restore_original_board, '#2196F3');
         add_Extra_Button('清除标记', clear_multi_diagonal_marks, '#2196F3');
-        add_Extra_Button('自动出题', () => generate_multi_diagonal_puzzle(size), '#2196F3');
+        // add_Extra_Button('自动出题', () => generate_multi_diagonal_puzzle(size), '#2196F3');
 }
 
 // 清除所有斜线标记线

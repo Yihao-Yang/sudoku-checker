@@ -14,6 +14,8 @@ export const state = {
     candidate_elimination_score: {},
     total_score_sum: 0,
 
+    clues_board: null,
+
     box_missing_subsets: {},
     row_missing_subsets: {},
     col_missing_subsets: {},

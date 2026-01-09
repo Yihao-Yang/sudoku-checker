@@ -74,7 +74,87 @@ export function clear_result() {
     resultDisplay.className = '';
 }
 
-// core.js (新增辅助函数)
+// export function show_generating_timer() {
+//   let toast = document.getElementById("generation-toast");
+//   if (!toast) {
+//     toast = document.createElement("div");
+//     toast.id = "generation-toast";
+//     toast.textContent = "正在生成题目...";
+//     document.body.appendChild(toast);
+//   }
+
+//   const start = performance.now();
+
+//   const timer = setInterval(() => {
+//     const now = performance.now();
+//     const t = ((now - start) / 1000).toFixed(2);
+//     toast.textContent = `正在生成题目：${t}s`;
+//   }, 100);
+
+//   return () => {
+//     clearInterval(timer);
+//     toast.remove();
+//   };
+// }
+// 在 core.js 中修改 show_generating_timer 和 hide_generating_timer
+export function show_generating_timer() {
+    // 移除现有的计时器
+    hide_generating_timer();
+    
+    // 创建或获取 toast 元素
+    let toast = document.getElementById("generation-toast");
+    if (!toast) {
+        toast = document.createElement("div");
+        toast.id = "generation-toast";
+        toast.style.position = 'fixed';
+        toast.style.top = '20px';
+        toast.style.left = '50%';
+        toast.style.transform = 'translateX(-50%)';
+        toast.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+        toast.style.color = 'white';
+        toast.style.padding = '10px 20px';
+        toast.style.borderRadius = '5px';
+        toast.style.zIndex = '1000';
+        toast.style.fontFamily = 'Arial, sans-serif';
+        document.body.appendChild(toast);
+    }
+    
+    const start = performance.now();
+    toast.style.display = 'block';
+    toast.innerHTML = "正在生成题目...<br>若超1分钟未完成，<br>尝试刷新页面或调整限制条件";
+    
+    // 设置计时器并保存到全局变量
+    window.__GEN_TIMER__ = setInterval(() => {
+        const now = performance.now();
+        const t = ((now - start) / 1000).toFixed(2);
+        toast.textContent = `正在生成题目：${t}s`;
+    }, 100);
+    
+    return window.__GEN_TIMER__;
+}
+
+// export function hide_generating_timer() {
+//     if (window.__GEN_TIMER__) {
+//         clearInterval(window.__GEN_TIMER__);
+//         window.__GEN_TIMER__ = null;
+//     }
+//     const box = document.getElementById('generating-timer-box');
+//     if (box) box.style.display = 'none';
+// }
+export function hide_generating_timer() {
+    // 清除计时器
+    if (window.__GEN_TIMER__) {
+        clearInterval(window.__GEN_TIMER__);
+        window.__GEN_TIMER__ = null;
+    }
+    
+    // 隐藏 toast
+    const toast = document.getElementById("generation-toast");
+    if (toast) {
+        toast.style.display = 'none';
+    }
+}
+
 
 /**
  * 创建基础数独网格结构
@@ -222,14 +302,29 @@ export function handle_key_navigation(e, row, col, size, inputs) {
 }
 
 // 切换候选数模式函数
-export function change_candidates_mode(inputs, size, is_skyscraper = false) {
+export function change_candidates_mode(inputs, size) {
 
     const is_candidates_mode = state.is_candidates_mode;
 
-    const start_row = is_skyscraper ? 1 : 0;
-    const end_row = is_skyscraper ? size : size - 1;
-    const start_col = is_skyscraper ? 1 : 0;
-    const end_col = is_skyscraper ? size : size - 1;
+    const start_row = 0;
+    const end_row = size - 1;
+    const start_col = 0;
+    const end_col = size - 1;
+    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
+        start_row = 1;
+        end_row = size;
+        start_col = 1;
+        end_col = size;
+    // } else {
+    //     start_row = 0;
+    //     end_row = size - 1;
+    //     start_col = 0;
+    //     end_col = size - 1;
+    }
+    // const start_row = is_skyscraper ? 1 : 0;
+    // const end_row = is_skyscraper ? size : size - 1;
+    // const start_col = is_skyscraper ? 1 : 0;
+    // const end_col = is_skyscraper ? size : size - 1;
 
     for (let row = start_row; row <= end_row; row++) {
         if (!inputs[row] || !Array.isArray(inputs[row])) continue;

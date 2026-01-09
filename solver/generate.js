@@ -9,9 +9,14 @@ import { is_valid_quadruple } from '../modules/quadruple.js';
 
 // 自动生成标准数独题目
 export function generate_puzzle(size, score_lower_limit = 0, holes_count = undefined, pre_solved_board = null) {
-    
+    // log_process(pre_solved_board);
+    // log_process(
+    //     pre_solved_board
+    //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
+    //         .join('\n')
+    // );
     // 记录开始时间
-    const startTime = performance.now();
+    const start_time = performance.now();
     // 清除之前的结果
     if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
         clear_inner_numbers();
@@ -19,21 +24,35 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
         clear_all_inputs();
     }
     log_process('', true);
+    state.clues_board = null;
     invalidate_regions_cache();
+    const container = document.querySelector('.sudoku-container');
+    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
+        state.clues_board = Array.from({ length: size + 2 }, (_, i) =>
+            Array.from({ length: size + 2 }, (_, j) => {
+                const isBorder = i === 0 || i === size + 1 || j === 0 || j === size + 1;
+                if (isBorder) {
+                    const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+                    const valStr = input?.value ?? '';
+                    if (state.is_candidates_mode && valStr.length > 1) {
+                        return [...new Set(valStr.split('').map(Number))].filter(n => n >= 1 && n <= size);
+                    }
+                    const v = parseInt(valStr, 10);
+                    return Number.isFinite(v) ? v : 0;
+                } else {
+                    // 内部格子不读取 DOM，只设为完整候选集合
+                    return Array.from({ length: size }, (_, n) => n + 1);
+                }
+            })
+        );
+    }
+    // log_process(
+    //         state.clues_board
+    //             .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
+    //             .join('\n')
+    //     );
 
     let puzzle, solution, result, holesDug, symmetry;
-
-    // 根据分值下限自动设置难度
-    let difficulty = 'easy';
-    if (size === 6) {
-        if (score_lower_limit >= 40) difficulty = 'hard';
-        else if (score_lower_limit >= 20) difficulty = 'medium';
-        else difficulty = 'easy';
-    } else if (size === 9) {
-        if (score_lower_limit >= 200) difficulty = 'hard';
-        else if (score_lower_limit >= 100) difficulty = 'medium';
-        else difficulty = 'easy';
-    }
 
     // 尝试次数限制
     let try_count = 0;
@@ -51,22 +70,74 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
         symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
 
         // 如果外部提供了已生成的终盘，则直接使用，避免重复生成
-        if (pre_solved_board && Array.isArray(pre_solved_board) && pre_solved_board.length === size) {
+        if (pre_solved_board && Array.isArray(pre_solved_board)) {
+            if (pre_solved_board.length === size) {
+                // 直接使用同尺寸的外部终盘
+                solution = pre_solved_board;
+                // log_process('使用外部传入的终盘（跳过终盘生成）...');
+            } else if (pre_solved_board.length === size + 2) {
+                // log_process(pre_solved_board);
+                // 外部传入的是带边框的盘面（size+2），去掉边界后作为终盘
+                solution = Array.from({ length: size }, (_, i) =>
+                    Array.from({ length: size }, (_, j) => {
+                        const val = pre_solved_board[i + 1] && pre_solved_board[i + 1][j + 1];
+                        return (typeof val === 'number' && val > 0) ? val : 0;
+                    })
+                );
+                // log_process(solution);
+                // log_process('使用外部传入的带边界终盘，已去除边界并作为终盘使用...');
+            } else {
+                // 尺寸不匹配，退回生成终盘
+                log_process('传入的外部终盘尺寸不匹配，改为自动生成终盘...');
+                solution = generate_solution(size, existing_numbers, symmetry);
+                if (!solution) {
+                    log_process('生成终盘失败，重试...');
+                    continue;
+                }
+            }
             // solution = pre_solved_board;
-            solution = generate_solution(size, existing_numbers, symmetry, pre_solved_board);
-            log_process('使用外部传入的终盘（跳过终盘生成）...');
+            // // log_process(pre_solved_board);
+            // // solution = generate_solution(size, existing_numbers, symmetry, pre_solved_board);
+            // // log_process(solution);
+            // // log_process('', true);
+            // log_process('使用外部传入的终盘（跳过终盘生成）...');
         } else {
             // 生成终盘
             solution = generate_solution(size, existing_numbers, symmetry);
+        //     log_process(solution
+        //     .map(row => row.map(cell => (cell === 0 ? '.' : cell)).join(' '))
+        //     .join('\n')
+        // );
+            // log_process(`尝试生成对称模式: ${symmetry}`);
+            // log_process('', true);
             // solution = generate_solution_old(size, existing_numbers, symmetry);
             if (!solution) {
                 log_process('生成终盘失败，重试...');
                 continue;
             }
         }
+        // log_process(solution
+        //     .map(row => row.map(cell => (cell === 0 ? '.' : cell)).join(' '))
+        //     .join('\n')
+        // );
 
+        // // 记录结束时间
+        // const end_time = performance.now();
+        // const elapsed = ((end_time - start_time) / 1000).toFixed(3); // 秒，保留三位小数
+
+        // log_process(`挖洞前用时${elapsed}秒）`);
         // 挖洞得到题目
-        puzzle = dig_holes(solution, size, 0, symmetry, holes_count);
+        puzzle = dig_holes(solution, size, score_lower_limit, symmetry, holes_count);
+        // 记录结束时间
+        // const end_time_1 = performance.now();
+        // const elapsed_1 = ((end_time_1 - start_time) / 1000).toFixed(3); // 秒，保留三位小数
+
+        // log_process(`挖洞后用时${elapsed_1}秒）`);
+        // puzzle = solution;
+        // log_process(puzzle
+        //     .map(row => row.map(cell => (cell === 0 ? '.' : cell)).join(' '))
+        //     .join('\n')
+        // );
 
         // 计算实际挖洞数
         holesDug = 0;
@@ -83,6 +154,10 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
             test_board = Array.from({ length: size + 2 }, (_, i) =>
                 Array.from({ length: size + 2 }, (_, j) => {
                     if (i === 0 || i === size + 1 || j === 0 || j === size + 1) {
+                        if (pre_solved_board && Array.isArray(pre_solved_board) && pre_solved_board.length === size + 2) {
+                            const val = pre_solved_board[i] && pre_solved_board[i][j];
+                            return (val === undefined || val === null) ? 0 : val;
+                        }
                         return 0; // 边界填充为 0
                     }
                     const cell = puzzle[i - 1][j - 1];
@@ -99,7 +174,9 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
                 )
             );
         }
+        // log_process(test_board);
 
+        // log_process(size);
         result = solve(test_board, size, isValid, true);
 
         // 老分值判断（包含用户输入的下限）
@@ -115,10 +192,11 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
         break;
     }
 
-    log_process(`${size}宫格${difficulty}难度数独生成成功，提示数: ${size*size-holesDug}，对称模式: ${symmetry}`);
+    // log_process('', true);
+    log_process(`${size}宫格数独生成成功，分值：${state.solve_stats.total_score}，提示数: ${size*size-holesDug}，对称模式: ${symmetry}`);
 
     // 3. 填充到网格
-    const container = document.querySelector('.sudoku-container');
+    // container = document.querySelector('.sudoku-container');
     const isBorderedMode = ['X_sums', 'sandwich', 'skyscraper'].includes(state.current_mode);
     for (let i = 0; i < size; i++) {
         for (let j = 0; j < size; j++) {
@@ -132,11 +210,12 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
     }
 
     // 记录结束时间
-    const endTime = performance.now();
-    const elapsed = ((endTime - startTime) / 1000).toFixed(3); // 秒，保留三位小数
+    const end_time = performance.now();
+    const elapsed = ((end_time - start_time) / 1000).toFixed(3); // 秒，保留三位小数
 
     backup_original_board();
-    show_result(`已生成${size}宫格数独题目（不加标记部分用时${elapsed}秒）`);
+    show_result(`已生成${size}宫格数独题目（用时${elapsed}秒）`);
+    // log_process(`生成用时: ${elapsed} 秒`);
 
     // if (result && result.technique_counts) {
     //     log_process("\n=== 技巧使用统计 ===");
@@ -171,363 +250,9 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
     };
 }
 
-// // 生成标准完整数独终盘
-// export function generate_solution(sudoku_size, existing_numbers = null, symmetry = 'none') {
-//     // 对于hashtag模式，使用旧的生成方法
-//     if (state.current_mode !== 'classic') {
-//         // log_process("直接生成终盘")
-//         return generate_solution_old(sudoku_size);
-//     }
-
-//     // 初始化为候选数数组
-//     let sudoku_board;
-//     if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
-//         // X和模式，去掉边界
-//         // sudoku_board = Array.from({ length: sudoku_size + 2 }, () =>
-//         //     Array.from({ length: sudoku_size + 2 }, () => [...Array(sudoku_size)].map((_, i) => i + 1))
-//         //     // Array.from({ length: sudoku_size + 2 }, (_, j) => {
-//         //     //     if (i === 0 || i === sudoku_size + 1 || j === 0 || j === sudoku_size + 1) {
-//         //     //         return 0; // 边界填充为 0
-//         //     //     }
-//         //     //     return [...Array(sudoku_size)].map((_, i) => i + 1);
-//         //     // })
-//         // );
-
-//         sudoku_board = Array.from({ length: sudoku_size + 2 }, (_, i) =>
-//             Array.from({ length: sudoku_size + 2 }, (_, j) => {
-//                 if (i === 0 || i === sudoku_size + 1 || j === 0 || j === sudoku_size + 1) {
-//                     return 0; // 边界填充为 0
-//                 }
-//                 return [...Array(sudoku_size)].map((_, n) => n + 1); // 中间部分填充候选数
-//             })
-//         );
-        
-//         // // X和模式，去掉边界 - 只处理内部盘面
-//         // sudoku_board = Array.from({ length: sudoku_size }, () =>
-//         //     Array.from({ length: sudoku_size }, () => [...Array(sudoku_size)].map((_, i) => i + 1))
-//         // );
-
-//     } else {
-//         sudoku_board = Array.from({ length: sudoku_size }, () =>
-//             Array.from({ length: sudoku_size }, () => [...Array(sudoku_size)].map((_, i) => i + 1))
-//         );
-//     }
-//     // log_process(`初始化候选数盘面: \n${sudoku_board.map(r => r.map(cell => cell.join('/')).join(' ')).join('\n')}`);
-//     // 主动给数的记录
-//     let given_numbers = [];
-//     // 如果有已有数字，直接填入
-//     if (existing_numbers) {
-//         for (let r = 0; r < sudoku_size; r++) {
-//             for (let c = 0; c < sudoku_size; c++) {
-//                 if (existing_numbers[r][c]) {
-//                     // sudoku_board[r][c] = [existing_numbers[r][c]];
-//                     given_numbers.push({ row: r, col: c, num: existing_numbers[r][c] });
-//                 }
-//             }
-//         }
-//     }
-//     // log_process(`填入已有数字后的盘面: \n${sudoku_board.map(r => r.map(cell => Array.isArray(cell) ? cell.join('/') : cell).join(' ')).join('\n')}`);
-//     let max_attempts = 10000;
-//     let attempt_count = 0;
-
-//     // 生成所有格子的坐标并打乱
-//     const cell_positions = [];
-//     for (let r = 0; r < sudoku_size; r++) {
-//         for (let c = 0; c < sudoku_size; c++) {
-//             cell_positions.push([r, c]);
-//         }
-//     }
-//     shuffle(cell_positions);
-
-    
-//     let best_score = -1;
-//     let second_best_score = -1;
-//     let second_best_solution = null;
-//     let second_best_given_numbers = null;
-//     let found_valid = false;
-//     let second_best_count = 0; // 新增：备选方案计数变量
-//     const MAX_SECOND_BEST = 20; // 新增：备选方案最大数量
-
-//     // 唯一解检测
-//     let test_board;
-//     if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
-//         test_board = Array.from({ length: sudoku_size + 2 }, (_, r) =>
-//             Array.from({ length: sudoku_size + 2 }, (_, c) => {
-//                 const found = given_numbers.find(item => item.row === r && item.col === c);
-//                 return found ? found.num : 0;
-//             })
-//         );
-//     } else {
-//         test_board = Array.from({ length: sudoku_size }, (_, r) =>
-//             Array.from({ length: sudoku_size }, (_, c) => {
-//                 const found = given_numbers.find(item => item.row === r && item.col === c);
-//                 return found ? found.num : 0;
-//             })
-//         );
-//     }
-//     const result = solve(
-//         test_board.map(r => r.map(cell => cell === 0 ? [...Array(sudoku_size)].map((_, n) => n + 1) : cell)),
-//         sudoku_size,
-//         isValid,
-//         true
-//     );
-//     // 用逻辑解更新候选数
-//     if (result.solution_count === 1) {
-//         // 找到唯一解，直接填充整个棋盘
-//         for (let i = 0; i < sudoku_size; i++) {
-//             for (let j = 0; j < sudoku_size; j++) {
-//                 sudoku_board[i][j] = [result.solution[i][j]];
-//             }
-//         }
-//         return sudoku_board.map(row => row.map(cell => Array.isArray(cell) ? cell[0] : cell));
-//     } else {
-//         // 更新逻辑解
-//         if (state.logical_solution) {
-//             for (let i = 0; i < sudoku_size; i++) {
-//                 for (let j = 0; j < sudoku_size; j++) {
-//                     if (Array.isArray(state.logical_solution[i][j])) {
-//                         sudoku_board[i][j] = [...state.logical_solution[i][j]];
-//                     } else {
-//                         sudoku_board[i][j] = state.logical_solution[i][j];
-//                     }
-//                 }
-//             }
-//         }
-//     }
-
-//     if (state.solve_stats.total_score >= best_score) {
-//         // log_process(`当前分值: ${state.solve_stats.total_score} >= ${best_score}`);
-//         best_score = state.solve_stats.total_score;
-//     }
-
-//     function backtrack(cell_index = 0) {
-//         if (++attempt_count > max_attempts) return false;
-//         if (cell_index >= cell_positions.length) return true;
-
-//         const [row, col] = cell_positions[cell_index];
-
-//         // 获取对称位置（以中心对称为例，可根据需要调整 symmetry）
-//         // const symmetry = 'central';
-//         const symmetric_positions = get_symmetric_positions(row, col, sudoku_size, symmetry);
-//         let sym_row = row, sym_col = col;
-//         if (symmetric_positions.length > 0) {
-//             [sym_row, sym_col] = symmetric_positions[0];
-//         }
-
-//         // 跳过：只有当本格和对称格都已填定时才跳过
-//         if (symmetric_positions.length > 0) {
-//             [sym_row, sym_col] = symmetric_positions[0];
-//         }
-//         if (
-//             (!Array.isArray(sudoku_board[row][col]) || sudoku_board[row][col].length === 1) &&
-//             (!Array.isArray(sudoku_board[sym_row][sym_col]) || sudoku_board[sym_row][sym_col].length === 1)
-//         ) {
-//             return backtrack(cell_index + 1);
-//         }
-
-//         // 获取两个格子的候选数
-//         let candidates1, candidates2;
-//         if (!Array.isArray(sudoku_board[row][col]) || sudoku_board[row][col].length === 1) {
-//             // 本格已填定
-//             const filledNum = Array.isArray(sudoku_board[row][col])
-//                 ? sudoku_board[row][col][0]
-//                 : sudoku_board[row][col];
-//             candidates1 = [filledNum];
-//         } else {
-//             candidates1 = shuffle([...sudoku_board[row][col]]);
-//         }
-//         if (!Array.isArray(sudoku_board[sym_row][sym_col]) || sudoku_board[sym_row][sym_col].length === 1) {
-//             // 对称格已填定
-//             const filledNum = Array.isArray(sudoku_board[sym_row][sym_col])
-//                 ? sudoku_board[sym_row][sym_col][0]
-//                 : sudoku_board[sym_row][sym_col];
-//             candidates2 = [filledNum];
-//         } else {
-//             candidates2 = shuffle([...sudoku_board[sym_row][sym_col]]);
-//         }
-
-//         found_valid = false;
-
-//         for (const num1 of candidates1) {
-//             for (const num2 of candidates2) {
-//                 // 如果是同一个格子（中心格），只填一次
-//                 if (row === sym_row && col === sym_col && num1 !== num2) continue;
-//                 if (!isValid(sudoku_board, sudoku_size, row, col, num1)) continue;
-//                 if (!(row === sym_row && col === sym_col) && !isValid(sudoku_board, sudoku_size, sym_row, sym_col, num2)) continue;
-
-//                 backup_original_board();
-//                 sudoku_board[row][col] = [num1];
-//                 if (!(row === sym_row && col === sym_col)) {
-//                     sudoku_board[sym_row][sym_col] = [num2];
-//                 }
-//                 given_numbers.push({ row, col, num: num1 });
-//                 if (!(row === sym_row && col === sym_col)) {
-//                     given_numbers.push({ row: sym_row, col: sym_col, num: num2 });
-//                 }
-//                 // log_process(`尝试在 [${row+1},${col+1}] 填入 ${num1}` + (row !== sym_row || col !== sym_col ? `，在 [${sym_row+1},${sym_col+1}] 填入 ${num2}` : ''));
-//                 // log_process(`当前主动给数: ${given_numbers.map(item => `[${item.row+1},${item.col+1}]=${item.num}`).join(' ')}`);
-
-//                 // 构造只包含主动给数的盘面
-//                 if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
-//                     test_board = Array.from({ length: sudoku_size + 2 }, (_, r) =>
-//                         Array.from({ length: sudoku_size + 2 }, (_, c) => {
-//                             const found = given_numbers.find(item => item.row === r && item.col === c);
-//                             return found ? found.num : 0;
-//                         })
-//                     );
-//                 } else {
-//                     test_board = Array.from({ length: sudoku_size }, (_, r) =>
-//                         Array.from({ length: sudoku_size }, (_, c) => {
-//                             const found = given_numbers.find(item => item.row === r && item.col === c);
-//                             return found ? found.num : 0;
-//                         })
-//                     );
-//                 }
-
-//                 // 唯一解检测
-//                 const result = solve(
-//                     test_board.map(r => r.map(cell => cell === 0 ? [...Array(sudoku_size)].map((_, n) => n + 1) : cell)),
-//                     sudoku_size,
-//                     isValid,
-//                     true
-//                 );
-
-//                 if (result.solution_count === 0 || result.solution_count === -2) {
-//                     restore_original_board();
-//                     sudoku_board[row][col] = candidates1;
-//                     if (!(row === sym_row && col === sym_col)) sudoku_board[sym_row][sym_col] = candidates2;
-//                     given_numbers.pop();
-//                     if (!(row === sym_row && col === sym_col)) given_numbers.pop();
-//                     continue;
-//                 }
-
-//                 if (state.solve_stats.total_score >= best_score) {
-//                     // log_process(`当前分值: ${state.solve_stats.total_score} >= ${best_score}，采用此方案`);
-//                     best_score = state.solve_stats.total_score;
-
-//                     if (result.solution_count === 1) {
-//                         for (let i = 0; i < sudoku_size; i++) {
-//                             for (let j = 0; j < sudoku_size; j++) {
-//                                 sudoku_board[i][j] = [result.solution[i][j]];
-//                             }
-//                         }
-//                         return true;
-//                     } else {
-//                         if (state.logical_solution) {
-//                             for (let i = 0; i < sudoku_size; i++) {
-//                                 for (let j = 0; j < sudoku_size; j++) {
-//                                     if (Array.isArray(state.logical_solution[i][j])) {
-//                                         sudoku_board[i][j] = [...state.logical_solution[i][j]];
-//                                     } else {
-//                                         sudoku_board[i][j] = state.logical_solution[i][j];
-//                                     }
-//                                 }
-//                             }
-//                         }
-//                         second_best_solution = null;
-//                         second_best_score = -1;
-//                         second_best_given_numbers = null;
-//                         found_valid = true;
-//                         second_best_count = 0; // 重置计数
-//                         // 继续递归尝试下一个格子
-//                         if (backtrack(cell_index + 1)) return true;
-
-//                         // 回溯失败，恢复状态
-//                         restore_original_board();
-//                         sudoku_board[row][col] = candidates1;
-//                         if (!(row === sym_row && col === sym_col)) sudoku_board[sym_row][sym_col] = candidates2;
-//                         given_numbers.pop();
-//                         if (!(row === sym_row && col === sym_col)) given_numbers.pop();
-//                     }
-//                 } else {
-//                     // log_process(`当前分值: ${state.solve_stats.total_score} < ${best_score}，记录为备选方案`);
-//                     // 新增：备选方案数量限制
-//                     second_best_count++; // 计数加一
-//                     if (second_best_count >= MAX_SECOND_BEST) {
-//                         return false; // 达到最大数量，直接跳出
-//                     }
-//                     if (state.solve_stats.total_score > second_best_score) {
-//                         second_best_score = state.solve_stats.total_score;
-//                         if (result.solution_count === 1) {
-//                             second_best_solution = [];
-//                             for (let i = 0; i < sudoku_size; i++) {
-//                                 second_best_solution[i] = [];
-//                                 for (let j = 0; j < sudoku_size; j++) {
-//                                     second_best_solution[i][j] = result.solution[i][j];
-//                                 }
-//                             }
-//                             second_best_given_numbers = [...given_numbers];
-//                         } else if (state.logical_solution) {
-//                             second_best_solution = [];
-//                             for (let i = 0; i < sudoku_size; i++) {
-//                                 second_best_solution[i] = [];
-//                                 for (let j = 0; j < sudoku_size; j++) {
-//                                     if (Array.isArray(state.logical_solution[i][j])) {
-//                                         second_best_solution[i][j] = [...state.logical_solution[i][j]];
-//                                     } else {
-//                                         second_best_solution[i][j] = state.logical_solution[i][j];
-//                                     }
-//                                 }
-//                             }
-//                             second_best_given_numbers = [...given_numbers];
-//                         }
-//                     }
-//                     restore_original_board();
-//                     sudoku_board[row][col] = candidates1;
-//                     if (!(row === sym_row && col === sym_col)) sudoku_board[sym_row][sym_col] = candidates2;
-//                     given_numbers.pop();
-//                     if (!(row === sym_row && col === sym_col)) given_numbers.pop();
-//                 }
-//             }
-//         }
-
-//         return backtrack(cell_index + 1);
-//     }
-
-//     backtrack();
-
-//     let max_attempt = 20; // 最多尝试次数
-//     let attempt = 0;
-
-//     while (attempt < max_attempt) {
-//         attempt++;
-
-//         // 如果所有候选数都尝试过但没有找到更好的解，检查是否有备选方案
-//         if (!found_valid && second_best_solution) {
-//             // log_process(`所有尝试均未超过最高分值${best_score}，采用备选方案，分值: ${second_best_score}`);
-//             best_score = second_best_score;
-
-//             for (let i = 0; i < sudoku_size; i++) {
-//                 for (let j = 0; j < sudoku_size; j++) {
-//                     if (Array.isArray(second_best_solution[i][j])) {
-//                         sudoku_board[i][j] = [...second_best_solution[i][j]];
-//                     } else {
-//                         sudoku_board[i][j] = second_best_solution[i][j];
-//                     }
-//                 }
-//             }
-//             given_numbers = [...second_best_given_numbers];
-//             second_best_solution = null;
-//             second_best_score = -1;
-//             second_best_given_numbers = null;
-//             found_valid = false;
-//             second_best_count = 0; // 重置计数
-//             backtrack(0);
-//         }
-//     }
-
-//     const result_board = Array.from({ length: sudoku_size }, (_, r) =>
-//         Array.from({ length: sudoku_size }, (_, c) => {
-//             const found = given_numbers.find(item => item.row === r && item.col === c);
-//             return found ? found.num : 0;
-//         })
-//     );
-//     return result_board;
-// }
-
 // 修改 generate_solution 函数，返回只包含给定数字的题目盘面
 export function generate_solution(sudoku_size, existing_numbers = null, symmetry = 'none', pre_solved_board = null) {
-    log_process("生成终盘...");
+    // log_process("生成终盘...");
     if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
         return generate_solution_old(sudoku_size);
     }
@@ -539,7 +264,7 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
         // pre_solved_board = generate_solved_board_brute_force(sudoku_size);
         
         use_external_board = true;
-        log_process("未提供终盘，已自动生成一个终盘用于指导给数");
+        // log_process("未提供终盘，已自动生成一个终盘用于指导给数");
     } else if (pre_solved_board && Array.isArray(pre_solved_board) && pre_solved_board.length === sudoku_size) {
         // 验证提供的终盘是否是一个完整的解
         let is_complete = true;
@@ -609,7 +334,7 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
             { type: '对角线', index: 2, cells: diag2_cells }
         ];
     }
-    const special_regions = get_special_combination_regions(sudoku_size, state.current_mode);
+    const special_regions = get_special_combination_regions(null, sudoku_size, state.current_mode);
     if (Array.isArray(special_regions) && special_regions.length > 0) {
         regions = regions.concat(special_regions);
     }
@@ -789,12 +514,12 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
                     given_numbers.push({ row: sym_row, col: sym_col, num: num2 });
                 }
 
-                // 输出给数信息
-                if (row === sym_row && col === sym_col) {
-                    log_process(`尝试给数 #${given_numbers.length}: [${row+1},${col+1}] = ${num1}`);
-                } else {
-                    log_process(`尝试给数 #${given_numbers.length-1},#${given_numbers.length}: [${row+1},${col+1}] = ${num1}, [${sym_row+1},${sym_col+1}] = ${num2}`);
-                }
+                // // 输出给数信息
+                // if (row === sym_row && col === sym_col) {
+                //     log_process(`尝试给数 #${given_numbers.length}: [${row+1},${col+1}] = ${num1}`);
+                // } else {
+                //     log_process(`尝试给数 #${given_numbers.length-1},#${given_numbers.length}: [${row+1},${col+1}] = ${num1}, [${sym_row+1},${sym_col+1}] = ${num2}`);
+                // }
 
                 // 构造只包含主动给数的盘面
                 if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
@@ -848,7 +573,7 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
                         
                         if (matches) {
                             // 解匹配，返回题目盘面（只包含给定数字）
-                            log_process(`  → 找到唯一解且匹配外部终盘！共给定 ${given_numbers.length} 个数字`);
+                            // log_process(`  → 找到唯一解且匹配外部终盘！共给定 ${given_numbers.length} 个数字`);
                             return Array.from({ length: sudoku_size }, (_, r) =>
                                 Array.from({ length: sudoku_size }, (_, c) => {
                                     const found = given_numbers.find(item => item.row === r && item.col === c);
@@ -878,7 +603,7 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
                 }
 
                 // 否则更新逻辑解并继续回溯
-                log_process(`  → 多解（${result.solution_count === -1 ? '2+' : result.solution_count}个），继续给数...`);
+                // log_process(`  → 多解（${result.solution_count === -1 ? '2+' : result.solution_count}个），继续给数...`);
                 if (state.logical_solution) {
                     for (let i = 0; i < sudoku_size; i++) {
                         for (let j = 0; j < sudoku_size; j++) {
@@ -912,7 +637,7 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
     
     // 如果回溯成功找到了解，返回该解；否则返回 null
     if (solution) {
-        log_process(`题目盘面生成成功！`);
+        // log_process(`题目盘面生成成功！`);
     } else {
         log_process(`题目盘面生成失败`);
     }
@@ -1140,7 +865,7 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
     let changed;
 
     // 在这些模式下跳过分值比较，直接以唯一解为准进行挖洞
-    const SKIP_SCORE_MODES = new Set(['VX', 'kropki', 'consecutive']);
+    const SKIP_SCORE_MODES = new Set(['VX', 'kropki', 'consecutive', 'skyscraper']);
     const skipScore = SKIP_SCORE_MODES.has(state.current_mode);
 
     // 获取所有区域并计算每个格子所属的区域数量
@@ -1158,7 +883,7 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
             { type: '对角线', index: 2, cells: diag2_cells }
         ];
     }
-    const special_regions = get_special_combination_regions(size, state.current_mode);
+    const special_regions = get_special_combination_regions(null, size, state.current_mode);
     if (Array.isArray(special_regions) && special_regions.length > 0) {
         regions = regions.concat(special_regions);
     }
@@ -1212,6 +937,11 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
                     row.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)
                 );
             }
+            // log_process(
+            //     test_board
+            //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
+            //         .join('\n')
+            // );
 
             solve(test_board, size, isValid, true);
 
@@ -1337,10 +1067,6 @@ export function shuffle(array) {
     }
     return array;
 }
-
-
-
-// const SYMMETRY_TYPES = ['horizontal', 'vertical', 'central', 'diagonal', 'anti-diagonal', 'none'];
 
 // 中心对称概率最高，其次对角线/反对角线，再其次水平/垂直，最后不对称
 const SYMMETRY_TYPES = [

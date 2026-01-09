@@ -52,6 +52,26 @@ import { solve, isValid, eliminate_candidates, invalidate_regions_cache } from '
 // 最关键的创建数独函数
 export function create_sudoku_grid(size) {
     set_current_mode('classic');
+    show_result(`当前模式为标准数独`);
+    log_process('', true);
+    log_process('规则：');
+    log_process('行、列、宫内数字均不重复');
+    log_process('');
+    log_process('操作指引：');
+    log_process('1. 先选宫大小，再选变型类型');
+    log_process('2. 技巧开关可调整，推荐默认');
+    // log_process('1. 优先选择宫的大小再选择相应的变型数独类型');
+    // log_process('2. 每个模式下都有默认的技巧开关，可根据需要开启或关闭');
+    log_process('');
+    log_process('技巧：');
+    log_process('"变型"：用到变型条件删数的技巧');
+    log_process('"_n"后缀：区域内剩余空格数/区块用到的空格数');
+    log_process('"额外区域"：附加的不可重复区域');
+    log_process('"特定组合"：受附加条件影响的区域');
+    log_process('');
+    log_process('出题：');
+    log_process('10秒，超1分钟请重启页面或调整限制条件');
+    // log_process('2. 选择变型数独类型后新出现的蓝色"自动出题"按钮是给定变型提示');
     // 重置候选数模式和解题模式按钮及状态
     state.is_candidates_mode = false;
     state.is_solve_mode = false;
@@ -91,10 +111,17 @@ export function create_sudoku_grid(size) {
         Cell_Elimination: true,  
         Brute_Force: false       
     };
-    // 唯余法全部默认开启
-    for (let i = 1; i <= size; i++) {
-        state.techniqueSettings[`Cell_Elimination_${i}`] = true;
-    }
+    // // 排除法全部默认开启
+    // for (let i = 1; i <= size; i++) {
+    //     state.techniqueSettings[`Box_Elimination_${i}`] = true;
+    // }
+    // for (let i = 1; i <= size; i++) {
+    //     state.techniqueSettings[`Row_Col_Elimination_${i}`] = true;
+    // }
+    // // 唯余法全部默认开启
+    // for (let i = 1; i <= size; i++) {
+    //     state.techniqueSettings[`Cell_Elimination_${i}`] = true;
+    // }
 
     // 创建技巧开关面板
     create_technique_panel();
@@ -264,7 +291,7 @@ export function create_sudoku_grid(size) {
     extraButtons.innerHTML = '';
 
     if (size === 4) {
-        add_Extra_Button('候选数', () => create_candidates_sudoku(4));
+        // add_Extra_Button('候选数', () => create_candidates_sudoku(4));
         add_Extra_Button('对角线', () => create_diagonal_sudoku(4));
         // add_Extra_Button('斜井', () => create_hashtag_sudoku(4));
         add_Extra_Button('斜线', () => create_multi_diagonal_sudoku(4));
@@ -292,7 +319,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('三明治', () => create_sandwich_sudoku(4));
         add_Extra_Button('新', () => create_new_sudoku(4));
     } else if (size === 6) {
-        add_Extra_Button('候选数', () => create_candidates_sudoku(6));
+        // add_Extra_Button('候选数', () => create_candidates_sudoku(6));
         add_Extra_Button('对角线', () => create_diagonal_sudoku(6));
         add_Extra_Button('反对角', () => create_anti_diagonal_sudoku(6));
         add_Extra_Button('斜井', () => create_hashtag_sudoku(6));
@@ -322,7 +349,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('三明治', () => create_sandwich_sudoku(6));
         add_Extra_Button('新', () => create_new_sudoku(6));
     } else if (size === 9) {
-        add_Extra_Button('候选数', () => create_candidates_sudoku(9));
+        // add_Extra_Button('候选数', () => create_candidates_sudoku(9));
         add_Extra_Button('对角线', () => create_diagonal_sudoku(9));
         add_Extra_Button('反对角', () => create_anti_diagonal_sudoku(9));
         add_Extra_Button('斜井', () => create_hashtag_sudoku(9));
@@ -364,7 +391,7 @@ export function create_technique_panel() {
     panel.style.position = 'absolute';  // 改为绝对定位
     // panel.style.position = 'fixed';
     panel.style.left = 'calc(50% - 550px)';  // 放在数独容器左侧
-    panel.style.top = '290px';  // 与数独容器顶部对齐
+    panel.style.top = '350px';  // 与数独容器顶部对齐
     panel.style.width = '200px';
     panel.style.backgroundColor = '#f5f5f5';
     panel.style.padding = '10px';
@@ -391,12 +418,54 @@ export function create_technique_panel() {
             id: 'elimination',
             name: '排除',
             items: [
-                { id: 'Box_Elimination', name: '宫排除', default: true },
-                // { id: 'Box_One_Cut', name: '一刀流宫排除', default: true },
-                { id: 'Row_Col_Elimination', name: '行列排除', default: true },
-                { id: 'Extra_Region_Elimination', name: '额外区域排除', default: false },
-                // { id: 'Special_Combination_Region_Elimination', name: '特定组合遍历', default: false },
-                // { id: 'Multi_Special_Combination_Region_Elimination', name: '多特定组合遍历', default: false }
+                {
+                    id: 'Box_Elimination',
+                    name: '宫排除',
+                    default: true,
+                    items: [
+                        { id: 'Box_Elimination_1', name: '宫排除_1', default: true },
+                        { id: 'Box_Elimination_2', name: '宫排除_2', default: true },
+                        { id: 'Box_Elimination_3', name: '宫排除_3', default: true },
+                        { id: 'Box_Elimination_4', name: '宫排除_4', default: true },
+                        { id: 'Box_Elimination_5', name: '宫排除_5', default: true },
+                        { id: 'Box_Elimination_6', name: '宫排除_6', default: true },
+                        { id: 'Box_Elimination_7', name: '宫排除_7', default: true },
+                        { id: 'Box_Elimination_8', name: '宫排除_8', default: true },
+                        { id: 'Box_Elimination_9', name: '宫排除_9', default: true },
+                    ]
+                },
+                {
+                    id: 'Row_Col_Elimination',
+                    name: '行列排除',
+                    default: true,
+                    items: [
+                        { id: 'Row_Col_Elimination_1', name: '行列排除_1', default: true },
+                        { id: 'Row_Col_Elimination_2', name: '行列排除_2', default: true },
+                        { id: 'Row_Col_Elimination_3', name: '行列排除_3', default: true },
+                        { id: 'Row_Col_Elimination_4', name: '行列排除_4', default: true },
+                        { id: 'Row_Col_Elimination_5', name: '行列排除_5', default: true },
+                        { id: 'Row_Col_Elimination_6', name: '行列排除_6', default: true },
+                        { id: 'Row_Col_Elimination_7', name: '行列排除_7', default: true },
+                        { id: 'Row_Col_Elimination_8', name: '行列排除_8', default: true },
+                        { id: 'Row_Col_Elimination_9', name: '行列排除_9', default: true },
+                    ]
+                },
+                {
+                    id: 'Extra_Region_Elimination',
+                    name: '额外区域排除',
+                    default: false,
+                    items: [
+                        { id: 'Extra_Region_Elimination_1', name: '额外区域排除_1', default: false },
+                        { id: 'Extra_Region_Elimination_2', name: '额外区域排除_2', default: false },
+                        { id: 'Extra_Region_Elimination_3', name: '额外区域排除_3', default: false },
+                        { id: 'Extra_Region_Elimination_4', name: '额外区域排除_4', default: false },
+                        { id: 'Extra_Region_Elimination_5', name: '额外区域排除_5', default: false },
+                        { id: 'Extra_Region_Elimination_6', name: '额外区域排除_6', default: false },
+                        { id: 'Extra_Region_Elimination_7', name: '额外区域排除_7', default: false },
+                        { id: 'Extra_Region_Elimination_8', name: '额外区域排除_8', default: false },
+                        { id: 'Extra_Region_Elimination_9', name: '额外区域排除_9', default: false },
+                    ]
+                },
             ]
         },
         {
@@ -427,17 +496,8 @@ export function create_technique_panel() {
                         { id: 'Special_Combination_Region_Most_Not_Contain_1', name: '特定组合必不含_1', default: false },
                         { id: 'Special_Combination_Region_Most_Not_Contain_2', name: '特定组合必不含_2', default: false },
                         { id: 'Special_Combination_Region_Most_Not_Contain_3', name: '特定组合必不含_3', default: false },
-                        { id: 'Special_Combination_Region_Most_Not_Contain_4', name: '特定组合必不含_4', default: false }
-                    ]
-                },
-                {
-                    id: 'multi_special_combination_must_not_contain',
-                    name: '多特定组合必不含',
-                    items: [
-                        { id: 'Multi_Special_Combination_Region_Most_Not_Contain_1', name: '多特定组合必不含_1', default: false },
-                        { id: 'Multi_Special_Combination_Region_Most_Not_Contain_2', name: '多特定组合必不含_2', default: false },
-                        { id: 'Multi_Special_Combination_Region_Most_Not_Contain_3', name: '多特定组合必不含_3', default: false },
-                        { id: 'Multi_Special_Combination_Region_Most_Not_Contain_4', name: '多特定组合必不含_4', default: false }
+                        { id: 'Special_Combination_Region_Most_Not_Contain_4', name: '特定组合必不含_4', default: false },
+                        { id: 'Special_Combination_Region_Most_Not_Contain_n', name: '特定组合必不含_n', default: false },
                     ]
                 },
                 {
@@ -447,17 +507,8 @@ export function create_technique_panel() {
                         { id: 'Special_Combination_Region_Most_Contain_1', name: '特定组合排除_1', default: false },
                         { id: 'Special_Combination_Region_Most_Contain_2', name: '特定组合排除_2', default: false },
                         { id: 'Special_Combination_Region_Most_Contain_3', name: '特定组合排除_3', default: false },
-                        { id: 'Special_Combination_Region_Most_Contain_4', name: '特定组合排除_4', default: false }
-                    ]
-                },
-                {
-                    id: 'multi_special_combination_must_contain',
-                    name: '多特定组合排除',
-                    items: [
-                        { id: 'Multi_Special_Combination_Region_Most_Contain_1', name: '多特定组合排除_1', default: false },
-                        { id: 'Multi_Special_Combination_Region_Most_Contain_2', name: '多特定组合排除_2', default: false },
-                        { id: 'Multi_Special_Combination_Region_Most_Contain_3', name: '多特定组合排除_3', default: false },
-                        { id: 'Multi_Special_Combination_Region_Most_Contain_4', name: '多特定组合排除_4', default: false }
+                        { id: 'Special_Combination_Region_Most_Contain_4', name: '特定组合排除_4', default: false },
+                        { id: 'Special_Combination_Region_Most_Contain_n', name: '特定组合排除_n', default: false },
                     ]
                 },
                 {
@@ -467,17 +518,8 @@ export function create_technique_panel() {
                         { id: 'Special_Combination_Region_Cell_Elimination_1', name: '特定组合唯余_1', default: false },
                         { id: 'Special_Combination_Region_Cell_Elimination_2', name: '特定组合唯余_2', default: false },
                         { id: 'Special_Combination_Region_Cell_Elimination_3', name: '特定组合唯余_3', default: false },
-                        { id: 'Special_Combination_Region_Cell_Elimination_4', name: '特定组合唯余_4', default: false }
-                    ]
-                },
-                {
-                    id: 'multi_special_combination_cell_elimination',
-                    name: '多特定组合唯余',
-                    items: [
-                        { id: 'Multi_Special_Combination_Region_Cell_Elimination_1', name: '多特定组合唯余_1', default: false },
-                        { id: 'Multi_Special_Combination_Region_Cell_Elimination_2', name: '多特定组合唯余_2', default: false },
-                        { id: 'Multi_Special_Combination_Region_Cell_Elimination_3', name: '多特定组合唯余_3', default: false },
-                        { id: 'Multi_Special_Combination_Region_Cell_Elimination_4', name: '多特定组合唯余_4', default: false }
+                        { id: 'Special_Combination_Region_Cell_Elimination_4', name: '特定组合唯余_4', default: false },
+                        { id: 'Special_Combination_Region_Cell_Elimination_n', name: '特定组合唯余_n', default: false },
                     ]
                 },
                 {
@@ -487,17 +529,8 @@ export function create_technique_panel() {
                         { id: 'Special_Combination_Region_Elimination_1', name: '特定组合遍历_1', default: false },
                         { id: 'Special_Combination_Region_Elimination_2', name: '特定组合遍历_2', default: false },
                         { id: 'Special_Combination_Region_Elimination_3', name: '特定组合遍历_3', default: false },
-                        { id: 'Special_Combination_Region_Elimination_4', name: '特定组合遍历_4', default: false }
-                    ]
-                },
-                {
-                    id: 'multi_special_combination_elimination',
-                    name: '多特定组合遍历',
-                    items: [
-                        { id: 'Multi_Special_Combination_Region_Elimination_1', name: '多特定组合遍历_1', default: false },
-                        { id: 'Multi_Special_Combination_Region_Elimination_2', name: '多特定组合遍历_2', default: false },
-                        { id: 'Multi_Special_Combination_Region_Elimination_3', name: '多特定组合遍历_3', default: false },
-                        { id: 'Multi_Special_Combination_Region_Elimination_4', name: '多特定组合遍历_4', default: false }
+                        { id: 'Special_Combination_Region_Elimination_4', name: '特定组合遍历_4', default: false },
+                        { id: 'Special_Combination_Region_Elimination_n', name: '特定组合遍历_n', default: false },
                     ]
                 },
                 {
@@ -507,19 +540,71 @@ export function create_technique_panel() {
                         { id: 'Special_Combination_Region_Block_1', name: '特定组合区块_1', default: false },
                         { id: 'Special_Combination_Region_Block_2', name: '特定组合区块_2', default: false },
                         { id: 'Special_Combination_Region_Block_3', name: '特定组合区块_3', default: false },
-                        { id: 'Special_Combination_Region_Block_4', name: '特定组合区块_4', default: false }
+                        { id: 'Special_Combination_Region_Block_4', name: '特定组合区块_4', default: false },
+                        { id: 'Special_Combination_Region_Block_n', name: '特定组合区块_n', default: false },
                     ]
                 },
                 {
-                    id: 'multi_special_combination_block',
-                    name: '多特定组合区块',
+                    id: 'multi_special_combination',
+                    name: '多特定组合',
                     items: [
-                        { id: 'Multi_Special_Combination_Region_Block_1', name: '多特定组合区块_1', default: false },
-                        { id: 'Multi_Special_Combination_Region_Block_2', name: '多特定组合区块_2', default: false },
-                        { id: 'Multi_Special_Combination_Region_Block_3', name: '多特定组合区块_3', default: false },
-                        { id: 'Multi_Special_Combination_Region_Block_4', name: '多特定组合区块_4', default: false }
+                    {
+                        id: 'multi_special_combination_must_not_contain',
+                        name: '多特定组合必不含',
+                        items: [
+                            { id: 'Multi_Special_Combination_Region_Most_Not_Contain_1', name: '多特定组合必不含_1', default: false },
+                            { id: 'Multi_Special_Combination_Region_Most_Not_Contain_2', name: '多特定组合必不含_2', default: false },
+                            { id: 'Multi_Special_Combination_Region_Most_Not_Contain_3', name: '多特定组合必不含_3', default: false },
+                            { id: 'Multi_Special_Combination_Region_Most_Not_Contain_4', name: '多特定组合必不含_4', default: false },
+                            { id: 'Multi_Special_Combination_Region_Most_Not_Contain_n', name: '多特定组合必不含_n', default: false }
+                        ]
+                    },
+                    {
+                        id: 'multi_special_combination_must_contain',
+                        name: '多特定组合排除',
+                        items: [
+                            { id: 'Multi_Special_Combination_Region_Most_Contain_1', name: '多特定组合排除_1', default: false },
+                            { id: 'Multi_Special_Combination_Region_Most_Contain_2', name: '多特定组合排除_2', default: false },
+                            { id: 'Multi_Special_Combination_Region_Most_Contain_3', name: '多特定组合排除_3', default: false },
+                            { id: 'Multi_Special_Combination_Region_Most_Contain_4', name: '多特定组合排除_4', default: false },
+                            { id: 'Multi_Special_Combination_Region_Most_Contain_n', name: '多特定组合排除_n', default: false }
+                        ]
+                    },
+                    {
+                        id: 'multi_special_combination_cell_elimination',
+                        name: '多特定组合唯余',
+                        items: [
+                            { id: 'Multi_Special_Combination_Region_Cell_Elimination_1', name: '多特定组合唯余_1', default: false },
+                            { id: 'Multi_Special_Combination_Region_Cell_Elimination_2', name: '多特定组合唯余_2', default: false },
+                            { id: 'Multi_Special_Combination_Region_Cell_Elimination_3', name: '多特定组合唯余_3', default: false },
+                            { id: 'Multi_Special_Combination_Region_Cell_Elimination_4', name: '多特定组合唯余_4', default: false },
+                            { id: 'Multi_Special_Combination_Region_Cell_Elimination_n', name: '多特定组合唯余_n', default: false }
+                        ]
+                    },
+                    {
+                        id: 'multi_special_combination_elimination',
+                        name: '多特定组合遍历',
+                        items: [
+                            { id: 'Multi_Special_Combination_Region_Elimination_1', name: '多特定组合遍历_1', default: false },
+                            { id: 'Multi_Special_Combination_Region_Elimination_2', name: '多特定组合遍历_2', default: false },
+                            { id: 'Multi_Special_Combination_Region_Elimination_3', name: '多特定组合遍历_3', default: false },
+                            { id: 'Multi_Special_Combination_Region_Elimination_4', name: '多特定组合遍历_4', default: false },
+                            { id: 'Multi_Special_Combination_Region_Elimination_n', name: '多特定组合遍历_n', default: false }
+                        ]
+                    },
+                    {
+                        id: 'multi_special_combination_block',
+                        name: '多特定组合区块',
+                        items: [
+                            { id: 'Multi_Special_Combination_Region_Block_1', name: '多特定组合区块_1', default: false },
+                            { id: 'Multi_Special_Combination_Region_Block_2', name: '多特定组合区块_2', default: false },
+                            { id: 'Multi_Special_Combination_Region_Block_3', name: '多特定组合区块_3', default: false },
+                            { id: 'Multi_Special_Combination_Region_Block_4', name: '多特定组合区块_4', default: false },
+                            { id: 'Multi_Special_Combination_Region_Block_n', name: '多特定组合区块_n', default: false }
+                        ]
+                    }
                     ]
-                }
+                },
             ]
         },
         {
@@ -593,6 +678,13 @@ export function create_technique_panel() {
             items: [
                 { id: 'Missing_One', name: '欠一排除', default: state.current_mode === 'missing' }
             ]
+        },
+        {
+            id: 'lookup_table', // 新增打表分组
+            name: '打表',
+            items: [
+                { id: 'Lookup_Table', name: '打表', default: false }
+            ]
         }
     ];
 
@@ -612,6 +704,80 @@ export function create_technique_panel() {
         };
         techniqueGroups.forEach(group => initializeDefaults(group.items));
     }
+
+    // 新增：检查父级技巧设置并同步子项
+    const sync_parent_techniques = () => {
+        // 定义父级技巧与其子项的映射关系
+        const parent_child_map = {
+            'Box_Elimination': ['Box_Elimination_1', 'Box_Elimination_2', 'Box_Elimination_3', 
+                                'Box_Elimination_4', 'Box_Elimination_5', 'Box_Elimination_6',
+                                'Box_Elimination_7', 'Box_Elimination_8', 'Box_Elimination_9'],
+            'Row_Col_Elimination': ['Row_Col_Elimination_1', 'Row_Col_Elimination_2', 'Row_Col_Elimination_3',
+                                'Row_Col_Elimination_4', 'Row_Col_Elimination_5', 'Row_Col_Elimination_6',
+                                'Row_Col_Elimination_7', 'Row_Col_Elimination_8', 'Row_Col_Elimination_9'],
+            'Extra_Region_Elimination': ['Extra_Region_Elimination_1', 'Extra_Region_Elimination_2', 'Extra_Region_Elimination_3',
+                                'Extra_Region_Elimination_4', 'Extra_Region_Elimination_5', 'Extra_Region_Elimination_6',
+                                'Extra_Region_Elimination_7', 'Extra_Region_Elimination_8', 'Extra_Region_Elimination_9'],
+            'Cell_Elimination': ['Cell_Elimination_1', 'Cell_Elimination_2', 'Cell_Elimination_3',
+                                'Cell_Elimination_4', 'Cell_Elimination_5', 'Cell_Elimination_6',
+                                'Cell_Elimination_7', 'Cell_Elimination_8', 'Cell_Elimination_9']
+        };
+        
+        // 同步父级技巧到子项
+        Object.keys(parent_child_map).forEach(parentKey => {
+            if (state.techniqueSettings[parentKey] !== undefined) {
+                const parentValue = state.techniqueSettings[parentKey];
+                parent_child_map[parentKey].forEach(childKey => {
+                    state.techniqueSettings[childKey] = parentValue;
+                });
+            }
+        });
+    };
+    sync_parent_techniques();
+
+    // 递归设置所有子孙节点
+    const setAllChildren = (item, value) => {
+
+        // 如果是叶子
+        if (!item.items) {
+            state.techniqueSettings[item.id] = value;
+
+            const checkbox = document.getElementById(`tech_${item.id}`);
+            if (checkbox) {
+                checkbox.checked = value;
+                checkbox.indeterminate = false;
+            }
+            return;
+        }
+
+        // 如果是中间节点：先递归
+        item.items.forEach(child => setAllChildren(child, value));
+
+        // 再更新当前分组自身 checkbox
+        const groupCheckbox = document.getElementById(`tech_${item.id}`);
+        if (groupCheckbox) {
+            groupCheckbox.checked = value;
+            groupCheckbox.indeterminate = false;
+        }
+    };
+
+
+    // 递归判断是否全选
+    const isAllChecked = (items) => {
+        return items.every(item => {
+            if (item.items) return isAllChecked(item.items);
+            return !!state.techniqueSettings[item.id];
+        });
+    };
+
+    // 递归判断是否全不选
+    const isNoneChecked = (items) => {
+        return items.every(item => {
+            if (item.items) return isNoneChecked(item.items);
+            return !state.techniqueSettings[item.id];
+        });
+    };
+
 
     // 渲染技巧面板
     const renderGroupItems = (items, container, updateParentCheckbox) => {
@@ -634,8 +800,8 @@ export function create_technique_panel() {
                 subGroupCheckbox.id = `tech_${item.id}`;
 
                 const updateSubGroupCheckbox = () => {
-                    const allChecked = item.items.every(subItem => state.techniqueSettings[subItem.id]);
-                    const noneChecked = item.items.every(subItem => !state.techniqueSettings[subItem.id]);
+                    const allChecked = isAllChecked(item.items);
+                    const noneChecked = isNoneChecked(item.items);
                     
                     if (allChecked) {
                         subGroupCheckbox.checked = true;
@@ -655,11 +821,8 @@ export function create_technique_panel() {
                 subGroupCheckbox.addEventListener('change', (e) => {
                     e.stopPropagation();
                     const isChecked = subGroupCheckbox.checked;
-                    item.items.forEach(subItem => {
-                        state.techniqueSettings[subItem.id] = isChecked;
-                        const checkbox = document.getElementById(`tech_${subItem.id}`);
-                        if (checkbox) checkbox.checked = isChecked;
-                    });
+                    setAllChildren(item, isChecked);
+
                     updateSubGroupCheckbox();
                     if (updateParentCheckbox) updateParentCheckbox();
                 });
@@ -730,25 +893,9 @@ export function create_technique_panel() {
 
         const updateGroupCheckbox = () => {
             // 递归检查所有子项的状态
-            const checkAllItems = (items) => {
-                return items.every(item => {
-                    if (item.items) {
-                        return checkAllItems(item.items);
-                    } else {
-                        return state.techniqueSettings[item.id];
-                    }
-                });
-            };
-            
-            const checkNoneItems = (items) => {
-                return items.every(item => {
-                    if (item.items) {
-                        return checkNoneItems(item.items);
-                    } else {
-                        return !state.techniqueSettings[item.id];
-                    }
-                });
-            };
+            const checkAllItems = isAllChecked;
+            const checkNoneItems = isNoneChecked;
+
             
             const allChecked = checkAllItems(group.items);
             const noneChecked = checkNoneItems(group.items);
@@ -772,11 +919,8 @@ export function create_technique_panel() {
             const isChecked = groupCheckbox.checked;
             group.items.forEach(item => {
                 if (item.items) {
-                    item.items.forEach(subItem => {
-                        state.techniqueSettings[subItem.id] = isChecked;
-                        const checkbox = document.getElementById(`tech_${subItem.id}`);
-                        if (checkbox) checkbox.checked = isChecked;
-                    });
+                    setAllChildren(item, isChecked);
+
                 } else {
                     state.techniqueSettings[item.id] = isChecked;
                     const checkbox = document.getElementById(`tech_${item.id}`);
@@ -819,177 +963,6 @@ export function create_technique_panel() {
         panel.appendChild(groupContainer);
     });
 
-    // techniqueGroups.forEach(group => {
-    //     const groupContainer = document.createElement('div');
-    //     groupContainer.style.marginBottom = '10px';
-    
-    //     // 大标题容器
-    //     const groupTitleContainer = document.createElement('div');
-    //     groupTitleContainer.style.display = 'flex';
-    //     groupTitleContainer.style.alignItems = 'center';
-    //     groupTitleContainer.style.cursor = 'pointer';
-    //     groupTitleContainer.style.padding = '5px 0';
-    //     groupTitleContainer.style.borderBottom = '1px solid #ccc';
-    
-    //     // 大标题复选框
-    //     const groupCheckbox = document.createElement('input');
-    //     groupCheckbox.type = 'checkbox';
-    //     groupCheckbox.style.marginRight = '10px';
-    
-    //     // 动态更新大标题复选框状态
-    //     const updateGroupCheckbox = () => {
-    //         const allChecked = group.items.every(item => {
-    //             if (item.items) {
-    //                 // 如果是子分组，检查子分组的所有子项
-    //                 return item.items.every(subItem => state.techniqueSettings[subItem.id]);
-    //             } else {
-    //                 // 如果是叶子节点，直接检查状态
-    //                 return state.techniqueSettings[item.id];
-    //             }
-    //         });
-    
-    //         groupCheckbox.checked = allChecked;
-    //     };
-    
-    //     // 初始化大标题复选框状态
-    //     updateGroupCheckbox();
-    
-    //     // 大标题文本
-    //     const groupTitle = document.createElement('span');
-    //     groupTitle.textContent = group.name;
-    //     groupTitle.style.fontWeight = 'bold';
-    
-    //     // 点击事件：展开/折叠（仅作用于标题文本，不包括复选框）
-    //     groupTitle.addEventListener('click', () => {
-    //         const isVisible = groupItems.style.display === 'block';
-    //         groupItems.style.display = isVisible ? 'none' : 'block';
-    //     });
-    
-    //     groupTitleContainer.appendChild(groupCheckbox);
-    //     groupTitleContainer.appendChild(groupTitle);
-    //     groupContainer.appendChild(groupTitleContainer);
-    
-    //     // 小标题容器
-    //     const groupItems = document.createElement('div');
-    //     groupItems.style.display = 'none'; // 默认折叠
-    //     groupItems.style.paddingLeft = '20px';
-    
-    //     // 递归渲染子分组或叶子节点
-    //     const renderGroupItems = (items, container) => {
-    //         items.forEach(item => {
-    //             if (item.items) {
-    //                 // 如果是子分组，递归渲染
-    //                 const subGroupContainer = document.createElement('div');
-    //                 subGroupContainer.style.marginBottom = '10px';
-    
-    //                 const subGroupTitleContainer = document.createElement('div');
-    //                 subGroupTitleContainer.style.display = 'flex';
-    //                 subGroupTitleContainer.style.alignItems = 'center';
-    //                 subGroupTitleContainer.style.cursor = 'pointer';
-    //                 subGroupTitleContainer.style.padding = '5px 0';
-    //                 subGroupTitleContainer.style.borderBottom = '1px solid #ccc';
-    
-    //                 const subGroupCheckbox = document.createElement('input');
-    //                 subGroupCheckbox.type = 'checkbox';
-    //                 subGroupCheckbox.style.marginRight = '10px';
-    
-    //                 // 动态更新子分组复选框状态
-    //                 const updateSubGroupCheckbox = () => {
-    //                     const allChecked = item.items.every(subItem => state.techniqueSettings[subItem.id]);
-    //                     subGroupCheckbox.checked = allChecked;
-    //                 };
-    
-    //                 // 初始化子分组复选框状态
-    //                 updateSubGroupCheckbox();
-    
-    //                 subGroupCheckbox.addEventListener('change', (e) => {
-    //                     e.stopPropagation(); // 阻止事件冒泡，避免触发折叠/展开
-    //                     const isChecked = subGroupCheckbox.checked;
-    //                     item.items.forEach(subItem => {
-    //                         state.techniqueSettings[subItem.id] = isChecked;
-    //                         const checkbox = document.getElementById(`tech_${subItem.id}`);
-    //                         if (checkbox) checkbox.checked = isChecked;
-    //                     });
-    //                     updateGroupCheckbox(); // 更新大标题复选框状态
-    //                 });
-    
-    //                 const subGroupTitle = document.createElement('span');
-    //                 subGroupTitle.textContent = item.name;
-    //                 subGroupTitle.style.fontWeight = 'bold';
-    
-    //                 subGroupTitle.addEventListener('click', () => {
-    //                     const isVisible = subGroupItems.style.display === 'block';
-    //                     subGroupItems.style.display = isVisible ? 'none' : 'block';
-    //                 });
-    
-    //                 subGroupTitleContainer.appendChild(subGroupCheckbox);
-    //                 subGroupTitleContainer.appendChild(subGroupTitle);
-    //                 subGroupContainer.appendChild(subGroupTitleContainer);
-    
-    //                 const subGroupItems = document.createElement('div');
-    //                 subGroupItems.style.display = 'none'; // 默认折叠
-    //                 subGroupItems.style.paddingLeft = '20px';
-    
-    //                 renderGroupItems(item.items, subGroupItems);
-    
-    //                 subGroupContainer.appendChild(subGroupItems);
-    //                 container.appendChild(subGroupContainer);
-    //             } else {
-    //                 // 如果是叶子节点，渲染技巧项
-    //                 const div = document.createElement('div');
-    //                 div.style.margin = '5px 0';
-    //                 div.style.display = 'flex';
-    //                 div.style.alignItems = 'center';
-    
-    //                 const checkbox = document.createElement('input');
-    //                 checkbox.type = 'checkbox';
-    //                 checkbox.id = `tech_${item.id}`;
-    //                 checkbox.checked = state.techniqueSettings[item.id];
-    //                 checkbox.style.marginRight = '10px';
-    
-    //                 checkbox.addEventListener('change', () => {
-    //                     state.techniqueSettings[item.id] = checkbox.checked;
-    //                     updateGroupCheckbox(); // 更新大标题复选框状态
-    //                 });
-    
-    //                 const label = document.createElement('label');
-    //                 label.htmlFor = `tech_${item.id}`;
-    //                 label.textContent = item.name;
-    
-    //                 div.appendChild(checkbox);
-    //                 div.appendChild(label);
-    //                 container.appendChild(div);
-    //             }
-    //         });
-    //     };
-    
-    //     renderGroupItems(group.items, groupItems);
-    
-    //     // 大标题复选框事件：全选/取消全选
-    //     groupCheckbox.addEventListener('change', (e) => {
-    //         e.stopPropagation(); // 阻止事件冒泡，避免触发折叠/展开
-    //         const isChecked = groupCheckbox.checked;
-    //         group.items.forEach(item => {
-    //             if (item.items) {
-    //                 // 如果是子分组，更新子分组的所有子项
-    //                 item.items.forEach(subItem => {
-    //                     state.techniqueSettings[subItem.id] = isChecked;
-    //                     const checkbox = document.getElementById(`tech_${subItem.id}`);
-    //                     if (checkbox) checkbox.checked = isChecked;
-    //                 });
-    //             } else {
-    //                 // 如果是叶子节点，直接更新状态
-    //                 state.techniqueSettings[item.id] = isChecked;
-    //                 const checkbox = document.getElementById(`tech_${item.id}`);
-    //                 if (checkbox) checkbox.checked = isChecked;
-    //             }
-    //         });
-    //     });
-    
-    //     groupContainer.appendChild(groupItems);
-    //     panel.appendChild(groupContainer);
-    // });
-
     document.body.appendChild(panel);
     // // 将面板添加到数独容器中而不是body
     // const gridDisplay = document.getElementById('gridDisplay');
@@ -1020,7 +993,6 @@ export function check_uniqueness() {
         // 获取当前数独状态，包括候选数信息
     let board;
     if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
-        // X和模式，去掉边界
         board = Array.from({ length: size + 2 }, (_, i) =>
             Array.from({ length: size + 2 }, (_, j) => {
                 const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
@@ -1045,6 +1017,35 @@ export function check_uniqueness() {
             })
         );
     }
+    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
+        state.clues_board = Array.from({ length: size + 2 }, (_, i) =>
+            Array.from({ length: size + 2 }, (_, j) => {
+                const isBorder = i === 0 || i === size + 1 || j === 0 || j === size + 1;
+                if (isBorder) {
+                    const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+                    const valStr = input?.value ?? '';
+                    if (state.is_candidates_mode && valStr.length > 1) {
+                        return [...new Set(valStr.split('').map(Number))].filter(n => n >= 1 && n <= size);
+                    }
+                    const v = parseInt(valStr, 10);
+                    return Number.isFinite(v) ? v : 0;
+                } else {
+                    // 内部格子不读取 DOM，只设为完整候选集合
+                    return Array.from({ length: size }, (_, n) => n + 1);
+                }
+            })
+        );
+    }
+    // log_process(
+    //     board
+    //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
+    //         .join('\n')
+    // );
+    // log_process(
+    //     state.clues_board
+    //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
+    //         .join('\n')
+    // );
 
     // 判断当前模式，选择不同的有效性检测函数
     let valid_func = isValid;
