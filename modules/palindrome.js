@@ -6,6 +6,25 @@ import { get_all_regions, invalidate_regions_cache } from '../solver/solver_tool
 // 新数独主入口
 export function create_palindrome_sudoku(size) {
     set_current_mode('palindrome');
+    show_result(`当前模式为回文数独`);
+    log_process('', true);
+    log_process('规则：');
+    log_process('灰线：两侧对应格数字一致');
+    log_process('');
+    log_process('技巧：');
+    log_process('"变型"：用到变型条件删数的技巧');
+    log_process('"_n"后缀：区域内剩余空格数/区块用到的空格数');
+    log_process('"额外区域"：附加的不可重复区域');
+    log_process('"特定组合"：受附加条件影响的区域');
+    log_process('');
+    log_process('出题：');
+    log_process('10秒，超1分钟请重启页面或调整限制条件');
+    log_process('两条线仅有端点相接才会被视为同一条回文线');
+    log_process('若手动给的标记不合理可能会产生错误');
+    log_process('');
+    log_process('自动出题：');
+    log_process('尚不支持自动添加标记出题，需要手动给定标记');
+    log_process('绿色：根据给定标记出题');
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
@@ -15,13 +34,21 @@ export function create_palindrome_sudoku(size) {
     state.techniqueSettings = {
         Box_Elimination: true,
         Row_Col_Elimination: true,
+        // 区块技巧全部打开
         Box_Block: true,
+        Variant_Box_Block: true,
         Box_Pair_Block: true,
+        Extra_Region_Pair_Block: true,
         Row_Col_Block: true,
+        Variant_Row_Col_Block: true,
+        Extra_Region_Block: true,
+        Variant_Extra_Region_Block: true,
+        // 数对技巧
         Box_Naked_Pair: true,
         Row_Col_Naked_Pair: true,
         Box_Hidden_Pair: true,
         Row_Col_Hidden_Pair: true,
+        // 数组技巧
         Box_Naked_Triple: true,
         Row_Col_Naked_Triple: true,
         Box_Hidden_Triple: true,
@@ -29,6 +56,12 @@ export function create_palindrome_sudoku(size) {
         All_Quad: false,
         Cell_Elimination: true,
         Brute_Force: false,
+        // // 额外区域技巧
+        Extra_Region_Elimination: true,
+        Extra_Region_Naked_Pair: true,
+        Extra_Region_Hidden_Pair: true,
+        Extra_Region_Naked_Triple: true,
+        Extra_Region_Hidden_Triple: true,
         Special_Combination_Region_Most_Not_Contain_1: true,
         Special_Combination_Region_Most_Not_Contain_2: true,
         Special_Combination_Region_Most_Not_Contain_3: true,
@@ -103,6 +136,7 @@ export function create_palindrome_sudoku(size) {
     const extra_buttons = document.getElementById('extraButtons');
     extra_buttons.innerHTML = '';
     // 可添加唯一性验证等按钮
+    add_Extra_Button('回文', () => {create_palindrome_sudoku(size)}, '#2196F3');
     add_Extra_Button('添加标记', toggle_multi_diagonal_mark_mode, '#2196F3');
         // 标记模式状态
         let is_mark_mode = false;

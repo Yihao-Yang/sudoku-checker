@@ -119,18 +119,19 @@ export function show_generating_timer() {
         document.body.appendChild(toast);
     }
     
-    const start = performance.now();
+    // const start = performance.now();
     toast.style.display = 'block';
-    toast.innerHTML = "正在生成题目...<br>若超1分钟未完成，<br>尝试刷新页面或调整限制条件";
+    toast.innerHTML = "正在生成题目...<br>若长时间未完成，<br>尝试重启页面或调整限制条件";
+    window.__GEN_TIMER__ = null;
     
-    // 设置计时器并保存到全局变量
-    window.__GEN_TIMER__ = setInterval(() => {
-        const now = performance.now();
-        const t = ((now - start) / 1000).toFixed(2);
-        toast.textContent = `正在生成题目：${t}s`;
-    }, 100);
+    // // 设置计时器并保存到全局变量
+    // window.__GEN_TIMER__ = setInterval(() => {
+    //     const now = performance.now();
+    //     const t = ((now - start) / 1000).toFixed(2);
+    //     toast.textContent = `正在生成题目：${t}s`;
+    // }, 100);
     
-    return window.__GEN_TIMER__;
+    // return window.__GEN_TIMER__;
 }
 
 // export function hide_generating_timer() {

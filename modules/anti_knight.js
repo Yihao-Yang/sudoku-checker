@@ -1,11 +1,24 @@
 import { state, set_current_mode } from '../solver/state.js';
-import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell } from '../solver/core.js';
+import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, add_Extra_Button } from '../solver/core.js';
 import { create_technique_panel } from '../solver/classic.js';
 import { get_all_regions, invalidate_regions_cache } from '../solver/solver_tool.js';
 
 // 同位数独主入口
 export function create_anti_knight_sudoku(size) {
     set_current_mode('anti_knight');
+    show_result(`当前模式为无马数独`);
+    log_process('', true);
+    log_process('规则：');
+    log_process('象棋马步位置（进二拐一）数字不重复');
+    log_process('');
+    log_process('技巧：');
+    log_process('"变型"：用到变型条件删数的技巧');
+    log_process('"_n"后缀：区域内剩余空格数/区块用到的空格数');
+    // log_process('"额外区域"：附加的不可重复区域');
+    // log_process('"特定组合"：受附加条件影响的区域');
+    log_process('');
+    log_process('出题：');
+    log_process('10秒，超1分钟请重启页面或调整限制条件');
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
@@ -16,8 +29,10 @@ export function create_anti_knight_sudoku(size) {
         Box_Elimination: true,
         Row_Col_Elimination: true,
         Box_Block: true,
+        Variant_Box_Block: true,
         Box_Pair_Block: true,
         Row_Col_Block: true,
+        Variant_Row_Col_Block: true,
         Box_Naked_Pair: true,
         Row_Col_Naked_Pair: true,
         Box_Hidden_Pair: true,
@@ -73,6 +88,7 @@ export function create_anti_knight_sudoku(size) {
     const extra_buttons = document.getElementById('extraButtons');
     extra_buttons.innerHTML = '';
     // 可添加唯一性验证等按钮
+    add_Extra_Button('无马', () => {create_anti_knight_sudoku(size)}, '#2196F3');
 }
 
 /**

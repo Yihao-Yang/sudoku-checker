@@ -1,5 +1,5 @@
 import { state, set_current_mode } from '../solver/state.js';
-import { create_base_grid, create_base_cell, add_Extra_Button, log_process, backup_original_board, restore_original_board, handle_key_navigation } from '../solver/core.js';
+import { create_base_grid, create_base_cell, add_Extra_Button, log_process, backup_original_board, restore_original_board, handle_key_navigation, show_result, clear_all_inputs, show_generating_timer, hide_generating_timer } from '../solver/core.js';
 import { generate_puzzle } from '../solver/generate.js';
 import { get_all_regions, solve, invalidate_regions_cache } from '../solver/solver_tool.js';
 import { create_technique_panel } from '../solver/classic.js';
@@ -7,6 +7,23 @@ import { create_technique_panel } from '../solver/classic.js';
 // 奇数数独主入口
 export function create_odd_sudoku(size) {
     set_current_mode('odd');
+    show_result(`当前模式为奇数数独`);
+    log_process('', true);
+    log_process('规则：');
+    log_process('灰色圆圈：只能填奇数');
+    log_process('');
+    log_process('技巧：');
+    // log_process('"变型"：用到变型条件删数的技巧');
+    log_process('"_n"后缀：区域内剩余空格数/区块用到的空格数');
+    // log_process('"额外区域"：附加的不可重复区域');
+    // log_process('"特定组合"：受附加条件影响的区域');
+    log_process('');
+    log_process('出题：');
+    log_process('10秒，超1分钟请重启页面或调整限制条件');
+    log_process('');
+    log_process('自动出题：');
+    log_process('蓝色：自动添加标记出题');
+    log_process('绿色：根据给定标记出题');
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
@@ -72,22 +89,76 @@ export function create_odd_sudoku(size) {
     container.appendChild(grid);
     gridDisplay.appendChild(container);
 
-    // // 添加奇数标记功能
-    add_odd_mark(size);
+    // 标记模式状态
+    let is_mark_mode = false;
+    let mark_mode_btn = null;
+
+    // 切换标记模式
+    function toggle_mark_mode() {
+        is_mark_mode = !is_mark_mode;
+        if (!mark_mode_btn) {
+            mark_mode_btn = Array.from(document.getElementById('extraButtons').children).find(btn => btn.textContent.includes('标记'));
+        }
+        if (mark_mode_btn) {
+            mark_mode_btn.textContent = is_mark_mode ? '退出标记' : '添加标记';
+        }
+    }
 
     // 奇数数独专属按钮
     const extra_buttons = document.getElementById('extraButtons');
     extra_buttons.innerHTML = '';
-    // add_Extra_Button('添加标记', () => add_odd_mark(size));
+    add_Extra_Button('奇数', () => {create_odd_sudoku(size)}, '#2196F3');
+    add_Extra_Button('添加标记', toggle_mark_mode, '#2196F3');
+    add_Extra_Button('清除标记', clear_odd_marks, '#2196F3');
     add_Extra_Button('自动出题', () => generate_odd_puzzle(size), '#2196F3');
+
+    // 切换标记模式
+    function toggle_mark_mode() {
+        is_mark_mode = !is_mark_mode;
+        if (!mark_mode_btn) {
+            mark_mode_btn = Array.from(document.getElementById('extraButtons').children).find(btn => btn.textContent.includes('标记'));
+        }
+        if (mark_mode_btn) {
+            mark_mode_btn.textContent = is_mark_mode ? '退出标记' : '添加标记';
+        }
+    }
+
+    // 交互：点击格子添加/移除奇数标记（灰色圆圈）
+    grid.addEventListener('click', function(e) {
+        if (!is_mark_mode) return;
+        const cell = e.target.closest('.sudoku-cell');
+        if (!cell) return;
+        const mark = cell.querySelector('.odd-mark');
+        if (mark) {
+            mark.remove();
+        } else {
+            const newMark = document.createElement('div');
+            newMark.className = 'odd-mark';
+            newMark.style.position = 'absolute';
+            newMark.style.left = '50%';
+            newMark.style.top = '50%';
+            newMark.style.transform = 'translate(-50%, -50%)';
+            newMark.style.width = '48px';
+            newMark.style.height = '48px';
+            newMark.style.borderRadius = '50%';
+            newMark.style.zIndex = '1';
+            newMark.style.pointerEvents = 'none';
+            newMark.classList.add('gray-cell');
+            cell.appendChild(newMark);
+        }
+    });
 }
 
 // 自动生成奇数数独题目（生成若干奇数标记并调用generate_puzzle）
 export function generate_odd_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
+    // const start_time = performance.now();
     // 清除已有奇数标记
     const grid = document.querySelector('.sudoku-grid');
     if (!grid) return;
     Array.from(grid.querySelectorAll('.odd-mark')).forEach(mark => mark.remove());
+    clear_all_inputs();
+    // clear_marks();
+    log_process('', true);
     invalidate_regions_cache();
 
     let odd_marks_count = undefined; // 可选参数：奇数标记数量
@@ -184,8 +255,18 @@ export function generate_odd_puzzle(size, score_lower_limit = 0, holes_count = u
         marks_added += (row === sym[0] && col === sym[1]) ? 1 : 2;
     }
 
+    log_process(`注意生成的标记位置，若无解，请重启网页`);
+    log_process(`正在生成题目，请稍候...`);
+    show_result(`注意生成的标记位置，若无解，请重启网页`);
+    show_generating_timer();
+
+    setTimeout(() => {
+        generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        hide_generating_timer();
+    }, 0);
+
     // 生成题目
-    generate_puzzle(size, score_lower_limit, holes_count);
+    // generate_puzzle(size, score_lower_limit, holes_count);
 
     // 辅助函数：在指定格添加奇数标记
     function add_odd_mark_to_cell(cell) {
@@ -206,44 +287,6 @@ export function generate_odd_puzzle(size, score_lower_limit = 0, holes_count = u
     }
 }
 
-// ...existing code...
-// 添加奇数标记功能
-function add_odd_mark(size) {
-    const grid = document.querySelector('.sudoku-grid');
-    if (!grid) return;
-
-    // 防止重复添加监听
-    if (grid._oddMarkMode) return;
-    grid._oddMarkMode = true;
-
-    grid.addEventListener('dblclick', function handler(e) {
-        // 只响应单元格点击
-        const cell = e.target.closest('.sudoku-cell');
-        if (!cell) return;
-
-        const mark = cell.querySelector('.odd-mark');
-        if (mark) {
-            // 已有标记则删除
-            mark.remove();
-        } else {
-            // 没有标记则添加
-            const newMark = document.createElement('div');
-            newMark.className = 'odd-mark';
-            newMark.style.position = 'absolute';
-            newMark.style.left = '50%';
-            newMark.style.top = '50%';
-            newMark.style.transform = 'translate(-50%, -50%)';
-            newMark.style.width = '48px';
-            newMark.style.height = '48px';
-            newMark.style.borderRadius = '50%';
-            newMark.classList.add('gray-cell');
-            newMark.style.zIndex = '1';
-            newMark.style.pointerEvents = 'none';
-            cell.appendChild(newMark);
-        }
-    });
-}
-
 // 应用所有奇数标记：有 odd-mark 的格子只能填入奇数
 export function apply_odd_marks(board, size) {
     const grid = document.querySelector('.sudoku-grid');
@@ -261,6 +304,32 @@ export function apply_odd_marks(board, size) {
             }
         }
     }
+}
+
+// 清除所有奇数标记
+function clear_odd_marks() {
+    const grid = document.querySelector('.sudoku-grid');
+    if (!grid) return;
+    Array.from(grid.querySelectorAll('.odd-mark')).forEach(mark => mark.remove());
+}
+
+// 新增：获取所有奇数标记对应的区域（每个格子单独成区）
+export function get_odd_cells() {
+    const grid = document.querySelector('.sudoku-grid');
+    if (!grid) return [];
+    const cells = Array.from(grid.querySelectorAll('.sudoku-cell'));
+    const regions = [];
+    for (const cell of cells) {
+        if (cell.querySelector('.odd-mark')) {
+            const row = parseInt(cell.getAttribute('data-row'));
+            const col = parseInt(cell.getAttribute('data-col'));
+            if (!Number.isNaN(row) && !Number.isNaN(col)) {
+                // 每个奇数标记格子单独构成一个区域
+                regions.push([[row, col]]);
+            }
+        }
+    }
+    return regions;
 }
 
 // 奇数数独有效性检测函数

@@ -2,12 +2,33 @@ import { state, set_current_mode } from '../solver/state.js';
 import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, add_Extra_Button, clear_inner_numbers, clear_outer_clues } from '../solver/core.js';
 import { create_technique_panel } from '../solver/classic.js';
 import { get_all_regions, isValid, solve, invalidate_regions_cache } from '../solver/solver_tool.js';
-import { generate_solution, shuffle } from '../solver/generate.js';
+import { generate_solution, shuffle, generate_exterior_puzzle } from '../solver/generate.js';
 
 // 新数独主入口
 export function create_X_sums_sudoku(size) {
     set_current_mode('X_sums');
+    show_result(`当前模式为X和数独`);
+    log_process('', true);
+    log_process('规则：');
+    log_process('外提示数：该方向的前X位数字之和');
+    log_process('X：该方向的第一格数字');
+    // log_process('数字大小：高度，高楼会挡住矮楼');
+    log_process('');
+    log_process('技巧：');
+    log_process('"变型"：用到变型条件删数的技巧');
+    log_process('"_n"后缀：区域内剩余空格数/区块用到的空格数');
+    // log_process('"额外区域"：附加的不可重复区域');
+    log_process('"特定组合"：受附加条件影响的区域');
+    log_process('');
+    log_process('出题：');
+    log_process('10秒，超1分钟请重启页面或调整限制条件');
+    log_process('九宫：1-5分钟，超时请重启页面或调整限制条件');
+    log_process('');
+    log_process('自动出题：');
+    log_process('蓝色：自动添加标记出题');
+    log_process('绿色：根据给定标记出题');
     state.current_grid_size = size;
+    state.clues_board = null;
 
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
@@ -71,6 +92,7 @@ export function create_X_sums_sudoku(size) {
         // Multi_Special_Combination_Region_Block_2: true,
         // Multi_Special_Combination_Region_Block_3: true,
         // Multi_Special_Combination_Region_Block_4: true,
+        Lookup_Table: true
     };
     for (let i = 1; i <= size; i++) {
         state.techniqueSettings[`Cell_Elimination_${i}`] = true;
@@ -142,11 +164,12 @@ export function create_X_sums_sudoku(size) {
     // 摩天楼专属按钮
     const extraButtons = document.getElementById('extraButtons');
     extraButtons.innerHTML = '';
-    add_Extra_Button('清除内部数字', clear_inner_numbers, '#2196F3'); // 添加清除内部数字按钮
-    add_Extra_Button('清除外部提示数', clear_outer_clues, '#2196F3'); // 清除外部提示数
-    add_Extra_Button('标记外部提示数', () => mark_outer_clues(size), '#2196F3'); // 添加标记外部提示数按钮
+    add_Extra_Button('X和', () => {create_X_sums_sudoku(size)}, '#2196F3');
+    add_Extra_Button('清除内部', clear_inner_numbers, '#2196F3'); // 添加清除内部数字按钮
+    add_Extra_Button('清除提示', clear_outer_clues, '#2196F3'); // 清除外部提示数
+    add_Extra_Button('标记提示', () => mark_outer_clues_X_sums(size), '#2196F3'); // 添加标记外部提示数按钮
     add_Extra_Button('自动出题(老)', () => generate_X_sums_puzzle_old(size), '#2196F3');
-    add_Extra_Button('自动出题(新)', () => generate_X_sums_puzzle_new(size), '#2196F3');
+    add_Extra_Button('自动出题(新)', () => generate_exterior_puzzle(size), '#2196F3');
     // add_Extra_Button('一键标记', auto_mark_skyscraper_clues, '#2196F3');
     // add_Extra_Button('验证摩天楼唯一性', check_skyscraper_uniqueness, '#2196F3');
     // add_Extra_Button('清除标记', clear_outer_clues, '#2196F3');
@@ -565,163 +588,117 @@ export function generate_X_sums_puzzle_new(size, score_lower_limit = 0, holes_co
     backup_original_board();
     show_result(`已生成 X-sums 数独题目（由终盘标记外提示并尽量删减以保持唯一性）`);
 }
-// ...existing code...
+
+
+// X sums提示数对应候选数映射（保持原逻辑）
+export function X_SUMS_CANDIDATES_MAP(size) {
+    if (size === 9) {
+        return {
+            1: [1], 3: [2], 5: [2], 6: [2, 3], 7: [2],
+            8: [2, 3], 9: [2, 3], 10: [2, 3, 4], 11: [2, 3],
+            12: [3, 4], 13: [3, 4], 14: [3, 4], 15: [3, 4, 5],
+            16: [3, 4], 17: [3, 4, 5], 18: [3, 4, 5], 19: [3, 4, 5],
+            20: [3, 4, 5], 21: [4, 5, 6], 22: [4, 5], 23: [4, 5, 6],
+            24: [4, 5, 6], 25: [4, 5, 6], 26: [4, 5, 6], 27: [4, 5, 6],
+            28: [4, 5, 6, 7], 29: [5, 6], 30: [5, 6, 7], 31: [5, 6, 7],
+            32: [5, 6, 7], 33: [5, 6, 7], 34: [6, 7], 35: [5, 6, 7],
+            36: [6, 7, 8], 37: [6, 7], 38: [6, 7, 8], 39: [6, 7, 8],
+            40: [7, 8], 41: [7, 8], 42: [7, 8], 43: [8], 44: [8], 45: [9],
+        };
+    } else if (size === 6) {
+        return {
+            1: [1], 3: [2], 5: [2], 6: [2, 3], 7: [2],
+            8: [2, 3], 9: [3], 10: [3, 4], 11: [3],
+            12: [3, 4], 13: [3, 4], 14: [3, 4], 15: [4, 5],
+            16: [4], 17: [4, 5], 18: [4, 5], 19: [5], 20: [5], 21: [6],
+        };
+    } else if (size === 4) {
+        // 保持原有 4 宫映射
+        return {
+            1: [1], 3: [2], 4: [2,3], 5: [2], 6: [3], 7: [4],
+        };
+    } else {
+        return {};
+    }
+}
 
 export function apply_X_sums_marks(board, size) {
-    // X sums提示数对应候选数映射
-    // 根据 size 动态生成 X sums 提示数对应候选数映射
-    const X_SUMS_CANDIDATES_MAP = (() => {
-        if (size === 9) {
-            return {
-                1: [1],
-                3: [2],
-                5: [2],
-                6: [2, 3],
-                7: [2],
-                8: [2, 3],
-                9: [2, 3],
-                10: [2, 3, 4],
-                11: [2, 3],
-                12: [3, 4],
-                13: [3, 4],
-                14: [3, 4],
-                15: [3, 4, 5],
-                16: [3, 4],
-                17: [3, 4, 5],
-                18: [3, 4, 5],
-                19: [3, 4, 5],
-                20: [3, 4, 5],
-                21: [4, 5, 6],
-                22: [4, 5],
-                23: [4, 5, 6],
-                24: [4, 5, 6],
-                25: [4, 5, 6],
-                26: [4, 5, 6],
-                27: [4, 5, 6],
-                28: [4, 5, 6, 7],
-                29: [5, 6],
-                30: [5, 6, 7],
-                31: [5, 6, 7],
-                32: [5, 6, 7],
-                33: [5, 6, 7],
-                34: [6, 7],
-                35: [5, 6, 7],
-                36: [6, 7, 8],
-                37: [6, 7],
-                38: [6, 7, 8],
-                39: [6, 7, 8],
-                40: [7, 8],
-                41: [7, 8],
-                42: [7, 8],
-                43: [8],
-                44: [8],
-                45: [9],
-            };
-        } else if (size === 6) {
-            return {
-                1: [1],
-                3: [2],
-                5: [2],
-                6: [2, 3],
-                7: [2],
-                8: [2, 3],
-                9: [3],
-                10: [3, 4],
-                11: [3],
-                12: [3, 4],
-                13: [3, 4],
-                14: [3, 4],
-                15: [4, 5],
-                16: [4],
-                17: [4, 5],
-                18: [4, 5],
-                19: [5],
-                20: [5],
-                21: [6],
-            };
-        } else if (size === 4) {
-            return {
-                1: [1],
-                3: [2],
-                5: [2],
-                6: [2, 3],
-                8: [3],
-                9: [3],
-                10: [4],
-            };
-        } else {
-            return {}; // 默认返回空映射
-        }
-    })();
 
-    // 第一行提示，作用于第二行
+    // if (!currentBoard || currentBoard.length !== size + 2) return false;
+        
+    let marked = false;
+    
+    // 从 currentBoard 读取外部提示
+    const parse_clue = (r, c) => {
+        const val = state.clues_board[r][c];
+        // log_process(`解析提示位置 (${r+1},${c+1})，值为 ${val}`);
+        if (typeof val === 'number' && val > 0) return val;
+        return 0;
+    };
+    
+    // 辅助函数：从候选数中删除特定数字
+    const remove_candidate = (candidates, num) => {
+        if (Array.isArray(candidates) && candidates.includes(num)) {
+            const index = candidates.indexOf(num);
+            if (index !== -1) {
+                candidates.splice(index, 1);
+                return true;
+            }
+        }
+        return false;
+    };
+
+    // 顶部提示作用于第二行
     for (let col = 1; col <= size; col++) {
-        let clue = board[0][col];
-        if (Array.isArray(clue)) {
-            if (clue.length !== 1) continue;
-            clue = clue[0];
-        }
-        clue = parseInt(clue);
-        if (clue && X_SUMS_CANDIDATES_MAP[clue]) {
-            const candidates = X_SUMS_CANDIDATES_MAP[clue];
-            if (Array.isArray(board[1][col])) {
-                board[1][col] = board[1][col].filter(n => candidates.includes(n));
-                log_process(`根据顶部提示 ${clue}，更新 (2,${col + 1}) 的候选数为 [${board[1][col].join(',')}]`);
+        const clue = parse_clue(0, col);
+        if (clue && X_SUMS_CANDIDATES_MAP(size)[clue]) {
+            const candidates = X_SUMS_CANDIDATES_MAP(size)[clue];
+            if (Array.isArray(board[0][col-1])) {
+                board[0][col-1] = board[0][col-1].filter(n => candidates.includes(n));
+                // log_process(`根据顶部提示 ${clue}，更新 (1,${col}) 的候选数为 [${board[0][col-1].join(',')}]`);
             }
         }
     }
-    // 最后一行提示，作用于倒数第二行
+
+    // 底部提示作用于倒数第二行
     for (let col = 1; col <= size; col++) {
-        let clue = board[size + 1][col];
-        if (Array.isArray(clue)) {
-            if (clue.length !== 1) continue;
-            clue = clue[0];
-        }
-        clue = parseInt(clue);
-        if (clue && X_SUMS_CANDIDATES_MAP[clue]) {
-            const candidates = X_SUMS_CANDIDATES_MAP[clue];
-            if (Array.isArray(board[size][col])) {
-                board[size][col] = board[size][col].filter(n => candidates.includes(n));
-                log_process(`根据底部提示 ${clue}，更新 (${size},${col + 1}) 的候选数为 [${board[size][col].join(',')}]`);
+        const clue = parse_clue(size + 1, col);
+        if (clue && X_SUMS_CANDIDATES_MAP(size)[clue]) {
+            const candidates = X_SUMS_CANDIDATES_MAP(size)[clue];
+            if (Array.isArray(board[size-1][col-1])) {
+                board[size-1][col-1] = board[size-1][col-1].filter(n => candidates.includes(n));
+                // log_process(`根据底部提示 ${clue}，更新 (${size},${col}) 的候选数为 [${board[size-1][col-1].join(',')}]`);
             }
         }
     }
-    // 第一列提示，作用于第二列
+
+    // 左侧提示作用于第二列
     for (let row = 1; row <= size; row++) {
-        let clue = board[row][0];
-        if (Array.isArray(clue)) {
-            if (clue.length !== 1) continue;
-            clue = clue[0];
-        }
-        clue = parseInt(clue);
-        if (clue && X_SUMS_CANDIDATES_MAP[clue]) {
-            const candidates = X_SUMS_CANDIDATES_MAP[clue];
-            if (Array.isArray(board[row][1])) {
-                board[row][1] = board[row][1].filter(n => candidates.includes(n));
-                log_process(`根据左侧提示 ${clue}，更新 (${row + 1},2) 的候选数为 [${board[row][1].join(',')}]`);
+        const clue = parse_clue(row, 0);
+        if (clue && X_SUMS_CANDIDATES_MAP(size)[clue]) {
+            const candidates = X_SUMS_CANDIDATES_MAP(size)[clue];
+            if (Array.isArray(board[row-1][0])) {
+                board[row-1][0] = board[row-1][0].filter(n => candidates.includes(n));
+                // log_process(`根据左侧提示 ${clue}，更新 (${row},1) 的候选数为 [${board[row-1][0].join(',')}]`);
             }
         }
     }
-    // 最后一列提示，作用于倒数第二列
+
+    // 右侧提示作用于倒数第二列
     for (let row = 1; row <= size; row++) {
-        let clue = board[row][size + 1];
-        if (Array.isArray(clue)) {
-            if (clue.length !== 1) continue;
-            clue = clue[0];
-        }
-        clue = parseInt(clue);
-        if (clue && X_SUMS_CANDIDATES_MAP[clue]) {
-            const candidates = X_SUMS_CANDIDATES_MAP[clue];
-            if (Array.isArray(board[row][size])) {
-                board[row][size] = board[row][size].filter(n => candidates.includes(n));
-                log_process(`根据右侧提示 ${clue}，更新 (${row + 1},${size}) 的候选数为 [${board[row][size].join(',')}]`);
+        const clue = parse_clue(row, size + 1);
+        if (clue && X_SUMS_CANDIDATES_MAP(size)[clue]) {
+            const candidates = X_SUMS_CANDIDATES_MAP(size)[clue];
+            if (Array.isArray(board[row-1][size-1])) {
+                board[row-1][size-1] = board[row-1][size-1].filter(n => candidates.includes(n));
+                // log_process(`根据右侧提示 ${clue}，更新 (${row},${size}) 的候选数为 [${board[row-1][size-1].join(',')}]`);
             }
         }
     }
 }
 
 // 添加标记外部提示数的功能
-function mark_outer_clues(size) {
+export function mark_outer_clues_X_sums(size) {
     const container = document.querySelector('.sudoku-container');
     if (!container) return;
     const grid = container.querySelector('.sudoku-grid');

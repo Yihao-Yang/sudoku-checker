@@ -1,5 +1,5 @@
 import { state, set_current_mode } from '../solver/state.js';
-import { bold_border, create_base_grid, handle_key_navigation, add_Extra_Button, log_process, create_base_cell } from '../solver/core.js';
+import { bold_border, create_base_grid, handle_key_navigation, add_Extra_Button, log_process, create_base_cell, show_result } from '../solver/core.js';
 import { create_technique_panel } from '../solver/classic.js';
 import { generate_puzzle } from '../solver/generate.js';
 import { get_all_regions, invalidate_regions_cache } from '../solver/solver_tool.js';
@@ -8,6 +8,23 @@ import { get_all_regions, invalidate_regions_cache } from '../solver/solver_tool
 // 克隆数独主入口
 export function create_clone_sudoku(size) {
     set_current_mode('clone');
+    show_result(`当前模式为克隆数独`);
+    log_process('', true);
+    log_process('规则：');
+    log_process('若灰色区域形状相同，则相同位置的数字一致');
+    log_process('');
+    log_process('技巧：');
+    log_process('"变型"：用到变型条件删数的技巧');
+    log_process('"_n"后缀：区域内剩余空格数/区块用到的空格数');
+    // log_process('"额外区域"：附加的不可重复区域');
+    log_process('"特定组合"：受附加条件影响的区域');
+    log_process('');
+    log_process('出题：');
+    log_process('10秒，超1分钟请重启页面或调整限制条件');
+    log_process('');
+    log_process('自动出题：');
+    log_process('尚不支持自动添加标记出题，需要手动给定标记');
+    log_process('绿色：根据给定标记出题');
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
@@ -101,6 +118,7 @@ export function create_clone_sudoku(size) {
     // 添加按钮（风格与多斜线一致）
     const extra_buttons = document.getElementById('extraButtons');
     extra_buttons.innerHTML = '';
+    add_Extra_Button('克隆', () => {create_clone_sudoku(size)}, '#2196F3');
     add_Extra_Button('添加标记', toggle_mark_mode, '#2196F3');
     add_Extra_Button('清除标记', () => clear_clone_marks(state.current_grid_size), '#2196F3');
     // add_Extra_Button('自动出题', () => generate_clone_puzzle(size), '#2196F3');

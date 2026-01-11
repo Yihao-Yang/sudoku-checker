@@ -9,7 +9,9 @@ import {
     add_Extra_Button,
     clear_all_inputs,
     fill_solution,
-    clear_marks
+    clear_marks,
+    show_generating_timer,
+    hide_generating_timer,
 } from '../solver/core.js';
 import { state, set_current_mode } from '../solver/state.js';
 import { create_technique_panel } from '../solver/classic.js';
@@ -158,26 +160,6 @@ export function create_vx_sudoku(size = 9) {
     reset_vx_highlights(container);
 }
 
-// function set_vx_mode(type) {
-//     const normalized = typeof type === 'string' ? type.trim().toUpperCase() : '';
-//     if (normalized !== 'V' && normalized !== 'X') {
-//         show_result('VX标记模式仅支持V或X', 'error');
-//         return;
-//     }
-//     current_vx_type = normalized;
-//     show_result(`默认VX标记类型已切换为${normalized}`, 'info');
-// }
-
-// function clear_vx_marks(silent = false) {
-//     const container = get_vx_container();
-//     if (!container) return;
-//     container.querySelectorAll('.vx-mark').forEach((mark) => mark.remove());
-//     reset_vx_highlights(container);
-//     if (!silent) {
-//         show_result('已清除所有VX标记', 'info');
-//     }
-// }
-
 function auto_mark_vx() {
     const container = get_vx_container();
     if (!container) return;
@@ -208,6 +190,8 @@ function auto_mark_vx() {
 }
 
 export function generate_vx_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
+    // clear_all_inputs();
+    // clear_marks();
     const effectiveSize = size || state.current_grid_size || 9;
     const container = get_vx_container();
     if (!container) return;
@@ -228,7 +212,7 @@ export function generate_vx_puzzle(size, score_lower_limit = 0, holes_count = un
         }
     }
 
-    const startTime = performance.now();
+    // const startTime = performance.now();
     clear_all_inputs();
     log_process('', true);
     reset_vx_highlights(container);
@@ -246,14 +230,24 @@ export function generate_vx_puzzle(size, score_lower_limit = 0, holes_count = un
     log_process('第二步：标记全部符合条件的VX关系...');
     const marksAdded = populate_all_vx_marks(container, solvedBoard, effectiveSize);
 
-    const elapsed = ((performance.now() - startTime) / 1000).toFixed(3);
-    log_process(`总计标记 ${marksAdded} 对符合条件的相邻格`);
-    show_result(
-        `VX标记生成完成，标记${marksAdded}对（耗时${elapsed}秒）`,
-        marksAdded > 0 ? 'success' : 'info'
-    );
+    // const elapsed = ((performance.now() - startTime) / 1000).toFixed(3);
+    // log_process(`总计标记 ${marksAdded} 对符合条件的相邻格`);
+    // show_result(
+    //     `VX标记生成完成，标记${marksAdded}对（耗时${elapsed}秒）`,
+    //     marksAdded > 0 ? 'success' : 'info'
+    // );
 
-    generate_puzzle(effectiveSize, score_lower_limit, holes_count, solvedBoard);
+    // log_process(`注意生成的斜线位置，若无解，请重启网页`);
+    log_process(`正在生成题目，请稍候...`);
+    show_result(`正在生成题目，请稍候...`);
+    show_generating_timer();
+
+    setTimeout(() => {
+        generate_puzzle(effectiveSize, score_lower_limit, holes_count, solvedBoard);
+        hide_generating_timer();
+    }, 0);
+
+    // generate_puzzle(effectiveSize, score_lower_limit, holes_count, solvedBoard);
 }
 
 // function check_vx_uniqueness() {

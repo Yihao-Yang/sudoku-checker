@@ -1,5 +1,5 @@
 import { state, set_current_mode } from '../solver/state.js';
-import { bold_border, create_base_grid, handle_key_navigation, add_Extra_Button, log_process, create_base_cell } from '../solver/core.js';
+import { bold_border, create_base_grid, handle_key_navigation, add_Extra_Button, log_process, create_base_cell, show_result, clear_all_inputs, show_generating_timer, hide_generating_timer } from '../solver/core.js';
 import { create_technique_panel } from '../solver/classic.js';
 import { generate_puzzle } from '../solver/generate.js';
 import { get_all_regions, invalidate_regions_cache } from '../solver/solver_tool.js';
@@ -8,6 +8,24 @@ import { get_all_regions, invalidate_regions_cache } from '../solver/solver_tool
 // 额外区域数独主入口
 export function create_fortress_sudoku(size) {
     set_current_mode('fortress');
+    show_result(`当前模式为堡垒数独`);
+    log_process('', true);
+    log_process('规则：');
+    log_process('灰格数字大于白格数字');
+    log_process('');
+    log_process('技巧：');
+    log_process('"变型"：用到变型条件删数的技巧');
+    log_process('"_n"后缀：区域内剩余空格数/区块用到的空格数');
+    // log_process('"额外区域"：附加的不可重复区域');
+    log_process('"特定组合"：受附加条件影响的区域');
+    log_process('');
+    log_process('出题：');
+    log_process('10秒，超1分钟请重启页面或调整限制条件');
+    log_process('若生成图案无解请重启页面');
+    log_process('');
+    log_process('自动出题：');
+    log_process('蓝色：自动添加标记出题');
+    log_process('绿色：根据给定标记出题');
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
@@ -111,6 +129,7 @@ export function create_fortress_sudoku(size) {
     // 添加按钮（风格与多斜线一致）
     const extra_buttons = document.getElementById('extraButtons');
     extra_buttons.innerHTML = '';
+    add_Extra_Button('堡垒', () => {create_fortress_sudoku(size)}, '#2196F3');
     add_Extra_Button('添加标记', toggle_mark_mode, '#2196F3');
     add_Extra_Button('清除标记', () => clear_fortress_marks(state.current_grid_size), '#2196F3');
     add_Extra_Button('自动出题', () => generate_fortress_puzzle(size), '#2196F3');
@@ -174,8 +193,10 @@ export function create_fortress_sudoku(size) {
 
 // 生成额外区域数独题目
 export function generate_fortress_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
+    clear_all_inputs();
     clear_fortress_marks(size);
     invalidate_regions_cache();
+    log_process('', true);
 
     // 支持的对称类型
     const SYMMETRY_TYPES = [
@@ -512,7 +533,16 @@ export function generate_fortress_puzzle(size, score_lower_limit = 0, holes_coun
         }
     }
 
-    generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+    log_process(`注意生成的堡垒位置，若无解，请重启网页`);
+    log_process(`正在生成题目，请稍候...`);
+    show_result(`注意生成的堡垒位置，若无解，请重启网页`);
+    show_generating_timer();
+    
+    setTimeout(() => {
+        generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        hide_generating_timer();
+    }, 0);
+    // generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
 }
 
 // 获取所有合法的额外区域
@@ -635,13 +665,22 @@ export function get_fortress_cells() {
     return [];
 }
 
-// 清除所有额外区域标记（界面和数据都恢复）
+// // 清除所有额外区域标记（界面和数据都恢复）
+// export function clear_fortress_marks(size) {
+//     state.fortress_cells.clear();
+//     // 移除所有格子的高亮
+//     const cells = document.querySelectorAll('.sudoku-cell.extra-region-mode');
+//     cells.forEach(cell => {
+//         cell.classList.remove('extra-region-cell');
+//     });
+// }
 export function clear_fortress_marks(size) {
     state.fortress_cells.clear();
-    // 移除所有格子的高亮
     const cells = document.querySelectorAll('.sudoku-cell.extra-region-mode');
     cells.forEach(cell => {
-        cell.classList.remove('extra-region-cell');
+    cell.classList.remove('extra-region-cell');
+    cell.classList.remove('gray-cell');
+    cell.classList.remove('fortress-cell'); // 旧类名兼容
     });
 }
 

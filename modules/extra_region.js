@@ -1,5 +1,5 @@
 import { state, set_current_mode } from '../solver/state.js';
-import { bold_border, create_base_grid, handle_key_navigation, add_Extra_Button, log_process, create_base_cell } from '../solver/core.js';
+import { bold_border, create_base_grid, handle_key_navigation, add_Extra_Button, log_process, create_base_cell, show_result, show_generating_timer, hide_generating_timer, clear_all_inputs } from '../solver/core.js';
 import { create_technique_panel } from '../solver/classic.js';
 import { generate_puzzle } from '../solver/generate.js';
 import { invalidate_regions_cache } from '../solver/solver_tool.js';
@@ -8,6 +8,24 @@ import { invalidate_regions_cache } from '../solver/solver_tool.js';
 // 额外区域数独主入口
 export function create_extra_region_sudoku(size) {
     set_current_mode('extra_region');
+    show_result(`当前模式为额外区域数独`);
+    log_process('', true);
+    log_process('规则：');
+    log_process('灰色额外区域内数字不重复');
+    log_process('');
+    log_process('技巧：');
+    log_process('"变型"：用到变型条件删数的技巧');
+    log_process('"_n"后缀：区域内剩余空格数/区块用到的空格数');
+    log_process('"额外区域"：附加的不可重复区域');
+    // log_process('"特定组合"：受附加条件影响的区域');
+    log_process('');
+    log_process('出题：');
+    log_process('10秒，超1分钟请重启页面或调整限制条件');
+    log_process('若生成图案无解请重启页面');
+    log_process('');
+    log_process('自动出题：');
+    log_process('蓝色：自动添加标记出题');
+    log_process('绿色：根据给定标记出题');
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
@@ -78,6 +96,7 @@ export function create_extra_region_sudoku(size) {
     // 添加按钮（风格与多斜线一致）
     const extra_buttons = document.getElementById('extraButtons');
     extra_buttons.innerHTML = '';
+    add_Extra_Button('额外区域', () => {create_extra_region_sudoku(size)}, '#2196F3');
     add_Extra_Button('添加标记', toggle_mark_mode, '#2196F3');
     add_Extra_Button('清除标记', () => clear_extra_region_marks(state.current_grid_size), '#2196F3');
     add_Extra_Button('自动出题', () => generate_extra_region_puzzle(size), '#2196F3');
@@ -88,8 +107,8 @@ export function create_extra_region_sudoku(size) {
 
         const { cell, main_input, candidates_grid } = create_base_cell(row, col, size);
 
-    // 额外区域模式标记
-    cell.classList.add('extra-region-mode');
+        // 额外区域模式标记
+        cell.classList.add('extra-region-mode');
 
         // 额外区域高亮
         const cell_key = `${row},${col}`;
@@ -141,8 +160,10 @@ export function create_extra_region_sudoku(size) {
 
 // 生成额外区域数独题目
 export function generate_extra_region_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
+    clear_all_inputs();
     clear_extra_region_marks(size);
     invalidate_regions_cache();
+    log_process('', true);
 
     // 支持的对称类型
     const SYMMETRY_TYPES = [
@@ -345,7 +366,17 @@ export function generate_extra_region_puzzle(size, score_lower_limit = 0, holes_
         }
     }
 
-    generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+    log_process(`注意生成的额外区域位置，若无解，请重启网页`);
+    log_process(`正在生成题目，请稍候...`);
+    show_result(`注意生成的额外区域位置，若无解，请重启网页`);
+    show_generating_timer();
+    
+    setTimeout(() => {
+        generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        hide_generating_timer();
+    }, 0);
+
+    // generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
 }
 
 // 获取所有合法的额外区域

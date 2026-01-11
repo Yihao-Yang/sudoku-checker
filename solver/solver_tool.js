@@ -23,7 +23,9 @@ import { is_valid_anti_knight } from "../modules/anti_knight.js";
 import { is_valid_anti_elephant } from "../modules/anti_elephant.js";
 // import { is_valid_anti_diagonal } from "../modules/anti_diagonal.js";
 import { is_valid_palindrome, merge_connected_lines } from "../modules/palindrome.js";
-import { is_valid_X_sums, apply_X_sums_marks } from "../modules/X_sums.js";
+import { get_odd_cells } from '../modules/odd.js';
+import { get_odd_even_cells } from '../modules/odd_even.js';
+import { is_valid_X_sums, apply_X_sums_marks, X_SUMS_CANDIDATES_MAP } from "../modules/X_sums.js";
 import { is_valid_skyscraper, apply_skyscraper_marks } from "../modules/skyscraper.js";
 import { is_valid_sandwich } from "../modules/sandwich.js";
 
@@ -711,42 +713,66 @@ export function get_all_regions(size, mode = 'classic') {
                 // 六宫不在对角线上的格子
                 [4, 3], [4, 5], [5, 3], [5, 4]
             ];
-            regions.push({ type: '主反对角', index: 1, cells: extra_region_1 });
+            const index_1 = extra_region_1
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '主反对角', index_1, cells: extra_region_1 });
             const extra_region_2 = [
                 // 六宫在对角线上的格子
                 [4, 4], [5, 5],
                 // 一宫不在对角线上的格子
                 [0, 1], [0, 2], [1, 0], [1, 2]
             ];
-            regions.push({ type: '主反对角', index: 2, cells: extra_region_2 });
+            const index_2 = extra_region_2
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '主反对角', index_2, cells: extra_region_2 });
             const extra_region_3 = [
                 // 三宫在对角线上的格子
                 [2, 2],
                 // 一宫不在对角线上的格子
                 [0, 1], [0, 2], [1, 0], [1, 2]
             ];
-            regions.push({ type: '主反对角', index: 3, cells: extra_region_3 });
+            const index_3 = extra_region_3
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '主反对角', index_3, cells: extra_region_3 });
             const extra_region_4 = [
                 // 四宫在对角线上的格子
                 [3, 3],
                 // 一宫不在对角线上的格子
                 [0, 1], [0, 2], [1, 0], [1, 2]
             ];
-            regions.push({ type: '主反对角', index: 4, cells: extra_region_4 });
+            const index_4 = extra_region_4
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '主反对角', index_4, cells: extra_region_4 });
             const extra_region_5 = [
                 // 三宫在对角线上的格子
                 [2, 2],
                 // 六宫不在对角线上的格子
                 [4, 3], [4, 5], [5, 3], [5, 4]
             ];
-            regions.push({ type: '主反对角', index: 5, cells: extra_region_5 });
+            const index_5 = extra_region_5
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '主反对角', index_5, cells: extra_region_5 });
             const extra_region_6 = [
                 // 四宫在对角线上的格子
                 [3, 3],
                 // 六宫不在对角线上的格子
                 [4, 3], [4, 5], [5, 3], [5, 4]
             ];
-            regions.push({ type: '主反对角', index: 6, cells: extra_region_6 });
+            const index_6 = extra_region_6
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '主反对角', index_6, cells: extra_region_6 });
             // 以下为副反对角（左下到右上）对应的镜像区域（size = 6）
             const anti_extra_region_1 = [
                 // 对应主对角 [0,0],[1,1] -> 镜像为 [0,5],[1,4]
@@ -754,31 +780,44 @@ export function get_all_regions(size, mode = 'classic') {
                 // 对应主对角的其他格子镜像
                 [4, 2], [4, 0], [5, 2], [5, 1]
             ];
-            regions.push({ type: '副反对角', index: 1, cells: anti_extra_region_1 });
-
+            const anti_index_1 = anti_extra_region_1
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '副反对角', index: anti_index_1, cells: anti_extra_region_1 });
             const anti_extra_region_2 = [
                 // 对应主对角 [4,4],[5,5] -> 镜像为 [4,1],[5,0]
                 [4, 1], [5, 0],
                 // 对应主对角的一宫不在对角线上的格子镜像
                 [0, 4], [0, 3], [1, 5], [1, 3]
             ];
-            regions.push({ type: '副反对角', index: 2, cells: anti_extra_region_2 });
-
+            const anti_index_2 = anti_extra_region_2
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '副反对角', index: anti_index_2, cells: anti_extra_region_2 });
             const anti_extra_region_3 = [
                 // 对应主对角 [2,2] -> 镜像为 [2,3]
                 [2, 3],
                 // 一宫不在对角线上的格子镜像
                 [0, 4], [0, 3], [1, 5], [1, 3]
             ];
-            regions.push({ type: '副反对角', index: 3, cells: anti_extra_region_3 });
-
+            const anti_index_3 = anti_extra_region_3
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '副反对角', index: anti_index_3, cells: anti_extra_region_3 });
             const anti_extra_region_4 = [
                 // 对应主对角 [3,3] -> 镜像为 [3,2]
                 [3, 2],
                 // 一宫不在对角线上的格子镜像
                 [0, 4], [0, 3], [1, 5], [1, 3]
             ];
-            regions.push({ type: '副反对角', index: 4, cells: anti_extra_region_4 });
+            const anti_index_4 = anti_extra_region_4
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '副反对角', index: anti_index_4, cells: anti_extra_region_4 });
 
             const anti_extra_region_5 = [
                 // 对应主对角 [2,2] -> 镜像为 [2,3]
@@ -786,15 +825,22 @@ export function get_all_regions(size, mode = 'classic') {
                 // 对应主对角的六宫不在对角线上的格子镜像
                 [4, 2], [4, 0], [5, 2], [5, 1]
             ];
-            regions.push({ type: '副反对角', index: 5, cells: anti_extra_region_5 });
-
+            const anti_index_5 = anti_extra_region_5
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '副反对角', index: anti_index_5, cells: anti_extra_region_5 });
             const anti_extra_region_6 = [
                 // 对应主对角 [3,3] -> 镜像为 [3,2]
                 [3, 2],
                 // 对应主对角的六宫不在对角线上的格子镜像
                 [4, 2], [4, 0], [5, 2], [5, 1]
             ];
-            regions.push({ type: '副反对角', index: 6, cells: anti_extra_region_6 });
+            const anti_index_6 = anti_extra_region_6
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '副反对角', index: anti_index_6, cells: anti_extra_region_6 });
         } else if (size === 9) {
             const extra_region_1 = [
                 // 一宫在对角线上的格子
@@ -802,33 +848,57 @@ export function get_all_regions(size, mode = 'classic') {
                 // 五宫不在对角线上的格子
                 [3, 4], [3, 5], [4, 3], [4, 5], [5, 3], [5, 4]
             ];
-            regions.push({ type: '主反对角', index: 1, cells: extra_region_1 });
+            const extra_index_1 = extra_region_1
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '主反对角', index: extra_index_1, cells: extra_region_1 });
             // 第二个反对角区域
             const extra_region_2 = [
                 [0, 0], [1, 1], [2, 2], // 一宫在对角线上的格子
                 [6, 7], [6, 8], [7, 8], [7, 6], [8, 6], [8, 7] // 九宫不在对角线上的格子
             ];
-            regions.push({ type: '主反对角', index: 2, cells: extra_region_2 });
+            const extra_index_2 = extra_region_2
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '主反对角', index: extra_index_2, cells: extra_region_2 });
             const extra_region_3 = [
                 [3, 3], [4, 4], [5, 5], // 五宫在对角线上的格子
                 [0, 1], [0, 2], [1, 0], [1, 2], [2, 0], [2, 1] // 一宫不在对角线上的格子
             ];
-            regions.push({ type: '主反对角', index: 3, cells: extra_region_3 });
+            const extra_index_3 = extra_region_3
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '主反对角', index: extra_index_3, cells: extra_region_3 });
             const extra_region_4 = [
                 [3, 3], [4, 4], [5, 5], // 五宫在对角线上的格子
                 [6, 7], [6, 8], [7, 8], [7, 6], [8, 6], [8, 7] // 九宫不在对角线上的格子
             ];
-            regions.push({ type: '主反对角', index: 4, cells: extra_region_4 });
+            const extra_index_4 = extra_region_4
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '主反对角', index: extra_index_4, cells: extra_region_4 });
             const extra_region_5 = [
                 [6, 6], [7, 7], [8, 8], // 九宫在对角线上的格子
                 [0, 1], [0, 2], [1, 0], [1, 2], [2, 0], [2, 1] // 一宫不在对角线上的格子
             ];
-            regions.push({ type: '主反对角', index: 5, cells: extra_region_5 });
+            const extra_index_5 = extra_region_5
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '主反对角', index: extra_index_5, cells: extra_region_5 });
             const extra_region_6 = [
                 [6, 6], [7, 7], [8, 8], // 九宫在对角线上的格子
                 [3, 4], [3, 5], [4, 3], [4, 5], [5, 3], [5, 4] // 五宫不在对角线上的格子
             ];
-            regions.push({ type: '主反对角', index: 6, cells: extra_region_6 });
+            const extra_index_6 = extra_region_6
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '主反对角', index: extra_index_6, cells: extra_region_6 });
             // 左下到右上的副对角线区域
             const extra_region_7 = [
                 // 一宫在副对角线上的格子
@@ -836,38 +906,62 @@ export function get_all_regions(size, mode = 'classic') {
                 // 五宫不在副对角线上的格子
                 [3, 3], [3, 4], [4, 3], [4, 5], [5, 4], [5, 5]
             ];
-            regions.push({ type: '副反对角', index: 1, cells: extra_region_7 });
+            const extra_index_7 = extra_region_7
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '副反对角', index: extra_index_7, cells: extra_region_7 });
 
             // 第二个副对角区域
             const extra_region_8 = [
                 [0, 8], [1, 7], [2, 6], // 一宫在副对角线上的格子
                 [6, 1], [6, 0], [7, 0], [7, 2], [8, 2], [8, 1] // 九宫不在副对角线上的格子
             ];
-            regions.push({ type: '副反对角', index: 2, cells: extra_region_8 });
+            const extra_index_8 = extra_region_8
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '副反对角', index: extra_index_8, cells: extra_region_8 });
 
             const extra_region_9 = [
                 [3, 5], [4, 4], [5, 3], // 五宫在副对角线上的格子
                 [0, 6], [0, 7], [1, 6], [1, 8], [2, 7], [2, 8] // 一宫不在副对角线上的格子
             ];
-            regions.push({ type: '副反对角', index: 3, cells: extra_region_9 });
+            const extra_index_9 = extra_region_9
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '副反对角', index: extra_index_9, cells: extra_region_9 });
 
             const extra_region_10 = [
                 [3, 5], [4, 4], [5, 3], // 五宫在副对角线上的格子
                 [6, 1], [6, 0], [7, 0], [7, 2], [8, 2], [8, 1] // 九宫不在副对角线上的格子
             ];
-            regions.push({ type: '副反对角', index: 4, cells: extra_region_10 });
+            const extra_index_10 = extra_region_10
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '副反对角', index: extra_index_10, cells: extra_region_10 });
 
             const extra_region_11 = [
                 [6, 2], [7, 1], [8, 0], // 九宫在副对角线上的格子
                 [0, 6], [0, 7], [1, 6], [1, 8], [2, 7], [2, 8] // 一宫不在副对角线上的格子
             ];
-            regions.push({ type: '副反对角', index: 5, cells: extra_region_11 });
+            const extra_index_11 = extra_region_11
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '副反对角', index: extra_index_11, cells: extra_region_11 });
 
             const extra_region_12 = [
                 [6, 2], [7, 1], [8, 0], // 九宫在副对角线上的格子
                 [3, 3], [3, 4], [4, 3], [4, 5], [5, 4], [5, 5] // 五宫不在副对角线上的格子
             ];
-            regions.push({ type: '副反对角', index: 6, cells: extra_region_12 });
+            const extra_index_12 = extra_region_12
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '副反对角', index: extra_index_12, cells: extra_region_12 });
         }
     }
     // 井字线
@@ -878,46 +972,77 @@ export function get_all_regions(size, mode = 'classic') {
             const line1_cells = [
                 [0, 0], [1, 1], [1, 2], [2, 3], [2, 4], [3, 5], [3, 6], [4, 7], [4, 8]
             ];
-            regions.push({ type: '井字线', index: 1, cells: line1_cells });
-
+            const index_line1 = line1_cells
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '井字线', index: index_line1, cells: line1_cells });
             // 第二条线：第一条线向下平移3.5格
             const line2_cells = [
                 [4, 0], [4, 1], [5, 2], [5, 3], [6, 4], [6, 5], [7, 6], [7, 7], [8, 8]
             ];
-            regions.push({ type: '井字线', index: 2, cells: line2_cells });
+            const index_line2 = line2_cells
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '井字线', index: index_line2, cells: line2_cells });
 
             // 第三条线：对应从最后1行第1列到第1行第5列的斜线
             const line3_cells = [
                 [0, 4], [1, 4], [2, 3], [3, 3], [4, 2], [5, 2], [6, 1], [7, 1], [8, 0]
             ];
-            regions.push({ type: '井字线', index: 3, cells: line3_cells });
+            const index_line3 = line3_cells
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '井字线', index: index_line3, cells: line3_cells });
 
             // 第四条线：第三条线向右平移3.5格
             const line4_cells = [
                 [0, 8], [1, 7], [2, 7], [3, 6], [4, 6], [5, 5], [6, 5], [7, 4], [8, 4]
             ];
-            regions.push({ type: '井字线', index: 4, cells: line4_cells });
+            const index_line4 = line4_cells
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '井字线', index: index_line4, cells: line4_cells });
         } else if (size === 6) {
             // size 等于 6 的情况（新逻辑）
             const line1_cells = [
                 [0, 0], [1, 1], [1, 2], [2, 3], [2, 4], [3, 5]
             ];
-            regions.push({ type: '井字线', index: 1, cells: line1_cells });
+            const index_line1 = line1_cells
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '井字线', index: index_line1, cells: line1_cells });
 
             const line2_cells = [
                 [2, 0], [3, 1], [3, 2], [4, 3], [4, 4], [5, 5]
             ];
-            regions.push({ type: '井字线', index: 2, cells: line2_cells });
+            const index_line2 = line2_cells
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '井字线', index: index_line2, cells: line2_cells });
 
             const line3_cells = [
                 [0, 3], [1, 2], [2, 2], [3, 1], [4, 1], [5, 0]
             ];
-            regions.push({ type: '井字线', index: 3, cells: line3_cells });
+            const index_line3 = line3_cells
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '井字线', index: index_line3, cells: line3_cells });
 
             const line4_cells = [
                 [0, 5], [1, 4], [2, 4], [3, 3], [4, 3], [5, 2]
             ];
-            regions.push({ type: '井字线', index: 4, cells: line4_cells });
+            const index_line4 = line4_cells
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '井字线', index: index_line4, cells: line4_cells });
         }
     }
     // 多斜线
@@ -926,7 +1051,11 @@ export function get_all_regions(size, mode = 'classic') {
         let lineIndex = 1;
         for (const [start, end] of mark_lines) {
             const cells = get_cells_on_line(size, start, end);
-            regions.push({ type: '斜线', index: lineIndex++, cells });
+            const index = cells
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({ type: '斜线', index, cells });
         }
     }
     // 窗口数独四个窗口区域
@@ -1100,12 +1229,20 @@ export function get_all_regions(size, mode = 'classic') {
                 // 多个区域
                 extra_region_cells.forEach((region_cells, idx) => {
                     if (region_cells.length > 0) {
-                        regions.push({ type: '额外区域', index: idx + 1, cells: region_cells });
+                        const index = region_cells
+                            .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                            .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                            .join('-');
+                        regions.push({ type: '额外区域', index, cells: region_cells });
                     }
                 });
             } else {
                 // 单个区域
-                regions.push({ type: '额外区域', index: 1, cells: extra_region_cells });
+                const index = extra_region_cells
+                    .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                    .join('-');
+                regions.push({ type: '额外区域', index, cells: extra_region_cells });
             }
         }
     }
@@ -1118,12 +1255,20 @@ export function get_all_regions(size, mode = 'classic') {
                 // 多个区域
                 renban_cells.forEach((region_cells, idx) => {
                     if (region_cells.length > 0) {
-                        regions.push({ type: '灰格连续区域', index: idx + 1, cells: region_cells });
+                        const index = region_cells
+                            .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                            .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                            .join('-');
+                        regions.push({ type: '灰格连续区域', index, cells: region_cells });
                     }
                 });
             } else {
                 // 单个区域
-                regions.push({ type: '灰格连续区域', index: 1, cells: renban_cells });
+                const index = renban_cells
+                    .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                    .join('-');
+                regions.push({ type: '灰格连续区域', index, cells: renban_cells });
             }
         }
     }
@@ -1167,12 +1312,124 @@ export function get_all_regions(size, mode = 'classic') {
                     }
                     // 判断是否有重复
                     const has_duplicate = nums.length !== new Set(nums).size;
+                    const index = valid_positions
+                        .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                        .join('-');
                     regions.push({
                         type: has_duplicate ? '有重复四格提示' : '无重复四格提示',
-                        index: idx++,
+                        index,
                         cells: valid_positions,
                         clue_nums: nums
                     });
+                }
+            }
+        }
+    }
+    // 奇数模式：每个奇数标记格子都是一个“奇数”区域
+    else if (mode === 'odd') {
+        const odd_regions = get_odd_cells();
+        let idx = 1;
+        for (const region of odd_regions) {
+            const index = region
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({
+                type: '奇数',
+                index,
+                cells: region
+            });
+        }
+    }
+    // 奇偶模式：每个奇数标记格子都是一个“奇偶”区域
+    else if (mode === 'odd_even') {
+        const odd_even_regions = get_odd_even_cells();
+        let idx = 1;
+        for (const region of odd_even_regions) {
+            const index = region
+                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                .join('-');
+            regions.push({
+                type: '奇偶',
+                index,
+                cells: region
+            });
+        }
+    }
+    // 回文替代区域：A 取代 B，在 B 的宫/行/列中生成新区域
+    else if (mode === 'palindrome') {
+        const mark_lines = get_all_mark_lines();
+        // 将线段展开为经过的格子，并合并首尾相接的线段
+        const expanded_lines = mark_lines.map(line => get_cells_on_line(size, line[0], line[1]));
+        const merged_lines = merge_connected_lines(expanded_lines);
+
+        for (const cells of merged_lines) {
+            const len = cells.length;
+            for (let i = 0; i < Math.floor(len / 2); i++) {
+                const A = cells[i];
+                const B = cells[len - 1 - i];
+
+                // 生成 替代宫 区域：A + (B所在宫的其他格子，不含B)
+                {
+                    const br = Math.floor(B[0] / box_size[0]);
+                    const bc = Math.floor(B[1] / box_size[1]);
+                    const cellSet = new Set();
+                    for (let r = br * box_size[0]; r < (br + 1) * box_size[0]; r++) {
+                        for (let c = bc * box_size[1]; c < (bc + 1) * box_size[1]; c++) {
+                            if (r === B[0] && c === B[1]) continue;
+                            cellSet.add(`${r},${c}`);
+                        }
+                    }
+                    cellSet.add(`${A[0]},${A[1]}`);
+                    const region_cells = Array.from(cellSet)
+                        .map(s => s.split(',').map(Number));
+
+                    const index = region_cells
+                        .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                        .join('-');
+
+                    regions.push({ type: '回文替代宫', index, cells: region_cells });
+                }
+
+                // 生成 替代行 区域：A + (B所在行的其他格子，不含B)
+                {
+                    const cellSet = new Set();
+                    for (let c = 0; c < size; c++) {
+                        if (c === B[1]) continue;
+                        cellSet.add(`${B[0]},${c}`);
+                    }
+                    cellSet.add(`${A[0]},${A[1]}`);
+                    const region_cells = Array.from(cellSet)
+                        .map(s => s.split(',').map(Number));
+
+                    const index = region_cells
+                        .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                        .join('-');
+
+                    regions.push({ type: '回文替代行', index, cells: region_cells });
+                }
+
+                // 生成 替代列 区域：A + (B所在列的其他格子，不含B)
+                {
+                    const cellSet = new Set();
+                    for (let r = 0; r < size; r++) {
+                        if (r === B[0]) continue;
+                        cellSet.add(`${r},${B[1]}`);
+                    }
+                    cellSet.add(`${A[0]},${A[1]}`);
+                    const region_cells = Array.from(cellSet)
+                        .map(s => s.split(',').map(Number));
+
+                    const index = region_cells
+                        .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                        .join('-');
+
+                    regions.push({ type: '回文替代列', index, cells: region_cells });
                 }
             }
         }
@@ -1234,6 +1491,7 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
                 }
                 // 生成区域的 index
                 const index = region
+                    .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
                     .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
                     .join('-');
 
@@ -1278,6 +1536,7 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
                             // 创建包含对应位置两个格子的特定组合
                             const cells = [cell_i, cell_j];
                             const index = cells
+                                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
                                 .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
                                 .join('-');
 
@@ -1335,6 +1594,7 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
                         const has_duplicate = nums.length !== new Set(nums).size;
                         // 生成区域的 index
                         const index = valid_positions
+                            .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
                             .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
                             .join('-');
                         if (has_duplicate) {
@@ -1403,6 +1663,7 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
 
                     // 生成区域的 index
                     const index = [cell_a, cell_b]
+                        .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
                         .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
                         .join('-');
 
@@ -1497,8 +1758,9 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
                 if (clue_nums.length === 0) continue;
 
                 const index = cells
-                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
-                        .join('-');
+                    .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                    .join('-');
 
                 regions.push({
                     type: '特定组合',
@@ -1560,6 +1822,7 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
 
                 // 生成区域的 index
                 const index = [cell_a, cell_b]
+                    .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
                     .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
                     .join('-');
 
@@ -1626,8 +1889,9 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
                 const clue_nums = Array.from(clue_nums_set).sort((x, y) => x - y);
 
                 const index = [cell_a, cell_b]
-                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
-                        .join('-');
+                    .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                    .join('-');
 
                 regions.push({
                     type: '特定组合',
@@ -1668,8 +1932,9 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
                         
                         // const index = `${getRowLetter(cell_a[0] + 1)}${cell_a[1] + 1}-${getRowLetter(cell_b[0] + 1)}${cell_b[1] + 1}`;
                         const index = [cell_a, cell_b]
-                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
-                        .join('-');
+                            .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                            .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                            .join('-');
                         regions.push({
                             type: '特定组合',
                             index,
@@ -1747,11 +2012,12 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
                 if (clue_nums.length === 0) continue;
 
                 const index = [
-                        [pair.row1, pair.col1],
-                        [pair.row2, pair.col2],
-                    ]
-                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
-                        .join('-');
+                    [pair.row1, pair.col1],
+                    [pair.row2, pair.col2],
+                ]
+                    .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                    .join('-');
 
                 regions.push({
                     type: '特定组合',
@@ -1815,8 +2081,9 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
                 if (clue_nums.length === 0) continue;
 
                 const index = [cell_a, cell_b]
-                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
-                        .join('-');
+                    .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                    .join('-');
 
                 regions.push({
                     type: '特定组合',
@@ -1843,6 +2110,7 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
                     const cell_b = cells[len - 1 - i];
 
                     const index = [cell_a, cell_b]
+                        .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
                         .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
                         .join('-');
                     regions.push({
@@ -1902,8 +2170,9 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
                         // 多个区域
                         renban_cells.forEach((region_cells) => {
                             const index = region_cells
-                            .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
-                            .join('-');
+                                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                                .join('-');
 
                             if (region_cells.length > 0) {
                                 regions.push({ type: '特定组合', index, cells: region_cells, });
@@ -1912,6 +2181,7 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
                     } else {
                         // 单个区域
                         const index = renban_cells
+                            .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
                             .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
                             .join('-');
                         regions.push({ type: '特定组合', index, cells: renban_cells, });
@@ -2423,7 +2693,110 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
                 }
             }
         }
-        case 'X_sums':
+        case 'X_sums': {
+            const regions = [];
+            const clues = state.clues_board;
+            if (!clues) return regions;
+
+            // 上边
+            for (let col = 1; col <= size; col++) {
+                const clue = clues[0][col];
+                if (clue && X_SUMS_CANDIDATES_MAP(size)[clue]) {
+                    const A = Math.max(...X_SUMS_CANDIDATES_MAP(size)[clue]);
+                    const cells_A = [];
+                    for (let r = 1; r <= A; r++) cells_A.push([r-1, col-1]);
+                    const index_A = cells_A
+                        .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                        .join('-');
+
+                    regions.push({ type: '特定组合', index: index_A, cells: cells_A });
+                    // log_process(`X_sums 上边 clue=${clue}, cells=${JSON.stringify(cells_A)}`);
+                    const B = Math.min(...X_SUMS_CANDIDATES_MAP(size)[clue]);
+                    const cells_B = [];
+                    for (let r = size; r > B; r--) cells_B.push([r-1, col-1]);
+                    const index_B = cells_B
+                        .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                        .join('-');
+
+                    regions.push({ type: '特定组合', index: index_B, cells: cells_B });
+                    // log_process(`X_sums 上边 clue=${clue}, cells=${JSON.stringify(cells_B)}`);
+                }
+            }
+            // 下边
+            for (let col = 1; col <= size; col++) {
+                const clue = clues[size + 1][col];
+                if (clue && X_SUMS_CANDIDATES_MAP(size)[clue]) {
+                    const A = Math.max(...X_SUMS_CANDIDATES_MAP(size)[clue]);
+                    const cells_A = [];
+                    for (let r = size; r > size - A; r--) cells_A.push([r-1, col-1]);
+                    const index_A = cells_A
+                        .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                        .join('-');
+                    regions.push({ type: '特定组合', index: index_A, cells: cells_A });
+            
+                    const B = Math.min(...X_SUMS_CANDIDATES_MAP(size)[clue]);
+                    const cells_B = [];
+                    for (let r = 1; r <= size - B; r++) cells_B.push([r-1, col-1]);
+                    const index_B = cells_B
+                        .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                        .join('-');
+                    regions.push({ type: '特定组合', index: index_B, cells: cells_B });
+                }
+            }
+            
+            // 左边
+            for (let row = 1; row <= size; row++) {
+                const clue = clues[row][0];
+                if (clue && X_SUMS_CANDIDATES_MAP(size)[clue]) {
+                    const A = Math.max(...X_SUMS_CANDIDATES_MAP(size)[clue]);
+                    const cells_A = [];
+                    for (let c = 1; c <= A; c++) cells_A.push([row-1, c-1]);
+                    const index_A = cells_A
+                        .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                        .join('-');
+                    regions.push({ type: '特定组合', index: index_A, cells: cells_A });
+            
+                    const B = Math.min(...X_SUMS_CANDIDATES_MAP(size)[clue]);
+                    const cells_B = [];
+                    for (let c = size; c > B; c--) cells_B.push([row-1, c-1]);
+                    const index_B = cells_B
+                        .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                        .join('-');
+                    regions.push({ type: '特定组合', index: index_B, cells: cells_B });
+                }
+            }
+            
+            // 右边
+            for (let row = 1; row <= size; row++) {
+                const clue = clues[row][size + 1];
+                if (clue && X_SUMS_CANDIDATES_MAP(size)[clue]) {
+                    const A = Math.max(...X_SUMS_CANDIDATES_MAP(size)[clue]);
+                    const cells_A = [];
+                    for (let c = size; c > size - A; c--) cells_A.push([row-1, c-1]);
+                    const index_A = cells_A
+                        .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                        .join('-');
+                    regions.push({ type: '特定组合', index: index_A, cells: cells_A });
+            
+                    const B = Math.min(...X_SUMS_CANDIDATES_MAP(size)[clue]);
+                    const cells_B = [];
+                    for (let c = 1; c <= size - B; c++) cells_B.push([row-1, c-1]);
+                    const index_B = cells_B
+                        .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                        .join('-');
+                    regions.push({ type: '特定组合', index: index_B, cells: cells_B });
+                }
+            }
+            return regions;
+        }
         case 'sandwich': {
             const container = document.querySelector('.sudoku-container');
             if (!container) return regions;
@@ -2443,6 +2816,7 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
                     }
 
                     const index = row_cells
+                        .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
                         .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
                         .join('-');
 
@@ -2469,6 +2843,7 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
                         col_cells.push([row - 1, col - 1]); // 转换为 0 索引
                     }
                     const index = col_cells
+                        .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
                         .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
                         .join('-');
                     regions.push({
@@ -2702,33 +3077,33 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
     // );
     // state.clues_board = currentBoard;
     invalidate_regions_cache();
-    if (state.current_mode === 'X_sums') {
-        apply_X_sums_marks(currentBoard, currentSize);
-    }
-    if (state.current_mode === 'skyscraper') {
-        // log_process(
-        //     currentBoard
-        //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
-        //         .join('\n')
-        // );
-        // log_process(
-        //     state.clues_board
-        //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
-        //         .join('\n')
-        // );
-        // state.clues_board = currentBoard;
-        apply_skyscraper_marks(currentBoard, currentSize);
-        // log_process(
-        //     currentBoard
-        //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
-        //         .join('\n')
-        // );
-        // log_process(
-        //     state.clues_board
-        //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
-        //         .join('\n')
-        // );
-    }
+    // if (state.current_mode === 'X_sums') {
+    //     apply_X_sums_marks(currentBoard, currentSize);
+    // }
+    // if (state.current_mode === 'skyscraper') {
+    //     // log_process(
+    //     //     currentBoard
+    //     //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
+    //     //         .join('\n')
+    //     // );
+    //     // log_process(
+    //     //     state.clues_board
+    //     //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
+    //     //         .join('\n')
+    //     // );
+    //     // state.clues_board = currentBoard;
+    //     apply_skyscraper_marks(currentBoard, currentSize);
+    //     // log_process(
+    //     //     currentBoard
+    //     //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
+    //     //         .join('\n')
+    //     // );
+    //     // log_process(
+    //     //     state.clues_board
+    //     //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
+    //     //         .join('\n')
+    //     // );
+    // }
     board = currentBoard;
     // log_process(
     //     state.clues_board
@@ -2835,7 +3210,7 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
             if (!state.silentMode) log_process(`总分值: ${logical_result.total_score}`);
         }
         state.total_score_sum = Math.round(state.total_score_sum * 100) / 100; // 保留两位小数
-        if (!state.silentMode) log_process(`新的总分值: ${state.total_score_sum}`);
+        // if (!state.silentMode) log_process(`新的总分值: ${state.total_score_sum}`);
     }
 
     // 如果逻辑求解未完成，则尝试暴力求解

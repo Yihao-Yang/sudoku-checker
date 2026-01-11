@@ -130,16 +130,16 @@ document.addEventListener('input', function(e) {
 
     generatepuzzleBtn.parentNode.insertBefore(scoreInput, generatepuzzleBtn.nextSibling);
 
-    // 提示数数量输入框
-    const cluesInput = document.createElement('input');
-    cluesInput.type = 'number';
-    cluesInput.id = 'cluesCount';
-    cluesInput.placeholder = '提示数';
-    cluesInput.value = '';
-    cluesInput.style.width = '70px';
-    cluesInput.style.marginLeft = '10px';
+    // // 提示数数量输入框
+    // const cluesInput = document.createElement('input');
+    // cluesInput.type = 'number';
+    // cluesInput.id = 'cluesCount';
+    // cluesInput.placeholder = '提示数';
+    // cluesInput.value = '';
+    // cluesInput.style.width = '70px';
+    // cluesInput.style.marginLeft = '10px';
 
-    scoreInput.parentNode.insertBefore(cluesInput, scoreInput.nextSibling);
+    // scoreInput.parentNode.insertBefore(cluesInput, scoreInput.nextSibling);
 
 
     // 新增：批量自动出题和保存图片
@@ -164,9 +164,11 @@ document.addEventListener('input', function(e) {
     generatepuzzleBtn.addEventListener('click', async () => {
         const scoreLowerLimit = parseInt(scoreInput.value, 10) || 0;
         // const holesCount = parseInt(holesInput.value, 10);
-        const cluesCount = parseInt(cluesInput.value, 10) || 0;
+        // const cluesCount = parseInt(cluesInput.value, 10) || 0;
+        const cluesCount = 0;
         const size = state.current_grid_size;
         const holesCount = size * size - (isNaN(cluesCount) ? 0 : cluesCount);
+        // const holesCount = size * size - 0;
         // generate_puzzle(state.current_grid_size, scoreLowerLimit, holesCount);
         show_generating_timer();
 
@@ -181,7 +183,8 @@ document.addEventListener('input', function(e) {
         const score_lower_limit = parseInt(scoreInput.value, 10) || 0;
         const size = state.current_grid_size;
         // 从 cluesInput 读取用户输入的提示数，和单次生成保持一致
-        const cluesCount = parseInt(cluesInput.value, 10) || 0;
+        // const cluesCount = parseInt(cluesInput.value, 10) || 0;
+        const cluesCount = 0;
         const holes_count = size * size - (isNaN(cluesCount) ? 0 : cluesCount);
         if (isNaN(count) || count < 1) return;
         for (let i = 0; i < count; i++) {

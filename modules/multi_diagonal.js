@@ -1,5 +1,5 @@
 import { state, set_current_mode } from '../solver/state.js';
-import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, show_logical_solution, create_base_cell, show_generating_timer, hide_generating_timer } from '../solver/core.js';
+import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, show_logical_solution, create_base_cell, show_generating_timer, hide_generating_timer, clear_all_inputs } from '../solver/core.js';
 import { solve, isValid, invalidate_regions_cache } from '../solver/solver_tool.js';
 import { generate_puzzle, get_symmetric_positions } from '../solver/generate.js';
 import { create_technique_panel } from '../solver/classic.js';
@@ -167,12 +167,14 @@ export function create_multi_diagonal_sudoku(size) {
 // ...existing code...
 // 生成多斜线数独题目
 export function generate_multi_diagonal_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
+    clear_all_inputs();
     clear_multi_diagonal_marks();
     const container = document.querySelector('.sudoku-container');
     if (!container) return;
     const grid = container.querySelector('.sudoku-grid');
     if (!grid) return;
     invalidate_regions_cache();
+    log_process('', true);
 
     // 斜线数量在 sqrt(size) 到 size 之间随机
     const min_lines = Math.ceil(Math.sqrt(size));
@@ -374,6 +376,9 @@ export function generate_multi_diagonal_puzzle(size, score_lower_limit = 0, hole
     }
     state.multi_diagonal_lines = all_lines;
     // generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+    log_process(`注意生成的斜线位置，若无解，请重启网页`);
+    log_process(`正在生成题目，请稍候...`);
+    show_result(`注意生成的斜线位置，若无解，请重启网页`);
     show_generating_timer();
 
     setTimeout(() => {

@@ -2,6 +2,7 @@ import { state } from './state.js';
 import { show_result, log_process, backup_original_board, restore_original_board, } from './core.js';
 import { eliminate_candidates, eliminate_candidates_classic, isEqual, getCombinations, getRowLetter, get_all_regions, get_special_combination_regions, isValid } from './solver_tool.js';
 import { apply_skyscraper_marks } from '../modules/skyscraper.js';
+import { apply_X_sums_marks } from '../modules/X_sums.js';
 import { get_all_mark_lines, get_cells_on_line } from "../modules/multi_diagonal.js";
 import { is_valid_quadruple } from '../modules/quadruple.js';
 
@@ -1975,6 +1976,9 @@ function check_lookup_table(board, size) {
             
         //     return marked;
         // }
+    } else if (state.current_mode === 'X_sums') {
+        apply_X_sums_marks(board, size);
+        // log_process(`[打表法] 已应用温度计提示排除`);
     }
 }
 // 变型特定组合排除排除

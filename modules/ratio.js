@@ -1,12 +1,30 @@
 import { state, set_current_mode } from '../solver/state.js';
-import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, add_Extra_Button, clear_all_inputs, clear_marks } from '../solver/core.js';
+import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, add_Extra_Button, clear_all_inputs, clear_marks, show_generating_timer, hide_generating_timer } from '../solver/core.js';
 import { create_technique_panel } from '../solver/classic.js';
 import { get_all_regions, solve, invalidate_regions_cache } from '../solver/solver_tool.js';
-import { generate_solved_board_brute_force } from '../solver/generate.js';
+import { generate_solved_board_brute_force, generate_puzzle } from '../solver/generate.js';
 
 // 新数独主入口
 export function create_ratio_sudoku(size) {
     set_current_mode('ratio');
+    show_result(`当前模式为比例数独`);
+    log_process('', true);
+    log_process('规则：');
+    log_process('标记：两侧格内数字比例关系');
+    log_process('');
+    log_process('技巧：');
+    // log_process('"变型"：用到变型条件删数的技巧');
+    log_process('"_n"后缀：区域内剩余空格数/区块用到的空格数');
+    // log_process('"额外区域"：附加的不可重复区域');
+    log_process('"特定组合"：受附加条件影响的区域');
+    log_process('');
+    log_process('出题：');
+    log_process('10秒，超1分钟请重启页面或调整限制条件');
+    log_process('若手动给的标记不合理可能会被代码忽视');
+    log_process('');
+    log_process('自动出题：');
+    log_process('蓝色：自动添加标记出题');
+    log_process('绿色：根据给定标记出题');
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
@@ -106,6 +124,7 @@ export function create_ratio_sudoku(size) {
     // 添加新数独专属按钮
     const extra_buttons = document.getElementById('extraButtons');
     extra_buttons.innerHTML = '';
+    add_Extra_Button('比例', () => {create_ratio_sudoku(size)}, '#2196F3');
     add_Extra_Button('清除标记', clear_marks);
     add_Extra_Button('自动出题', () => generate_ratio_puzzle(size), '#2196F3');
     // 可添加唯一性验证等按钮
@@ -115,6 +134,7 @@ export function create_ratio_sudoku(size) {
 export function generate_ratio_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
     const start_time = performance.now();
     clear_all_inputs();
+    clear_marks();
     log_process('', true);
     invalidate_regions_cache();
 
@@ -147,77 +167,90 @@ export function generate_ratio_puzzle(size, score_lower_limit = 0, holes_count =
     let try_count = 0;
     let unique_found = false;
 
-    while (try_count < MAX_TRY && marks_added < MAX_MARKS && !unique_found) {
-        try_count++;
+    log_process(`正在生成题目，请稍候...`);
+    log_process('九宫：1分钟，超时请重启页面或调整限制条件');
+    show_result(`正在生成题目，请稍候...`);
+    show_generating_timer();
 
-        const type = Math.random() < 0.5 ? 'v' : 'h';
-        const row = type === 'v' ? Math.floor(Math.random() * size) : Math.floor(Math.random() * (size - 1));
-        const col = type === 'v' ? Math.floor(Math.random() * (size - 1)) : Math.floor(Math.random() * size);
+    setTimeout(() => {
+        while (try_count < MAX_TRY && marks_added < MAX_MARKS && !unique_found) {
+            try_count++;
 
-        if (!is_valid_position(row, col, size, type)) continue;
+            const type = Math.random() < 0.5 ? 'v' : 'h';
+            const row = type === 'v' ? Math.floor(Math.random() * size) : Math.floor(Math.random() * (size - 1));
+            const col = type === 'v' ? Math.floor(Math.random() * (size - 1)) : Math.floor(Math.random() * size);
 
-        const [sym_row, sym_col, sym_type] = get_symmetric(row, col, size, symmetry, type);
-        if (!is_valid_position(sym_row, sym_col, size, sym_type)) continue;
+            if (!is_valid_position(row, col, size, type)) continue;
 
-        if (is_mark_exists(row, col, type, container) || is_mark_exists(sym_row, sym_col, sym_type, container)) {
-            continue;
-        }
+            const [sym_row, sym_col, sym_type] = get_symmetric(row, col, size, symmetry, type);
+            if (!is_valid_position(sym_row, sym_col, size, sym_type)) continue;
 
-        const addedMarks = [];
-        const mainRatio = calculate_ratio_from_solved(row, col, type, solvedBoard);
-        if (!mainRatio) continue;
-
-        const mainMark = add_ratio_mark_with_value(row, col, size, container, type, mainRatio);
-        if (!mainMark) continue;
-        addedMarks.push(mainMark);
-
-        const symmetric_is_same = row === sym_row && col === sym_col && type === sym_type;
-        if (!symmetric_is_same) {
-            const symRatio = calculate_ratio_from_solved(sym_row, sym_col, sym_type, solvedBoard);
-            if (!symRatio) {
-                remove_marks(addedMarks);
+            if (is_mark_exists(row, col, type, container) || is_mark_exists(sym_row, sym_col, sym_type, container)) {
                 continue;
             }
-            const symMark = add_ratio_mark_with_value(sym_row, sym_col, size, container, sym_type, symRatio);
-            if (!symMark) {
-                remove_marks(addedMarks);
-                continue;
+
+            const addedMarks = [];
+            const mainRatio = calculate_ratio_from_solved(row, col, type, solvedBoard);
+            if (!mainRatio) continue;
+
+            const mainMark = add_ratio_mark_with_value(row, col, size, container, type, mainRatio);
+            if (!mainMark) continue;
+            addedMarks.push(mainMark);
+
+            const symmetric_is_same = row === sym_row && col === sym_col && type === sym_type;
+            if (!symmetric_is_same) {
+                const symRatio = calculate_ratio_from_solved(sym_row, sym_col, sym_type, solvedBoard);
+                if (!symRatio) {
+                    remove_marks(addedMarks);
+                    continue;
+                }
+                const symMark = add_ratio_mark_with_value(sym_row, sym_col, size, container, sym_type, symRatio);
+                if (!symMark) {
+                    remove_marks(addedMarks);
+                    continue;
+                }
+                addedMarks.push(symMark);
             }
-            addedMarks.push(symMark);
+
+            marks_added += addedMarks.length;
+
+            backup_original_board();
+            const result = solve(create_solver_board(size), size, is_valid_ratio, true);
+            restore_original_board();
+
+            if (result.solution_count === 1) {
+                unique_found = true;
+                log_process(`✓ 找到唯一解！共添加 ${marks_added} 个标记`);
+                optimize_marks(container, size, symmetry);
+                break;
+            }
+
+            if (result.solution_count === 0 || result.solution_count === -2) {
+                log_process('✗ 无解，移除最后添加的标记');
+                remove_marks(addedMarks);
+                marks_added -= addedMarks.length;
+            } else {
+                log_process(`当前解数：${result.solution_count}，继续添加标记...`);
+            }
         }
 
-        marks_added += addedMarks.length;
+        log_process('', true)
+        log_process(`比例数独生成完成`);
+        log_process(`点击检查唯一性查看技巧和分值`);
+        const board = Array.from({ length: size }, () => Array.from({ length: size }, () => 0));
+        generate_puzzle(size, score_lower_limit, holes_count, board);
+        hide_generating_timer();
+        const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
+        show_result(`比例数独生成完成，耗时${elapsed}秒）`);
 
-        backup_original_board();
-        const result = solve(create_solver_board(size), size, is_valid_ratio, true);
-        restore_original_board();
-
-        if (result.solution_count === 1) {
-            unique_found = true;
-            log_process(`✓ 找到唯一解！共添加 ${marks_added} 个标记`);
-            optimize_marks(container, size, symmetry);
-            break;
+        if (!unique_found) {
+            if (try_count >= MAX_TRY) {
+                log_process('自动出题失败：达到最大尝试次数');
+            } else {
+                log_process('自动出题完成（可能非唯一解）');
+            }
         }
-
-        if (result.solution_count === 0 || result.solution_count === -2) {
-            log_process('✗ 无解，移除最后添加的标记');
-            remove_marks(addedMarks);
-            marks_added -= addedMarks.length;
-        } else {
-            log_process(`当前解数：${result.solution_count}，继续添加标记...`);
-        }
-    }
-
-    const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
-    show_result(`比例数独提示生成完成（${unique_found ? '唯一解' : '未验证唯一'}，耗时${elapsed}秒）`);
-
-    if (!unique_found) {
-        if (try_count >= MAX_TRY) {
-            log_process('自动出题失败：达到最大尝试次数');
-        } else {
-            log_process('自动出题完成（可能非唯一解）');
-        }
-    }
+    }, 0);
 
     function create_solver_board(size) {
         return Array.from({ length: size }, () =>
