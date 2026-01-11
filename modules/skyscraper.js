@@ -174,7 +174,7 @@ export function create_skyscraper_sudoku(size) {
     add_Extra_Button('摩天楼', () => {create_skyscraper_sudoku(size)}, '#2196F3');
     add_Extra_Button('清除内部', clear_inner_numbers, '#2196F3'); // 添加清除内部数字按钮
     add_Extra_Button('清除提示', clear_outer_clues, '#2196F3'); // 清除外部提示数
-    add_Extra_Button('标记提示', () => mark_outer_clues(size), '#2196F3'); // 添加标记外部提示数按钮
+    add_Extra_Button('标记提示', () => mark_outer_clues_skyscraper(size), '#2196F3'); // 添加标记外部提示数按钮
     // add_Extra_Button('自动出题(老)', () => generate_skyscraper_puzzle_old(size), '#2196F3');
     add_Extra_Button('自动出题', () => generate_exterior_puzzle(size), '#2196F3');
     // add_Extra_Button('一键标记', auto_mark_skyscraper_clues, '#2196F3');
@@ -386,7 +386,7 @@ export function generate_skyscraper_puzzle_new(size, score_lower_limit = 0, hole
     }
 
     // 使用现有标记函数依据已填内部数字自动标注外部提示
-    mark_outer_clues(interior_size);
+    mark_outer_clues_skyscraper(interior_size);
 
     // 将 DOM 中标记的外部提示同步回 board_all 的边界位置
     for (let r = 0; r < total_size; r++) {
