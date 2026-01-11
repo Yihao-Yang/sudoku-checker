@@ -160,7 +160,7 @@ export function create_sandwich_sudoku(size) {
     add_Extra_Button('三明治', () => {create_sandwich_sudoku(size)}, '#2196F3');
     add_Extra_Button('清除内部', clear_inner_numbers, '#2196F3'); // 添加清除内部数字按钮
     add_Extra_Button('清除提示', clear_outer_clues, '#2196F3'); // 清除外部提示数
-    add_Extra_Button('标记提示', () => mark_outer_clues(size), '#2196F3'); // 添加标记外部提示数按钮
+    add_Extra_Button('标记提示', () => mark_outer_clues_sandwich(size), '#2196F3'); // 添加标记外部提示数按钮
     add_Extra_Button('自动出题', () => generate_exterior_puzzle(size), '#2196F3');
     // add_Extra_Button('一键标记', auto_mark_skyscraper_clues, '#2196F3');
     // add_Extra_Button('验证摩天楼唯一性', check_skyscraper_uniqueness, '#2196F3');
@@ -319,7 +319,7 @@ export function generate_sandwich_puzzle_new(size, score_lower_limit = 0, holes_
     }
 
     // 利用已有的标记函数生成完整的外部提示（依赖 DOM 中的内部数字）
-    mark_outer_clues(interior_size);
+    mark_outer_clues_sandwich(interior_size);
 
     // 将 DOM 中标记的外部提示同步回 board_all 的边界位置
     for (let r = 0; r < total_size; r++) {
