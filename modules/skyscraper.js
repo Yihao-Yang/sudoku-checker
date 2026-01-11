@@ -794,7 +794,61 @@ function segment_has_valid_visible(segment, clue, size) {
 
     return backtrack(0, []);
 }
+// // 验证摩天楼数独的合法性，检测候选数
+// export function is_valid_skyscraper(board, size, row, col, num) {
+//     const mode = state.current_mode || 'skyscraper';
+//     const regions = get_all_regions(size, mode);
+//     for (const region of regions) {
+//         if (region.cells.some(([r, c]) => r === row && c === col)) {
+//             for (const [r, c] of region.cells) {
+//                 if ((r !== row || c !== col) && board[r][c] === num) {
+//                     return false;
+//                 }
+//             }
+//         }
+//     }
 
+//     const temp_board = board.map((r, i) => r.map((c, j) => (i === row && j === col ? num : c)));
+
+//     const clues = state.clues_board;
+//     const hasCluesBoard = Array.isArray(clues) && clues.length === size + 2;
+//     const parse_clue = (r, c) => {
+//         if (!hasCluesBoard) return 0;
+//         const v = clues[r]?.[c];
+//         return (typeof v === 'number' && v > 0) ? v : 0;
+//     };
+
+//     const left_clue = parse_clue(row + 1, 0);
+//     const right_clue = parse_clue(row + 1, size + 1);
+//     const top_clue = parse_clue(0, col + 1);
+//     const bottom_clue = parse_clue(size + 1, col + 1);
+
+//     // 行方向：若行内已出现 size，则尝试所有未定格的组合
+//     const pos_size_in_row = temp_board[row].findIndex(v => v === size);
+//     if (left_clue > 0 && pos_size_in_row !== -1) {
+//         const segment = temp_board[row].slice(0, pos_size_in_row + 1);
+//         if (!segment_has_valid_visible(segment, left_clue, size)) return false;
+//     }
+//     if (right_clue > 0 && pos_size_in_row !== -1) {
+//         const segment = temp_board[row].slice(pos_size_in_row).reverse();
+//         if (!segment_has_valid_visible(segment, right_clue, size)) return false;
+//     }
+
+//     // 列方向：同理
+//     const col_values = temp_board.map(r => r[col]);
+//     const pos_size_in_col = col_values.findIndex(v => v === size);
+//     if (top_clue > 0 && pos_size_in_col !== -1) {
+//         const segment = col_values.slice(0, pos_size_in_col + 1);
+//         if (!segment_has_valid_visible(segment, top_clue, size)) return false;
+//     }
+//     if (bottom_clue > 0 && pos_size_in_col !== -1) {
+//         const segment = col_values.slice(pos_size_in_col).reverse();
+//         if (!segment_has_valid_visible(segment, bottom_clue, size)) return false;
+//     }
+
+//     return true;
+// }
+// 验证摩天楼数独的合法性，不检测候选数
 export function is_valid_skyscraper(board, size, row, col, num) {
     const mode = state.current_mode || 'skyscraper';
     const regions = get_all_regions(size, mode);
@@ -808,10 +862,13 @@ export function is_valid_skyscraper(board, size, row, col, num) {
         }
     }
 
+    // 将当前格视为已填入 num（不修改原 board）
     const temp_board = board.map((r, i) => r.map((c, j) => (i === row && j === col ? num : c)));
 
+    // 从 state.clues_board 读取外部提示（state.clues_board 的尺寸应为 size+2）
     const clues = state.clues_board;
     const hasCluesBoard = Array.isArray(clues) && clues.length === size + 2;
+
     const parse_clue = (r, c) => {
         if (!hasCluesBoard) return 0;
         const v = clues[r]?.[c];
@@ -823,27 +880,39 @@ export function is_valid_skyscraper(board, size, row, col, num) {
     const top_clue = parse_clue(0, col + 1);
     const bottom_clue = parse_clue(size + 1, col + 1);
 
-    // 行方向：若行内已出现 size，则尝试所有未定格的组合
+    // 行方向：只在该行包含 size 的子段变为完整时才校验
     const pos_size_in_row = temp_board[row].findIndex(v => v === size);
     if (left_clue > 0 && pos_size_in_row !== -1) {
         const segment = temp_board[row].slice(0, pos_size_in_row + 1);
-        if (!segment_has_valid_visible(segment, left_clue, size)) return false;
+        const is_segment_complete = segment.every(v => typeof v === 'number' && v > 0);
+        if (is_segment_complete) {
+            if (count_visible(segment) !== left_clue) return false;
+        }
     }
     if (right_clue > 0 && pos_size_in_row !== -1) {
-        const segment = temp_board[row].slice(pos_size_in_row).reverse();
-        if (!segment_has_valid_visible(segment, right_clue, size)) return false;
+        const segment = temp_board[row].slice(pos_size_in_row);
+        const is_segment_complete = segment.every(v => typeof v === 'number' && v > 0);
+        if (is_segment_complete) {
+            if (count_visible([...segment].reverse()) !== right_clue) return false;
+        }
     }
 
-    // 列方向：同理
+    // 列方向：同样只在该列包含 size 的子段变为完整时才校验
     const col_values = temp_board.map(r => r[col]);
     const pos_size_in_col = col_values.findIndex(v => v === size);
     if (top_clue > 0 && pos_size_in_col !== -1) {
         const segment = col_values.slice(0, pos_size_in_col + 1);
-        if (!segment_has_valid_visible(segment, top_clue, size)) return false;
+        const is_segment_complete = segment.every(v => typeof v === 'number' && v > 0);
+        if (is_segment_complete) {
+            if (count_visible(segment) !== top_clue) return false;
+        }
     }
     if (bottom_clue > 0 && pos_size_in_col !== -1) {
-        const segment = col_values.slice(pos_size_in_col).reverse();
-        if (!segment_has_valid_visible(segment, bottom_clue, size)) return false;
+        const segment = col_values.slice(pos_size_in_col);
+        const is_segment_complete = segment.every(v => typeof v === 'number' && v > 0);
+        if (is_segment_complete) {
+            if (count_visible([...segment].reverse()) !== bottom_clue) return false;
+        }
     }
 
     return true;
