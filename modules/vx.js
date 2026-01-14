@@ -239,6 +239,7 @@ export function generate_vx_puzzle(size, score_lower_limit = 0, holes_count = un
 
     // log_process(`注意生成的斜线位置，若无解，请重启网页`);
     log_process(`正在生成题目，请稍候...`);
+    log_process('九宫：1-5分钟，超时请重启页面或调整限制条件');
     show_result(`正在生成题目，请稍候...`);
     show_generating_timer();
 

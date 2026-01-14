@@ -56,6 +56,10 @@ function initializeEventHandlers() {
     document.getElementById('importSudokuFromString').addEventListener('click', import_sudoku_from_string);
     document.getElementById('exportSudokuToString').addEventListener('click', export_sudoku_to_string);
     document.getElementById('saveAsImage').addEventListener('click', save_sudoku_as_image);
+    // 新增：水印版保存
+    document.getElementById('saveAsImageWatermark').addEventListener('click', () => {
+        save_sudoku_as_image(true, true, './potato_sudoku.png');
+    });
 
     // ...existing code...
     document.getElementById('toggleCandidatesMode').addEventListener('click', function() {
@@ -101,23 +105,23 @@ function initializeEventHandlers() {
     });
 
     // 监听所有输入框的输入事件（只需加一次即可）
-document.addEventListener('input', function(e) {
-    if (e.target.matches('.sudoku-cell input')) {
-        if (state.is_solve_mode) {
-            // 只有 solve-mode 的空格才变蓝
-            if (e.target.classList.contains('solve-mode')) {
-                if (e.target.value) {
-                    e.target.classList.add('solution-cell');
-                } else {
-                    e.target.classList.remove('solution-cell');
+    document.addEventListener('input', function(e) {
+        if (e.target.matches('.sudoku-cell input')) {
+            if (state.is_solve_mode) {
+                // 只有 solve-mode 的空格才变蓝
+                if (e.target.classList.contains('solve-mode')) {
+                    if (e.target.value) {
+                        e.target.classList.add('solution-cell');
+                    } else {
+                        e.target.classList.remove('solution-cell');
+                    }
                 }
+            } else {
+                // 非解题模式全部恢复黑色
+                e.target.classList.remove('solution-cell');
             }
-        } else {
-            // 非解题模式全部恢复黑色
-            e.target.classList.remove('solution-cell');
         }
-    }
-});
+    });
 
     // 分值下限输入框
     const scoreInput = document.createElement('input');

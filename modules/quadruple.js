@@ -1,13 +1,31 @@
 // quadruple.js
 import { state, set_current_mode } from '../solver/state.js';
-import { show_result, create_base_grid, create_base_cell, add_Extra_Button, log_process, backup_original_board, restore_original_board, handle_key_navigation, clear_all_inputs, clear_marks } from '../solver/core.js';
-import { generate_solved_board_brute_force } from '../solver/generate.js';
+import { show_result, create_base_grid, create_base_cell, add_Extra_Button, log_process, backup_original_board, restore_original_board, handle_key_navigation, clear_all_inputs, clear_marks, show_generating_timer, hide_generating_timer } from '../solver/core.js';
+import { generate_solved_board_brute_force, generate_puzzle } from '../solver/generate.js';
 import { get_all_regions, solve, invalidate_regions_cache } from '../solver/solver_tool.js';
 import { create_technique_panel } from '../solver/classic.js';
 
 // 四数独主入口
 export function create_quadruple_sudoku(size) {
     set_current_mode('quadruple');
+    show_result(`当前模式为四格提示数独`);
+    log_process('', true);
+    log_process('规则：');
+    log_process('标记：周围四格内包含的数字');
+    log_process('');
+    log_process('技巧：');
+    // log_process('"变型"：用到变型条件删数的技巧');
+    log_process('"_n"后缀：区域内剩余空格数/区块用到的空格数');
+    // log_process('"额外区域"：附加的不可重复区域');
+    log_process('"特定组合"：受附加条件影响的区域');
+    log_process('');
+    log_process('出题：');
+    log_process('10秒，超1分钟请重启页面或调整限制条件');
+    log_process('若手动给的标记不合理可能会被代码忽视');
+    log_process('');
+    log_process('自动出题：');
+    log_process('蓝色：自动添加标记出题');
+    log_process('绿色：根据给定标记出题');
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
@@ -85,6 +103,7 @@ export function create_quadruple_sudoku(size) {
         // Multi_Special_Combination_Region_Block_2: true,
         // Multi_Special_Combination_Region_Block_3: true,
         // Multi_Special_Combination_Region_Block_4: true,
+        Lookup_Table: true,
     };
     // 唯余法全部默认开启
     for (let i = 1; i <= size; i++) {
@@ -133,6 +152,7 @@ export function create_quadruple_sudoku(size) {
     // 四数独专属按钮
     const extra_buttons = document.getElementById('extraButtons');
     extra_buttons.innerHTML = '';
+    add_Extra_Button('四格提示', () => {create_quadruple_sudoku(size)}, '#2196F3');
     add_Extra_Button('清除标记', clear_marks);
     add_Extra_Button('自动出题', () => generate_quadruple_puzzle(size), '#2196F3');
 }
@@ -141,6 +161,7 @@ export function create_quadruple_sudoku(size) {
 export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
     const start_time = performance.now();
     clear_all_inputs();
+    clear_marks();
     log_process('', true);
     invalidate_regions_cache();
 
@@ -148,7 +169,7 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
     if (!container) return;
     Array.from(container.querySelectorAll('.vx-mark')).forEach(mark => mark.remove());
 
-    log_process('第一步：生成四数独终盘...');
+    log_process('第一步：生成四格提示数独终盘...');
     const solvedBoard = generate_solved_board_brute_force(size);
     if (!solvedBoard) {
         log_process('生成终盘失败！');
@@ -173,78 +194,92 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
     let try_count = 0;
     let unique_found = false;
 
-    while (try_count < MAX_TRY && marks_added < MAX_MARKS && !unique_found) {
-        try_count++;
+    log_process(`正在生成题目，请稍候...`);
+    log_process('九宫：1分钟，超时请重启页面或调整限制条件');
+    show_result(`正在生成题目，请稍候...`);
+    show_generating_timer();
 
-        const row = Math.floor(Math.random() * (size - 1));
-        const col = Math.floor(Math.random() * (size - 1));
+    setTimeout(() => {
+        while (try_count < MAX_TRY && marks_added < MAX_MARKS && !unique_found) {
+            try_count++;
 
-        const [sym_row, sym_col] = get_symmetric(row, col, size, symmetry);
+            const row = Math.floor(Math.random() * (size - 1));
+            const col = Math.floor(Math.random() * (size - 1));
 
-        if (
-            !is_valid_position(row, col, size) ||
-            !is_valid_position(sym_row, sym_col, size) ||
-            is_mark_exists(row, col, container) ||
-            is_mark_exists(sym_row, sym_col, container)
-        ) {
-            continue;
-        }
+            const [sym_row, sym_col] = get_symmetric(row, col, size, symmetry);
 
-        const addedMarks = [];
-        const mainDigits = calculate_quadruple_from_solved(row, col, solvedBoard);
-        if (!mainDigits) continue;
-
-        const mainMark = add_quadruple_mark_with_value(row, col, size, container, mainDigits);
-        if (!mainMark) continue;
-        addedMarks.push(mainMark);
-
-        const symmetric_is_same = row === sym_row && col === sym_col;
-        if (!symmetric_is_same) {
-            const symDigits = calculate_quadruple_from_solved(sym_row, sym_col, solvedBoard);
-            if (!symDigits) {
-                remove_marks(addedMarks);
+            if (
+                !is_valid_position(row, col, size) ||
+                !is_valid_position(sym_row, sym_col, size) ||
+                is_mark_exists(row, col, container) ||
+                is_mark_exists(sym_row, sym_col, container)
+            ) {
                 continue;
             }
-            const symMark = add_quadruple_mark_with_value(sym_row, sym_col, size, container, symDigits);
-            if (!symMark) {
-                remove_marks(addedMarks);
-                continue;
+
+            const addedMarks = [];
+            const mainDigits = calculate_quadruple_from_solved(row, col, solvedBoard);
+            if (!mainDigits) continue;
+
+            const mainMark = add_quadruple_mark_with_value(row, col, size, container, mainDigits);
+            if (!mainMark) continue;
+            addedMarks.push(mainMark);
+
+            const symmetric_is_same = row === sym_row && col === sym_col;
+            if (!symmetric_is_same) {
+                const symDigits = calculate_quadruple_from_solved(sym_row, sym_col, solvedBoard);
+                if (!symDigits) {
+                    remove_marks(addedMarks);
+                    continue;
+                }
+                const symMark = add_quadruple_mark_with_value(sym_row, sym_col, size, container, symDigits);
+                if (!symMark) {
+                    remove_marks(addedMarks);
+                    continue;
+                }
+                addedMarks.push(symMark);
             }
-            addedMarks.push(symMark);
+
+            marks_added += addedMarks.length;
+
+            backup_original_board();
+            const result = solve(create_solver_board(size), size, is_valid_quadruple, true);
+            restore_original_board();
+
+            if (result.solution_count === 1) {
+                unique_found = true;
+                log_process(`✓ 找到唯一解！共添加 ${marks_added} 个标记`);
+                optimize_marks(container, size, symmetry);
+                break;
+            }
+
+            if (result.solution_count === 0 || result.solution_count === -2) {
+                log_process('✗ 无解，移除最后添加的标记');
+                remove_marks(addedMarks);
+                marks_added -= addedMarks.length;
+            } else {
+                log_process(`当前解数：${result.solution_count}，继续添加标记...`);
+            }
         }
 
-        marks_added += addedMarks.length;
+        log_process('', true)
+        log_process(`四格提示数独生成完成`);
+        log_process(`点击检查唯一性查看技巧和分值`);
+        const board = Array.from({ length: size }, () => Array.from({ length: size }, () => 0));
+        generate_puzzle(size, score_lower_limit, holes_count, board);
+        hide_generating_timer();
+        const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
+        show_result(`四格提示数独生成完成，耗时${elapsed}秒）`);
 
-        backup_original_board();
-        const result = solve(create_solver_board(size), size, is_valid_quadruple, true);
-        restore_original_board();
-
-        if (result.solution_count === 1) {
-            unique_found = true;
-            log_process(`✓ 找到唯一解！共添加 ${marks_added} 个标记`);
-            optimize_marks(container, size, symmetry);
-            break;
+        if (!unique_found) {
+            if (try_count >= MAX_TRY) {
+                log_process('自动出题失败：达到最大尝试次数');
+            } else {
+                log_process('自动出题完成（可能非唯一解）');
+                show_result(`四格提示数独生成完成（可能非唯一解），耗时${elapsed}秒）`);
+            }
         }
-
-        if (result.solution_count === 0 || result.solution_count === -2) {
-            log_process('✗ 无解，移除最后添加的标记');
-            remove_marks(addedMarks);
-            marks_added -= addedMarks.length;
-        } else {
-            log_process(`当前解数：${result.solution_count}，继续添加标记...`);
-        }
-    }
-
-    const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
-    show_result(`四数独提示生成完成（${unique_found ? '唯一解' : '未验证唯一'}，耗时${elapsed}秒）`);
-
-    if (!unique_found) {
-        if (try_count >= MAX_TRY) {
-            log_process('自动出题失败：达到最大尝试次数');
-        } else {
-            log_process('自动出题完成（可能非唯一解）');
-        }
-    }
+    }, 0);
 
     function create_solver_board(size) {
         return Array.from({ length: size }, () =>

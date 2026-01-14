@@ -1012,7 +1012,7 @@ export function restore_original_board() {
         state.is_candidates_mode ? '退出候选数模式' : '切换候选数模式';
 }
 
-export function save_sudoku_as_image(is_puzzle = true) {
+export function save_sudoku_as_image(is_puzzle = true, with_watermark = false, watermark_img_src = './potato_sudoku.png') {
     const container = document.querySelector('.sudoku-container');
     if (!container) {
         show_result('请先创建数独网格！', 'error');
@@ -1175,37 +1175,35 @@ export function save_sudoku_as_image(is_puzzle = true) {
         allowTaint: true,
         // 禁用抗锯齿
         imageSmoothingEnabled: false
-    }).then(canvas => {
+                }).then(async canvas => {
+    // }).then(canvas => {
         // 移除临时容器
         document.body.removeChild(tempContainer);
 
         // 文件名唯一性处理
-    const key = `${mode_name}_${score}_${technique_str}_${is_puzzle ? '题目' : '答案'}`;
-    if (!fileNameCounter[key]) {
-        fileNameCounter[key] = 1;
-    } else {
-        fileNameCounter[key]++;
-    }
-    const count = fileNameCounter[key];
+        const key = `${mode_name}_${score}_${technique_str}_${is_puzzle ? '题目' : '答案'}`;
+        if (!fileNameCounter[key]) {
+            fileNameCounter[key] = 1;
+        } else {
+            fileNameCounter[key]++;
+        }
+        const count = fileNameCounter[key];
 
-    // 文件名格式：分值_分值_技巧_题目/答案_序号.png
-    const fileName = `${mode_name}_${score}_${technique_str}_${is_puzzle ? '题目' : '答案'}_${count}.png`;
-        
-        // // 创建下载链接
-        // const link = document.createElement('a');
-        // link.download = 'sudoku-' + new Date().toISOString().slice(0, 10) + (is_puzzle ? '-puzzle' : '-solution') + '.png';
+        // 文件名格式：分值_分值_技巧_题目/答案_序号.png
+        const fileName = `${mode_name}_${score}_${technique_str}_${is_puzzle ? '题目' : '答案'}_${count}.png`;
+            
+let outputCanvas = canvas;
+if (with_watermark) {
+    const watermarkImg = await loadImage(watermark_img_src);
+    outputCanvas = composeCanvasWithWatermark(canvas, watermarkImg);
+}
+
+        // 创建下载链接
+        const link = document.createElement('a');
+        link.download = fileName;
+                link.href = outputCanvas.toDataURL('image/png');
         // link.href = canvas.toDataURL('image/png');
-        // link.click();
-
-        // 文件名格式：sudoku_2025_08_11_puzzle_score_XX_technique_xxx.png
-    // const fileName = `分值_${score}_${technique_str}_${is_puzzle ? '题目' : '答案'}.png`;
-    // const fileName = `score_${score}_technique_${technique_str}.png`;
-
-    // 创建下载链接
-    const link = document.createElement('a');
-    link.download = fileName;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
+        link.click();
         
         // show_result('数独已保存为图片！', 'success');
         show_result(is_puzzle ? '数独题目已保存为图片！' : '数独解答已保存为图片！', 'success');
@@ -1219,11 +1217,88 @@ export function save_sudoku_as_image(is_puzzle = true) {
                 check_uniqueness();
             }
             setTimeout(() => {
-                save_sudoku_as_image(false);
+                save_sudoku_as_image(false, with_watermark, watermark_img_src);
             }, 500); // 延迟，确保解答已填充
         }
+
+
     }).catch(err => {
         // document.body.removeChild(tempContainer);
         show_result('保存图片失败: ' + err.message, 'error');
     });
+}
+function loadImage(src) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error(`水印图片加载失败：${src}`));
+        img.src = src;
+    });
+}
+
+// function composeCanvasWithWatermark(baseCanvas, watermarkImg) {
+//     const margin = Math.round(baseCanvas.width * 0.02);
+//     const maxWatermarkWidth = baseCanvas.width - margin * 2;
+//     const watermarkWidth = Math.min(maxWatermarkWidth, Math.round(baseCanvas.width * 0.9));
+//     const scale = watermarkWidth / watermarkImg.width;
+//     const watermarkHeight = Math.round(watermarkImg.height * scale);
+
+//     const out = document.createElement('canvas');
+//     out.width = baseCanvas.width;
+//     out.height = baseCanvas.height + watermarkHeight + margin * 2;
+
+//     const ctx = out.getContext('2d');
+//     ctx.clearRect(0, 0, out.width, out.height);
+
+//     ctx.imageSmoothingEnabled = true;
+//     ctx.drawImage(
+//         watermarkImg,
+//         Math.round((out.width - watermarkWidth) / 2),
+//         margin,
+//         watermarkWidth,
+//         watermarkHeight
+//     );
+
+//     ctx.imageSmoothingEnabled = false;
+//     ctx.drawImage(baseCanvas, 0, watermarkHeight + margin * 2);
+
+//     return out;
+// }
+function composeCanvasWithWatermark(baseCanvas, watermarkImg) {
+    const out = document.createElement('canvas');
+    out.width = baseCanvas.width;
+    out.height = baseCanvas.height;
+
+    const ctx = out.getContext('2d');
+    ctx.clearRect(0, 0, out.width, out.height);
+
+    // 先画原图（保持清晰）
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(baseCanvas, 0, 0);
+
+    // 再把水印覆盖到右下角
+    const margin = Math.round(Math.min(out.width, out.height) * 0.02); // 边距
+    const targetW = Math.round(out.width * 0.32); // 水印宽度占比（可按喜好调 0.25~0.4）
+    const maxW = out.width - margin * 2;
+    const maxH = out.height - margin * 2;
+
+    const scale = Math.min(
+        targetW / watermarkImg.width,
+        maxW / watermarkImg.width,
+        maxH / watermarkImg.height
+    );
+
+    const wmW = Math.max(1, Math.round(watermarkImg.width * scale));
+    const wmH = Math.max(1, Math.round(watermarkImg.height * scale));
+
+    const x = out.width - wmW - margin;
+    const y = out.height - wmH - margin;
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.globalAlpha = 1; // 想淡一点就改成 0.8~0.9
+    ctx.drawImage(watermarkImg, x, y, wmW, wmH);
+    ctx.globalAlpha = 1;
+
+    return out;
 }

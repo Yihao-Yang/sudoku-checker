@@ -502,13 +502,13 @@ export function create_technique_panel() {
                 },
                 {
                     id: 'special_combination_must_contain',
-                    name: '特定组合排除',
+                    name: '特定组合必含',
                     items: [
-                        { id: 'Special_Combination_Region_Most_Contain_1', name: '特定组合排除_1', default: false },
-                        { id: 'Special_Combination_Region_Most_Contain_2', name: '特定组合排除_2', default: false },
-                        { id: 'Special_Combination_Region_Most_Contain_3', name: '特定组合排除_3', default: false },
-                        { id: 'Special_Combination_Region_Most_Contain_4', name: '特定组合排除_4', default: false },
-                        { id: 'Special_Combination_Region_Most_Contain_n', name: '特定组合排除_n', default: false },
+                        { id: 'Special_Combination_Region_Most_Contain_1', name: '特定组合必含_1', default: false },
+                        { id: 'Special_Combination_Region_Most_Contain_2', name: '特定组合必含_2', default: false },
+                        { id: 'Special_Combination_Region_Most_Contain_3', name: '特定组合必含_3', default: false },
+                        { id: 'Special_Combination_Region_Most_Contain_4', name: '特定组合必含_4', default: false },
+                        { id: 'Special_Combination_Region_Most_Contain_n', name: '特定组合必含_n', default: false },
                     ]
                 },
                 {
@@ -561,13 +561,13 @@ export function create_technique_panel() {
                     },
                     {
                         id: 'multi_special_combination_must_contain',
-                        name: '多特定组合排除',
+                        name: '多特定组合必含',
                         items: [
-                            { id: 'Multi_Special_Combination_Region_Most_Contain_1', name: '多特定组合排除_1', default: false },
-                            { id: 'Multi_Special_Combination_Region_Most_Contain_2', name: '多特定组合排除_2', default: false },
-                            { id: 'Multi_Special_Combination_Region_Most_Contain_3', name: '多特定组合排除_3', default: false },
-                            { id: 'Multi_Special_Combination_Region_Most_Contain_4', name: '多特定组合排除_4', default: false },
-                            { id: 'Multi_Special_Combination_Region_Most_Contain_n', name: '多特定组合排除_n', default: false }
+                            { id: 'Multi_Special_Combination_Region_Most_Contain_1', name: '多特定组合必含_1', default: false },
+                            { id: 'Multi_Special_Combination_Region_Most_Contain_2', name: '多特定组合必含_2', default: false },
+                            { id: 'Multi_Special_Combination_Region_Most_Contain_3', name: '多特定组合必含_3', default: false },
+                            { id: 'Multi_Special_Combination_Region_Most_Contain_4', name: '多特定组合必含_4', default: false },
+                            { id: 'Multi_Special_Combination_Region_Most_Contain_n', name: '多特定组合必含_n', default: false }
                         ]
                     },
                     {

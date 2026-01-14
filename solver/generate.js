@@ -1,6 +1,7 @@
 import { solve, isValid, eliminate_candidates, get_all_regions, get_special_combination_regions, invalidate_regions_cache } from './solver_tool.js';
 import { log_process,backup_original_board,show_result, restore_original_board, clear_all_inputs, clear_inner_numbers, hide_generating_timer, clear_outer_clues, show_generating_timer } from './core.js';
 import { state } from './state.js';
+import { check_lookup_table } from './Technique.js';
 import { mark_outer_clues_X_sums } from '../modules/X_sums.js';
 import { mark_outer_clues_skyscraper } from '../modules/skyscraper.js';
 import { mark_outer_clues_sandwich } from '../modules/sandwich.js';
@@ -40,8 +41,11 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
                     if (state.is_candidates_mode && valStr.length > 1) {
                         return [...new Set(valStr.split('').map(Number))].filter(n => n >= 1 && n <= size);
                     }
+                    if (valStr.trim() === '') return null; // 空=无提示（特别是三明治不能用0表示空）
                     const v = parseInt(valStr, 10);
-                    return Number.isFinite(v) ? v : 0;
+                    return Number.isFinite(v) ? v : null;
+                    // const v = parseInt(valStr, 10);
+                    // return Number.isFinite(v) ? v : 0;
                 } else {
                     // 内部格子不读取 DOM，只设为完整候选集合
                     return Array.from({ length: size }, (_, n) => n + 1);
@@ -71,12 +75,23 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
 
         // 随机选择对称模式
         symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
+        // log_process(`1 ${symmetry}`)
 
         // 如果外部提供了已生成的终盘，则直接使用，避免重复生成
         if (pre_solved_board && Array.isArray(pre_solved_board)) {
             if (pre_solved_board.length === size) {
                 // 直接使用同尺寸的外部终盘
-                solution = pre_solved_board;
+                // solution = pre_solved_board;
+                // log_process(pre_solved_board
+                //     .map(row => row.map(cell => (cell === 0 ? '.' : cell)).join(''))
+                //     .join('')
+                // );
+                solution = generate_solution(size, existing_numbers, symmetry, pre_solved_board);
+                // log_process(solution
+                //     .map(row => row.map(cell => (cell === 0 ? '.' : cell)).join(''))
+                //     .join('')
+                // );
+        // log_process(`${symmetry}`)
                 // log_process('使用外部传入的终盘（跳过终盘生成）...');
             } else if (pre_solved_board.length === size + 2) {
                 // log_process(pre_solved_board);
@@ -89,6 +104,7 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
                         return (typeof val === 'number' && val > 0) ? val : 0;
                     })
                 );
+        // log_process(`2 ${symmetry}`)
                 // solution = generate_solution(size, existing_numbers, symmetry, solution);
                 // log_process(solution);
                 // log_process('使用外部传入的带边界终盘，已去除边界并作为终盘使用...');
@@ -117,6 +133,8 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
             // log_process(`尝试生成对称模式: ${symmetry}`);
             // log_process('', true);
             // solution = generate_solution_old(size, existing_numbers, symmetry);
+            // puzzle = solution;
+            // return puzzle;
             if (!solution) {
                 log_process('生成终盘失败，重试...');
                 continue;
@@ -134,6 +152,7 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
         // log_process(`挖洞前用时${elapsed}秒）`);
         // 挖洞得到题目
         puzzle = dig_holes(solution, size, score_lower_limit, symmetry, holes_count);
+        // log_process(`3 ${symmetry}`)
         // 记录结束时间
         // const end_time_1 = performance.now();
         // const elapsed_1 = ((end_time_1 - start_time) / 1000).toFixed(3); // 秒，保留三位小数
@@ -199,7 +218,11 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
     }
 
     // log_process('', true);
-    log_process(`${size}宫格数独生成成功，分值：${state.solve_stats.total_score}，提示数: ${size*size-holesDug}，数字对称模式: ${symmetry}`);
+    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
+        log_process(`${size}宫格数独生成成功，分值：${state.solve_stats.total_score}，提示数: ${size*size-holesDug}`);
+    } else {
+        log_process(`${size}宫格数独生成成功，分值：${state.solve_stats.total_score}，提示数: ${size*size-holesDug}，数字对称模式: ${symmetry}`);
+    }
 
     // 3. 填充到网格
     // container = document.querySelector('.sudoku-container');
@@ -315,8 +338,15 @@ export function generate_exterior_puzzle(size, score_lower_limit = 0, holes_coun
         for (let c = 0; c < total_size; c++) {
             if (r === 0 || r === total_size - 1 || c === 0 || c === total_size - 1) {
                 const input = grid.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
-                const v = parseInt(input?.value ?? '', 10);
-                board_all[r][c] = Number.isFinite(v) && v > 0 ? v : 0;
+                const raw = input?.value ?? '';
+                if (raw.trim() === '') {
+                    board_all[r][c] = null;
+                } else {
+                    const v = parseInt(raw, 10);
+                    board_all[r][c] = Number.isFinite(v) ? v : null; // 允许 0
+                }
+                // const v = parseInt(input?.value ?? '', 10);
+                // board_all[r][c] = Number.isFinite(v) && v > 0 ? v : 0;
             }
         }
     }
@@ -327,8 +357,12 @@ export function generate_exterior_puzzle(size, score_lower_limit = 0, holes_coun
             const isBorder = r === 0 || r === total_size - 1 || c === 0 || c === total_size - 1;
             if (isBorder) {
                 const input = grid.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
-                const v = parseInt(input?.value ?? '', 10);
-                return (Number.isFinite(v) && v > 0) ? v : 0;
+                const raw = input?.value ?? '';
+                if (raw.trim() === '') return null;
+                const v = parseInt(raw, 10);
+                return Number.isFinite(v) ? v : null; // 允许 0
+                // const v = parseInt(input?.value ?? '', 10);
+                // return (Number.isFinite(v) && v > 0) ? v : 0;
             }
             return 0;
         })
@@ -382,7 +416,8 @@ export function generate_exterior_puzzle(size, score_lower_limit = 0, holes_coun
         const processed = new Set();
         for (const [r, c] of clue_positions) {
             if (processed.has(`${r},${c}`)) continue;
-            if (state.clues_board[r][c] === 0) continue;
+            if (state.clues_board[r][c] == null) continue;
+            // if (state.clues_board[r][c] === 0) continue;
 
             const [sr, sc] = get_symmetric_position(r, c, total_size, symmetry);
             
@@ -391,11 +426,11 @@ export function generate_exterior_puzzle(size, score_lower_limit = 0, holes_coun
                                     !((sr === 0 || sr === total_size - 1) && (sc === 0 || sc === total_size - 1));
             
             const val1 = state.clues_board[r][c];
-            const val2 = isSymmetricBorder ? state.clues_board[sr][sc] : 0;
+            const val2 = isSymmetricBorder ? state.clues_board[sr][sc] : null;
 
             // 尝试删除
-            state.clues_board[r][c] = 0;
-            if (isSymmetricBorder) state.clues_board[sr][sc] = 0;
+            state.clues_board[r][c] = null;
+            if (isSymmetricBorder) state.clues_board[sr][sc] = null;
             
             const input1 = grid.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
             const input2 = isSymmetricBorder ? grid.querySelector(`input[data-row="${sr}"][data-col="${sc}"]`) : null;
@@ -416,6 +451,11 @@ export function generate_exterior_puzzle(size, score_lower_limit = 0, holes_coun
                         : val;
                 }
             }
+    //             log_process(
+    //     puzzle
+    //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
+    //         .join('\n')
+    // );
             
             backup_original_board();
             const res = solve(puzzle, interior_size, isValid, true);
@@ -427,11 +467,17 @@ export function generate_exterior_puzzle(size, score_lower_limit = 0, holes_coun
             } else {
                 // 不是唯一解，还原
                 state.clues_board[r][c] = val1;
-                if (input1) input1.value = val1;
+                if (input1) input1.value = (val1 ?? '');
                 if (isSymmetricBorder) {
                     state.clues_board[sr][sc] = val2;
-                    if (input2) input2.value = val2;
+                    if (input2) input2.value = (val2 ?? '');
                 }
+                // state.clues_board[r][c] = val1;
+                // if (input1) input1.value = val1;
+                // if (isSymmetricBorder) {
+                //     state.clues_board[sr][sc] = val2;
+                //     if (input2) input2.value = val2;
+                // }
                 // log_process(`尝试删除提示 (${r+1},${c+1}) & (${sr+1},${sc+1}): 非唯一解，已还原`);
             }
             processed.add(`${r},${c}`);
@@ -450,7 +496,10 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
     // log_process("生成终盘...");
     // if (!pre_solved_board) {
         if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
-            let board = generate_solution_old(sudoku_size);
+            let board = pre_solved_board;
+            if (!pre_solved_board) {
+                board = generate_solution_old(sudoku_size);
+            }
             if (!board) {
                 show_result('多次尝试无法生成终盘，终止本次生成流程');
                 log_process('多次尝试无法生成终盘，终止本次生成流程');
@@ -520,6 +569,7 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
         sudoku_board = Array.from({ length: sudoku_size }, () =>
             Array.from({ length: sudoku_size }, () => [...Array(sudoku_size)].map((_, i) => i + 1))
         );
+        check_lookup_table(sudoku_board, sudoku_size);
     }
 
     // 主动给数的记录
@@ -891,6 +941,25 @@ export function generate_solution_old(size) {
     const board = Array.from({ length: size }, () =>
         Array.from({ length: size }, () => 0)
     );
+    // const board_all = state.clues_board.map(row => [...row]);
+    // for (let ir = 1; ir <= size; ir++) {
+    //     for (let ic = 1; ic <= size; ic++) {
+    //         // puzzle[ir][ic] = inner_puzzle[ir - 1][ic - 1];
+    //         const val = board[ir - 1][ic - 1];
+    //         // 如果是 0，则赋予全部候选数数组，否则赋予固定值
+    //         board_all[ir][ic] = val === 0 
+    //             ? Array.from({ length: size }, (_, i) => i + 1) 
+    //             : val;
+    //     }
+    // }
+    // const res = solve(board_all, size, isValid, true);
+    // log_process(
+    //     res.solution
+    //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
+    //         .join('\n')
+    // );
+    // log_process(`生成终盘完成size=${size}`);
+    // return;
 
     // 用于存储每次调用 eliminate_candidates 前的候选数状态
     const candidate_stack = [];
@@ -898,8 +967,17 @@ export function generate_solution_old(size) {
     // 获取所有区域（宫、行、列）
     const regions = get_all_regions(size, state.current_mode);
 
+    // 预计算每个格子所属的区域数量（供 find_best_cell 使用）
+    const region_counts = Array.from({ length: size }, () => Array(size).fill(0));
+    for (const region of regions) {
+        for (const [r, c] of region.cells) {
+            region_counts[r][c]++;
+        }
+    }
+
     let attempt_count = 0; // 新增回溯计数器
-    const max_attempts = 10000; // 最大尝试次数
+    const max_attempts = 1000000; // 最大尝试次数
+    // const max_attempts = 100; // 最大尝试次数
 
     // 检查某区域是否存在某个候选数只剩一格可填
     function check_unique_candidate_in_regions() {
@@ -908,8 +986,11 @@ export function generate_solution_old(size) {
             const candidatePositions = Array.from({ length: size }, () => []);
 
             for (const [r, c] of region.cells) {
-                if (board[r][c] === 0) {
-                    const candidates = [...Array(size)].map((_, i) => i + 1).filter(n => isValid(board, size, r, c, n));
+                if (board[r][c] === 0 || Array.isArray(board[r][c])) {
+                    const candidates = Array.isArray(board[r][c])
+                        ? [...board[r][c]]
+                        : [...Array(size)].map((_, i) => i + 1).filter(n => isValid(board, size, r, c, n));
+                    // const candidates = [...Array(size)].map((_, i) => i + 1).filter(n => isValid(board, size, r, c, n));
                     for (const candidate of candidates) {
                         candidateCounts[candidate - 1]++;
                         candidatePositions[candidate - 1].push([r, c]);
@@ -930,44 +1011,61 @@ export function generate_solution_old(size) {
         return false;
     }
 
-    // 找到候选数最少的空格
-    function find_best_cell() {
+    // // 找到候选数最少的空格
+    // function find_best_cell() {
+    //     let best_cell = null;
+    
+    //     for (let row = 0; row < size; row++) {
+    //         for (let col = 0; col < size; col++) {
+    //             if (board[row][col] === 0) {
+    //                 const candidates = [...Array(size)]
+    //                     .map((_, i) => i + 1)
+    //                     .filter(n => isValid(board, size, row, col, n));
+    
+    //                 const region_count = region_counts[row][col];
+    
+    //                 if (
+    //                     !best_cell ||
+    //                     region_count > region_counts[best_cell.row][best_cell.col] ||
+    //                     (
+    //                         region_count === region_counts[best_cell.row][best_cell.col] &&
+    //                         candidates.length < best_cell.candidates.length
+    //                     )
+    //                 ) {
+    //                     best_cell = { row, col, candidates };
+    //                 }
+    //             }
+    //         }
+    //     }
+    
+    //     return best_cell;
+    // }
+        function find_best_cell() {
         let best_cell = null;
-
-        // 获取所有区域
-        const regions = get_all_regions(size, state.current_mode);
-
-        // 计算每个格子所属的区域数量
-        const region_counts = Array.from({ length: size }, () => Array(size).fill(0));
-        for (const region of regions) {
-            for (const [r, c] of region.cells) {
-                region_counts[r][c]++;
-            }
-        }
-
+    
         for (let row = 0; row < size; row++) {
             for (let col = 0; col < size; col++) {
-                if (board[row][col] === 0) {
-                    const candidates = [...Array(size)].map((_, i) => i + 1).filter(n => isValid(board, size, row, col, n));
+                const cell = board[row][col];
+                if (cell === 0 || Array.isArray(cell)) {
+                    const candidates = Array.isArray(cell)
+                        ? [...cell]
+                        : [...Array(size)].map((_, i) => i + 1).filter(n => isValid(board, size, row, col, n));
+    
                     const region_count = region_counts[row][col];
-
-                    // 优先比较区域覆盖数，其次比较候选数
+    
                     if (
                         !best_cell ||
                         region_count > region_counts[best_cell.row][best_cell.col] ||
-                        (region_count === region_counts[best_cell.row][best_cell.col] && candidates.length < best_cell.candidates.length)
+                        (
+                            region_count === region_counts[best_cell.row][best_cell.col] &&
+                            candidates.length < best_cell.candidates.length
+                        )
                     ) {
                         best_cell = { row, col, candidates };
                     }
-
-                    // // 如果找到只有一个候选数的格子，直接返回
-                    // if (minCandidates === 1) {
-                    //     return best_cell;
-                    // }
                 }
             }
         }
-
         return best_cell;
     }
 
@@ -988,8 +1086,16 @@ export function generate_solution_old(size) {
         for (const num of shuffle(candidates)) {
             if (isValid(board, size, row, col, num)) {
                 // 备份当前候选数状态
-                const boardBackup = board.map(row => row.map(cell => (Array.isArray(cell) ? [...cell] : cell)));
+                const boardBackup = Array.from({ length: size }, () => Array(size));
+                for (let r = 0; r < size; r++) {
+                    for (let c = 0; c < size; c++) {
+                        const cell = board[r][c];
+                        boardBackup[r][c] = Array.isArray(cell) ? cell.slice() : cell;
+                    }
+                }
                 candidate_stack.push(boardBackup);
+                // const boardBackup = board.map(row => row.map(cell => (Array.isArray(cell) ? [...cell] : cell)));
+                // candidate_stack.push(boardBackup);
 
                 // 填入数字
                 board[row][col] = num;
@@ -1000,25 +1106,50 @@ export function generate_solution_old(size) {
                 // 调用 eliminate_candidates 删除相关区域的候选数
                 eliminate_candidates(board, size, row, col, num);
 
-                // 检查是否有唯一可填的格子
+                // // 检查是否有唯一可填的格子
+                // let progress = true;
+                // while (progress) {
+                //     progress = false;
+                //     for (let r = 0; r < size; r++) {
+                //         for (let c = 0; c < size; c++) {
+                //                                         if (board[row][col] === 0 || Array.isArray(board[row][col])) {
+                //                 const candidates = Array.isArray(board[row][col])
+                //                     ? [...board[row][col]]
+                //                     : [...Array(size)].map((_, i) => i + 1).filter(n => isValid(board, size, row, col, n));
+                //                 if (candidates.length === 1) {
+                //                     board[r][c] = candidates[0];
+                //                     // log_process(`位置 [${r + 1}, ${c + 1}] 填入数字 ${candidates[0]}`);
+                //                     eliminate_candidates(board, size, r, c, candidates[0]);
+                //                     progress = true;
+                //                 }
+                //             }
+                //         }
+                //     }
+
+                //     // 检查某区域是否存在某个候选数只剩一格可填
+                //     if (check_unique_candidate_in_regions()) {
+                //         progress = true;
+                //     }
+                // }
+                                // 检查是否有唯一可填的格子
                 let progress = true;
                 while (progress) {
                     progress = false;
                     for (let r = 0; r < size; r++) {
                         for (let c = 0; c < size; c++) {
-                            if (board[r][c] === 0) {
-                                const candidates = [...Array(size)].map((_, i) => i + 1).filter(n => isValid(board, size, r, c, n));
+                            const cell = board[r][c];
+                            if (cell === 0 || Array.isArray(cell)) {
+                                const candidates = Array.isArray(cell)
+                                    ? [...cell]
+                                    : [...Array(size)].map((_, i) => i + 1).filter(n => isValid(board, size, r, c, n));
                                 if (candidates.length === 1) {
                                     board[r][c] = candidates[0];
-                                    // log_process(`位置 [${r + 1}, ${c + 1}] 填入数字 ${candidates[0]}`);
                                     eliminate_candidates(board, size, r, c, candidates[0]);
                                     progress = true;
                                 }
                             }
                         }
                     }
-
-                    // 检查某区域是否存在某个候选数只剩一格可填
                     if (check_unique_candidate_in_regions()) {
                         progress = true;
                     }

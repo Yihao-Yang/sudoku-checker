@@ -8,7 +8,6 @@ import { is_valid_fortress } from "../modules/fortress.js";
 import { is_valid_clone, get_clone_cells, are_regions_same_shape } from "../modules/clone.js";
 import { apply_exclusion_marks, is_valid_exclusion } from "../modules/exclusion.js";
 import { apply_quadruple_marks, is_valid_quadruple } from "../modules/quadruple.js";
-// import { apply_skyscraper_marks } from "../modules/skyscraper.js"
 import { is_valid_add } from "../modules/add.js";
 import { is_valid_product } from "../modules/product.js";
 import { is_valid_ratio } from "../modules/ratio.js";
@@ -16,15 +15,12 @@ import { is_valid_VX } from "../modules/vx.js";
 import { is_valid_kropki } from "../modules/kropki.js";
 import { is_valid_consecutive } from "../modules/consecutive.js";
 import { is_valid_inequality } from "../modules/inequality.js";
-import { apply_odd_marks, is_valid_odd } from "../modules/odd.js";
-import { apply_odd_even_marks, is_valid_odd_even } from "../modules/odd_even.js";
+import { apply_odd_marks, is_valid_odd, get_odd_cells } from "../modules/odd.js";
+import { apply_odd_even_marks, is_valid_odd_even, get_odd_even_cells } from "../modules/odd_even.js";
 import { is_valid_anti_king } from "../modules/anti_king.js";
 import { is_valid_anti_knight } from "../modules/anti_knight.js";
 import { is_valid_anti_elephant } from "../modules/anti_elephant.js";
-// import { is_valid_anti_diagonal } from "../modules/anti_diagonal.js";
 import { is_valid_palindrome, merge_connected_lines } from "../modules/palindrome.js";
-import { get_odd_cells } from '../modules/odd.js';
-import { get_odd_even_cells } from '../modules/odd_even.js';
 import { is_valid_X_sums, apply_X_sums_marks, X_SUMS_CANDIDATES_MAP } from "../modules/X_sums.js";
 import { is_valid_skyscraper, apply_skyscraper_marks } from "../modules/skyscraper.js";
 import { is_valid_sandwich } from "../modules/sandwich.js";
@@ -2194,18 +2190,22 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
         case 'skyscraper': {
             const clues = state.clues_board;
             const hasCluesBoard = Array.isArray(clues) && clues.length === size + 2;
-        
             const parse_clue = (r, c) => {
-                if (hasCluesBoard) {
-                    const v = clues[r]?.[c];
-                    return (typeof v === 'number' && v > 0) ? v : 0;
-                }
-                const container = document.querySelector('.sudoku-container');
-                if (!container) return 0;
-                const input = container.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
-                const v = parseInt(input?.value ?? '', 10);
-                return Number.isFinite(v) && v > 0 ? v : 0;
+                if (!hasCluesBoard) return 0;
+                const v = clues[r]?.[c];
+                return (typeof v === 'number' && v > 0) ? v : 0;
             };
+            // const parse_clue = (r, c) => {
+            //     if (hasCluesBoard) {
+            //         const v = clues[r]?.[c];
+            //         return (typeof v === 'number' && v > 0) ? v : 0;
+            //     }
+            //     const container = document.querySelector('.sudoku-container');
+            //     if (!container) return 0;
+            //     const input = container.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
+            //     const v = parseInt(input?.value ?? '', 10);
+            //     return Number.isFinite(v) && v > 0 ? v : 0;
+            // };
             // log_process(
             //     board
             //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
@@ -2899,12 +2899,28 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
             const regions = [];
             const clues = state.clues_board;
             if (!clues) return regions;
+            // log_process(`${Math.max(...board[0][1])}`)
 
             // 上边
             for (let col = 1; col <= size; col++) {
                 const clue = clues[0][col];
-                if (clue && X_SUMS_CANDIDATES_MAP(size)[clue]) {
-                    const A = Math.max(...X_SUMS_CANDIDATES_MAP(size)[clue]);
+                let arr = X_SUMS_CANDIDATES_MAP(size)[clue]
+                // log_process(`board=${board[0][col-1]}`)
+                if (
+                    clue &&
+                    Array.isArray(board) &&
+                    typeof arr !== "undefined" &&
+                    board[0][col-1].length > arr.length
+                ) {
+    //             if (clue && Array.isArray(board) &&
+    // Array.isArray(board[0]) && Array.isArray(board[0][col-1]) && board[0][col-1].length > arr.length) {
+                    arr = board[0][col-1];
+                }
+                
+                // log_process(`arr=${arr}`)
+                if (clue && arr) {
+                    const A = Math.max(...arr);
+                    // log_process(`A=${A}`)
                     const cells_A = [];
                     for (let r = 1; r <= A; r++) cells_A.push([r-1, col-1]);
                     const index_A = cells_A
@@ -2914,7 +2930,7 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
 
                     regions.push({ type: '特定组合', index: index_A, cells: cells_A });
                     // log_process(`X_sums 上边 clue=${clue}, cells=${JSON.stringify(cells_A)}`);
-                    const B = Math.min(...X_SUMS_CANDIDATES_MAP(size)[clue]);
+                    const B = Math.min(...arr);
                     const cells_B = [];
                     for (let r = size; r > B; r--) cells_B.push([r-1, col-1]);
                     const index_B = cells_B
@@ -2929,8 +2945,18 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
             // 下边
             for (let col = 1; col <= size; col++) {
                 const clue = clues[size + 1][col];
-                if (clue && X_SUMS_CANDIDATES_MAP(size)[clue]) {
-                    const A = Math.max(...X_SUMS_CANDIDATES_MAP(size)[clue]);
+                let arr = X_SUMS_CANDIDATES_MAP(size)[clue]
+                if (
+                    clue &&
+                    Array.isArray(board) &&
+                    typeof arr !== "undefined" &&
+                    board[size-1][col-1].length > arr.length
+                ) {
+                // // if (clue && board[size-1][col-1] !== 0 && board[size-1][col-1] != null) {
+                    arr = board[size-1][col-1];
+                }
+                if (clue && arr) {
+                    const A = Math.max(...arr);
                     const cells_A = [];
                     for (let r = size; r > size - A; r--) cells_A.push([r-1, col-1]);
                     const index_A = cells_A
@@ -2939,7 +2965,7 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
                         .join('-');
                     regions.push({ type: '特定组合', index: index_A, cells: cells_A });
             
-                    const B = Math.min(...X_SUMS_CANDIDATES_MAP(size)[clue]);
+                    const B = Math.min(...arr);
                     const cells_B = [];
                     for (let r = 1; r <= size - B; r++) cells_B.push([r-1, col-1]);
                     const index_B = cells_B
@@ -2953,8 +2979,18 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
             // 左边
             for (let row = 1; row <= size; row++) {
                 const clue = clues[row][0];
-                if (clue && X_SUMS_CANDIDATES_MAP(size)[clue]) {
-                    const A = Math.max(...X_SUMS_CANDIDATES_MAP(size)[clue]);
+                let arr = X_SUMS_CANDIDATES_MAP(size)[clue]
+                if (
+                    clue &&
+                    Array.isArray(board) &&
+                    typeof arr !== "undefined" &&
+                    board[row-1][0].length > arr.length
+                ) {
+                // if (clue && board[row-1][0] !== 0 && board[row-1][0] != null) {
+                    arr = board[row-1][0];
+                }
+                if (clue && arr) {
+                    const A = Math.max(...arr);
                     const cells_A = [];
                     for (let c = 1; c <= A; c++) cells_A.push([row-1, c-1]);
                     const index_A = cells_A
@@ -2963,7 +2999,7 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
                         .join('-');
                     regions.push({ type: '特定组合', index: index_A, cells: cells_A });
             
-                    const B = Math.min(...X_SUMS_CANDIDATES_MAP(size)[clue]);
+                    const B = Math.min(...arr);
                     const cells_B = [];
                     for (let c = size; c > B; c--) cells_B.push([row-1, c-1]);
                     const index_B = cells_B
@@ -2977,8 +3013,18 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
             // 右边
             for (let row = 1; row <= size; row++) {
                 const clue = clues[row][size + 1];
-                if (clue && X_SUMS_CANDIDATES_MAP(size)[clue]) {
-                    const A = Math.max(...X_SUMS_CANDIDATES_MAP(size)[clue]);
+                let arr = X_SUMS_CANDIDATES_MAP(size)[clue]
+                if (
+                    clue &&
+                    Array.isArray(board) &&
+                    typeof arr !== "undefined" &&
+                    board[row-1][size-1].length > arr.length
+                ) {
+                // if (clue && board[row-1][size-1] !== 0 && board[row-1][size-1] != null) {
+                    arr = board[row-1][size-1];
+                }
+                if (clue && arr) {
+                    const A = Math.max(...arr);
                     const cells_A = [];
                     for (let c = size; c > size - A; c--) cells_A.push([row-1, c-1]);
                     const index_A = cells_A
@@ -2987,7 +3033,7 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
                         .join('-');
                     regions.push({ type: '特定组合', index: index_A, cells: cells_A });
             
-                    const B = Math.min(...X_SUMS_CANDIDATES_MAP(size)[clue]);
+                    const B = Math.min(...arr);
                     const cells_B = [];
                     for (let c = 1; c <= size - B; c++) cells_B.push([row-1, c-1]);
                     const index_B = cells_B
@@ -2999,63 +3045,108 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
             }
             return regions;
         }
+        // case 'sandwich': {
+        //     const container = document.querySelector('.sudoku-container');
+        //     if (!container) return regions;
+
+        //     // 遍历每一行，检查行首或行尾是否有外提示数
+        //     for (let row = 1; row <= size; row++) {
+        //         const left_clue_input = container.querySelector(`input[data-row="${row}"][data-col="0"]`);
+        //         // log_process(`检查行 ${row} 的左侧提示数: ${left_clue_input ? left_clue_input.value : ''}`);
+        //         const right_clue_input = container.querySelector(`input[data-row="${row}"][data-col="${size + 1}"]`);
+        //         const left_clue = left_clue_input ? parseInt(left_clue_input.value) : null;
+        //         const right_clue = right_clue_input ? parseInt(right_clue_input.value) : null;
+
+        //         if (left_clue || left_clue === 0 || right_clue || right_clue === 0) {
+        //             const row_cells = [];
+        //             for (let col = 1; col <= size; col++) {
+        //                 row_cells.push([row - 1, col - 1]); // 转换为 0 索引
+        //             }
+
+        //             const index = row_cells
+        //                 .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+        //                 .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+        //                 .join('-');
+
+        //             regions.push({
+        //                 type: '特定组合',
+        //                 index,
+        //                 cells: row_cells,
+        //                 // clue_nums: Array.from({ length: size }, (_, n) => n + 1),
+        //             });
+        //             // log_process(`发现特定组合：row-${row}，提示数：${left_clue || ''} ${right_clue || ''}`);
+        //         }
+        //     }
+
+        //     // 遍历每一列，检查列首或列尾是否有外提示数
+        //     for (let col = 1; col <= size; col++) {
+        //         const top_clue_input = container.querySelector(`input[data-row="0"][data-col="${col}"]`);
+        //         const bottom_clue_input = container.querySelector(`input[data-row="${size + 1}"][data-col="${col}"]`);
+        //         const top_clue = top_clue_input ? parseInt(top_clue_input.value) : null;
+        //         const bottom_clue = bottom_clue_input ? parseInt(bottom_clue_input.value) : null;
+
+        //         if (top_clue || top_clue === 0 || bottom_clue || bottom_clue === 0) {
+        //             const col_cells = [];
+        //             for (let row = 1; row <= size; row++) {
+        //                 col_cells.push([row - 1, col - 1]); // 转换为 0 索引
+        //             }
+        //             const index = col_cells
+        //                 .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+        //                 .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+        //                 .join('-');
+        //             regions.push({
+        //                 type: '特定组合',
+        //                 index,
+        //                 cells: col_cells,
+        //                 // clue_nums: Array.from({ length: size }, (_, n) => n + 1),
+        //             });
+        //         }
+        //     }
+        //     break;
+        // }
         case 'sandwich': {
-            const container = document.querySelector('.sudoku-container');
-            if (!container) return regions;
+            const clues = state.clues_board;
+            const hasCluesBoard = Array.isArray(clues) && clues.length === size + 2;
+            if (!hasCluesBoard) break;
 
-            // 遍历每一行，检查行首或行尾是否有外提示数
+            const hasClue = (v) => typeof v === 'number'; // 允许 0；空白必须是 null
+
+            // 行：看左右外提示
             for (let row = 1; row <= size; row++) {
-                const left_clue_input = container.querySelector(`input[data-row="${row}"][data-col="0"]`);
-                // log_process(`检查行 ${row} 的左侧提示数: ${left_clue_input ? left_clue_input.value : ''}`);
-                const right_clue_input = container.querySelector(`input[data-row="${row}"][data-col="${size + 1}"]`);
-                const left_clue = left_clue_input ? parseInt(left_clue_input.value) : null;
-                const right_clue = right_clue_input ? parseInt(right_clue_input.value) : null;
+                const left_clue = clues[row]?.[0];
+                const right_clue = clues[row]?.[size + 1];
 
-                if (left_clue || left_clue === 0 || right_clue || right_clue === 0) {
+                if (hasClue(left_clue) || hasClue(right_clue)) {
                     const row_cells = [];
-                    for (let col = 1; col <= size; col++) {
-                        row_cells.push([row - 1, col - 1]); // 转换为 0 索引
-                    }
+                    for (let col = 1; col <= size; col++) row_cells.push([row - 1, col - 1]);
 
                     const index = row_cells
                         .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
                         .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
                         .join('-');
 
-                    regions.push({
-                        type: '特定组合',
-                        index,
-                        cells: row_cells,
-                        // clue_nums: Array.from({ length: size }, (_, n) => n + 1),
-                    });
-                    // log_process(`发现特定组合：row-${row}，提示数：${left_clue || ''} ${right_clue || ''}`);
+                    regions.push({ type: '特定组合', index, cells: row_cells });
                 }
             }
 
-            // 遍历每一列，检查列首或列尾是否有外提示数
+            // 列：看上下外提示
             for (let col = 1; col <= size; col++) {
-                const top_clue_input = container.querySelector(`input[data-row="0"][data-col="${col}"]`);
-                const bottom_clue_input = container.querySelector(`input[data-row="${size + 1}"][data-col="${col}"]`);
-                const top_clue = top_clue_input ? parseInt(top_clue_input.value) : null;
-                const bottom_clue = bottom_clue_input ? parseInt(bottom_clue_input.value) : null;
+                const top_clue = clues[0]?.[col];
+                const bottom_clue = clues[size + 1]?.[col];
 
-                if (top_clue || top_clue === 0 || bottom_clue || bottom_clue === 0) {
+                if (hasClue(top_clue) || hasClue(bottom_clue)) {
                     const col_cells = [];
-                    for (let row = 1; row <= size; row++) {
-                        col_cells.push([row - 1, col - 1]); // 转换为 0 索引
-                    }
+                    for (let row = 1; row <= size; row++) col_cells.push([row - 1, col - 1]);
+
                     const index = col_cells
                         .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
                         .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
                         .join('-');
-                    regions.push({
-                        type: '特定组合',
-                        index,
-                        cells: col_cells,
-                        // clue_nums: Array.from({ length: size }, (_, n) => n + 1),
-                    });
+
+                    regions.push({ type: '特定组合', index, cells: col_cells });
                 }
             }
+
             break;
         }
         default:
@@ -3338,17 +3429,17 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
     // state.solve_stats.solution_count = 0;
 
     // 新增：排除数独自动应用排除标记
-    if (state.current_mode === 'exclusion') {
-        apply_exclusion_marks(board, size);
-    } else if (state.current_mode === 'quadruple') {
-        apply_quadruple_marks(board, size);
-    } else if (state.current_mode === 'odd') {
-        apply_odd_marks(board, size);
-    } else if (state.current_mode === 'odd_even') {
-        apply_odd_even_marks(board, size);
+    // if (state.current_mode === 'exclusion') {
+    //     apply_exclusion_marks(board, size);
+    // } else if (state.current_mode === 'quadruple') {
+    //     apply_quadruple_marks(board, size);
+    // } else if (state.current_mode === 'odd') {
+    //     apply_odd_marks(board, size);
+    // } else if (state.current_mode === 'odd_even') {
+    //     apply_odd_even_marks(board, size);
     // } else if (state.current_mode === 'skyscraper') {
     //     apply_skyscraper_marks(board, size);
-    }
+    // }
     // log_process(
     //     board
     //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))

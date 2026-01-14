@@ -20,6 +20,7 @@ export function create_odd_sudoku(size) {
     log_process('');
     log_process('出题：');
     log_process('10秒，超1分钟请重启页面或调整限制条件');
+    log_process('若手动给的标记不合理可能会被代码忽视');
     log_process('');
     log_process('自动出题：');
     log_process('蓝色：自动添加标记出题');
@@ -30,31 +31,32 @@ export function create_odd_sudoku(size) {
     invalidate_regions_cache();
 
     // 修改技巧开关
-        state.techniqueSettings = {
-            Box_Elimination: true,
-            Row_Col_Elimination: true,
-            Box_Block: true,
-            Box_Pair_Block: true,
-            Row_Col_Block: true,
-            Box_Naked_Pair: true,
-            Row_Col_Naked_Pair: true,
-            Box_Hidden_Pair: true,
-            Row_Col_Hidden_Pair: true,
-            Box_Naked_Triple: true,
-            Row_Col_Naked_Triple: true,
-            Box_Hidden_Triple: true,
-            Row_Col_Hidden_Triple: true,
-            All_Quad: false,
-            Cell_Elimination: true,
-            Brute_Force: false,
-        };
-        // 唯余法全部默认开启
-        for (let i = 1; i <= size; i++) {
-            state.techniqueSettings[`Cell_Elimination_${i}`] = true;
-        }
+    state.techniqueSettings = {
+        Box_Elimination: true,
+        Row_Col_Elimination: true,
+        Box_Block: true,
+        Box_Pair_Block: true,
+        Row_Col_Block: true,
+        Box_Naked_Pair: true,
+        Row_Col_Naked_Pair: true,
+        Box_Hidden_Pair: true,
+        Row_Col_Hidden_Pair: true,
+        Box_Naked_Triple: true,
+        Row_Col_Naked_Triple: true,
+        Box_Hidden_Triple: true,
+        Row_Col_Hidden_Triple: true,
+        All_Quad: false,
+        Cell_Elimination: true,
+        Brute_Force: false,
+        Lookup_Table: true,
+    };
+    // 唯余法全部默认开启
+    for (let i = 1; i <= size; i++) {
+        state.techniqueSettings[`Cell_Elimination_${i}`] = true;
+    }
 
-        // 刷新技巧面板
-        create_technique_panel();
+    // 刷新技巧面板
+    create_technique_panel();
 
     // 创建基础数独盘面
     const { container, grid } = create_base_grid(size);

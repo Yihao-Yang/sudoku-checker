@@ -182,344 +182,344 @@ export function create_skyscraper_sudoku(size) {
     // add_Extra_Button('清除标记', clear_outer_clues, '#2196F3');
 }
 
-// 生成X和数独题目
-export function generate_skyscraper_puzzle_old(size, score_lower_limit = 0, holes_count = undefined) {
-    size = size + 2;
-    clear_inner_numbers();
-    clear_outer_clues();
-    log_process('', true);
-    const container = document.querySelector('.sudoku-container');
-    if (!container) return;
-    const grid = container.querySelector('.sudoku-grid');
-    if (!grid) return;
-    invalidate_regions_cache();
+// // 生成X和数独题目
+// export function generate_skyscraper_puzzle_old(size, score_lower_limit = 0, holes_count = undefined) {
+//     size = size + 2;
+//     clear_inner_numbers();
+//     clear_outer_clues();
+//     log_process('', true);
+//     const container = document.querySelector('.sudoku-container');
+//     if (!container) return;
+//     const grid = container.querySelector('.sudoku-grid');
+//     if (!grid) return;
+//     invalidate_regions_cache();
 
-    // 选取对称类型
-    const SYMMETRY_TYPES = [
-        'central','central','central','central','central',
-        'diagonal','diagonal',
-        'anti-diagonal','anti-diagonal',
-        'horizontal',
-        'vertical',
-        // 'none'
-    ];
-    const symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
+//     // 选取对称类型
+//     const SYMMETRY_TYPES = [
+//         'central','central','central','central','central',
+//         'diagonal','diagonal',
+//         'anti-diagonal','anti-diagonal',
+//         'horizontal',
+//         'vertical',
+//         // 'none'
+//     ];
+//     const symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
 
-    // // 添加提示数
-    // const add_clue = (row, col, value) => {
-    //     const input = grid.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
-    //     if (input) {
-    //         input.value = value;
-    //     }
-    // };
-        // 初始化空盘面
-    let board = Array.from({ length: size }, () =>
-        Array.from({ length: size }, () => 0)
-    );
+//     // // 添加提示数
+//     // const add_clue = (row, col, value) => {
+//     //     const input = grid.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
+//     //     if (input) {
+//     //         input.value = value;
+//     //     }
+//     // };
+//         // 初始化空盘面
+//     let board = Array.from({ length: size }, () =>
+//         Array.from({ length: size }, () => 0)
+//     );
 
-    // 添加提示数
-    const add_clue = (row, col, value) => {
-        const input = grid.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
-        if (input) {
-            input.value = value;
-            board[row][col] = value; // 同步更新到 board
-        }
-    };
-
-
-    // 获取对称位置
-    const get_symmetric_position = (row, col, size, symmetry) => {
-        switch (symmetry) {
-            case 'central':
-                return [size - 1 - row, size - 1 - col];
-            case 'diagonal':
-                return [col, row];
-            case 'anti-diagonal':
-                return [size - 1 - col, size - 1 - row];
-            case 'horizontal':
-                return [size - 1 - row, col];
-            case 'vertical':
-                return [row, size - 1 - col];
-            default:
-                return [row, col];
-        }
-    };
+//     // 添加提示数
+//     const add_clue = (row, col, value) => {
+//         const input = grid.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
+//         if (input) {
+//             input.value = value;
+//             board[row][col] = value; // 同步更新到 board
+//         }
+//     };
 
 
-    // 随机生成提示数，只在首行、首列、尾行、尾列
-    const positions_set = new Set();
-    let marks_added = 0;
-    let try_limit = 1000; // 防止死循环
-    while (try_limit-- > 0) {
-        let row, col;
+//     // 获取对称位置
+//     const get_symmetric_position = (row, col, size, symmetry) => {
+//         switch (symmetry) {
+//             case 'central':
+//                 return [size - 1 - row, size - 1 - col];
+//             case 'diagonal':
+//                 return [col, row];
+//             case 'anti-diagonal':
+//                 return [size - 1 - col, size - 1 - row];
+//             case 'horizontal':
+//                 return [size - 1 - row, col];
+//             case 'vertical':
+//                 return [row, size - 1 - col];
+//             default:
+//                 return [row, col];
+//         }
+//     };
 
-        // 随机选择提示数位置：首行、首列、尾行、尾列
-        const edge = Math.floor(Math.random() * 4);
-        if (edge === 0) {
-            // 首行，跳过左上角和右上角
-            row = 0;
-            col = Math.floor(Math.random() * (size - 2)) + 1; // 列范围为 [1, size - 2]
-        } else if (edge === 1) {
-            // 尾行，跳过左下角和右下角
-            row = size - 1;
-            col = Math.floor(Math.random() * (size - 2)) + 1; // 列范围为 [1, size - 2]
-        } else if (edge === 2) {
-            // 首列，跳过左上角和左下角
-            row = Math.floor(Math.random() * (size - 2)) + 1; // 行范围为 [1, size - 2]
-            col = 0;
-        } else {
-            // 尾列，跳过右上角和右下角
-            row = Math.floor(Math.random() * (size - 2)) + 1; // 行范围为 [1, size - 2]
-            col = size - 1;
-        }
 
-        // 根据 size 设置半排除数组
-        let semi_excluded_values = [];
-        if (size === 6) {
-            semi_excluded_values = [1, 4];
-        } else if (size === 8) {
-            semi_excluded_values = [1, 6];
-        } else if (size === 11) {
-            semi_excluded_values = [1, 9];
-        }
-        const excluded_values = []; // 要排除的值
-        let value1, value2;
+//     // 随机生成提示数，只在首行、首列、尾行、尾列
+//     const positions_set = new Set();
+//     let marks_added = 0;
+//     let try_limit = 1000; // 防止死循环
+//     while (try_limit-- > 0) {
+//         let row, col;
+
+//         // 随机选择提示数位置：首行、首列、尾行、尾列
+//         const edge = Math.floor(Math.random() * 4);
+//         if (edge === 0) {
+//             // 首行，跳过左上角和右上角
+//             row = 0;
+//             col = Math.floor(Math.random() * (size - 2)) + 1; // 列范围为 [1, size - 2]
+//         } else if (edge === 1) {
+//             // 尾行，跳过左下角和右下角
+//             row = size - 1;
+//             col = Math.floor(Math.random() * (size - 2)) + 1; // 列范围为 [1, size - 2]
+//         } else if (edge === 2) {
+//             // 首列，跳过左上角和左下角
+//             row = Math.floor(Math.random() * (size - 2)) + 1; // 行范围为 [1, size - 2]
+//             col = 0;
+//         } else {
+//             // 尾列，跳过右上角和右下角
+//             row = Math.floor(Math.random() * (size - 2)) + 1; // 行范围为 [1, size - 2]
+//             col = size - 1;
+//         }
+
+//         // 根据 size 设置半排除数组
+//         let semi_excluded_values = [];
+//         if (size === 6) {
+//             semi_excluded_values = [1, 4];
+//         } else if (size === 8) {
+//             semi_excluded_values = [1, 6];
+//         } else if (size === 11) {
+//             semi_excluded_values = [1, 9];
+//         }
+//         const excluded_values = []; // 要排除的值
+//         let value1, value2;
         
-        do {
-            value1 = Math.floor(Math.random() * (size - 2)) + 1;
-            // 完全排除
-            if (excluded_values.includes(value1)) continue;
-            // 半排除
-            if (semi_excluded_values.includes(value1) && Math.random() < 0.5) continue;
-            break;
-        } while (true);
+//         do {
+//             value1 = Math.floor(Math.random() * (size - 2)) + 1;
+//             // 完全排除
+//             if (excluded_values.includes(value1)) continue;
+//             // 半排除
+//             if (semi_excluded_values.includes(value1) && Math.random() < 0.5) continue;
+//             break;
+//         } while (true);
 
-        do {
-            value2 = Math.floor(Math.random() * (size - 2)) + 1;
-            if (excluded_values.includes(value2)) continue;
-            if (semi_excluded_values.includes(value2) && Math.random() < 0.5) continue;
-            break;
-        } while (true);
-        const [sym_row, sym_col] = get_symmetric_position(row, col, size, symmetry);
+//         do {
+//             value2 = Math.floor(Math.random() * (size - 2)) + 1;
+//             if (excluded_values.includes(value2)) continue;
+//             if (semi_excluded_values.includes(value2) && Math.random() < 0.5) continue;
+//             break;
+//         } while (true);
+//         const [sym_row, sym_col] = get_symmetric_position(row, col, size, symmetry);
 
-        if (positions_set.has(`${row},${col}`) || positions_set.has(`${sym_row},${sym_col}`)) continue;
+//         if (positions_set.has(`${row},${col}`) || positions_set.has(`${sym_row},${sym_col}`)) continue;
 
-        // 添加标记
-        add_clue(row, col, value1);
-        add_clue(sym_row, sym_col, value2);
+//         // 添加标记
+//         add_clue(row, col, value1);
+//         add_clue(sym_row, sym_col, value2);
 
-        // // 检查是否有解
-        // let board = [];
+//         // // 检查是否有解
+//         // let board = [];
 
-        log_process(`尝试添加提示数 (${row},${col})=${value1} 和 (${sym_row},${sym_col})=${value2}，当前已添加 ${marks_added} 个提示数`);
-        backup_original_board();
-        // const result = solve(board.map(r => r.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), size, isValid, true);
-        const result = solve(board, size - 2, isValid, true);
+//         log_process(`尝试添加提示数 (${row},${col})=${value1} 和 (${sym_row},${sym_col})=${value2}，当前已添加 ${marks_added} 个提示数`);
+//         backup_original_board();
+//         // const result = solve(board.map(r => r.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), size, isValid, true);
+//         const result = solve(board, size - 2, isValid, true);
 
-        if (result.solution_count === 0 || result.solution_count === -2) {
-            log_process(`添加提示数 (${row},${col})=${value1} 和 (${sym_row},${sym_col})=${value2} 后无解，撤销标记`);
-            restore_original_board();
-            // 无解，撤销标记
-            const input1 = grid.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
-            const input2 = grid.querySelector(`input[data-row="${sym_row}"][data-col="${sym_col}"]`);
-            if (input1) input1.value = '';
-            if (input2) input2.value = '';
-            continue;
-        }
-        if (result.solution_count === 1) {
-            positions_set.add(`${row},${col}`);
-            positions_set.add(`${sym_row},${sym_col}`);
-            marks_added += (row === sym_row && col === sym_col) ? 1 : 2;
-            break;
-        }
-        positions_set.add(`${row},${col}`);
-        positions_set.add(`${sym_row},${sym_col}`);
-        marks_added += (row === sym_row && col === sym_col) ? 1 : 2;
-    }
+//         if (result.solution_count === 0 || result.solution_count === -2) {
+//             log_process(`添加提示数 (${row},${col})=${value1} 和 (${sym_row},${sym_col})=${value2} 后无解，撤销标记`);
+//             restore_original_board();
+//             // 无解，撤销标记
+//             const input1 = grid.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
+//             const input2 = grid.querySelector(`input[data-row="${sym_row}"][data-col="${sym_col}"]`);
+//             if (input1) input1.value = '';
+//             if (input2) input2.value = '';
+//             continue;
+//         }
+//         if (result.solution_count === 1) {
+//             positions_set.add(`${row},${col}`);
+//             positions_set.add(`${sym_row},${sym_col}`);
+//             marks_added += (row === sym_row && col === sym_col) ? 1 : 2;
+//             break;
+//         }
+//         positions_set.add(`${row},${col}`);
+//         positions_set.add(`${sym_row},${sym_col}`);
+//         marks_added += (row === sym_row && col === sym_col) ? 1 : 2;
+//     }
 
-    // generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-}
+//     // generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+// }
 
-// 生成X和数独题目
-export function generate_skyscraper_puzzle_new(size, score_lower_limit = 0, holes_count = undefined) {
-    // 记录开始时间
-    const start_time = performance.now();
-    const interior_size = size;
-    const total_size = interior_size + 2;
+// // 生成X和数独题目
+// export function generate_skyscraper_puzzle_new(size, score_lower_limit = 0, holes_count = undefined) {
+//     // 记录开始时间
+//     const start_time = performance.now();
+//     const interior_size = size;
+//     const total_size = interior_size + 2;
 
-    state.clues_board = null;
-    clear_inner_numbers();
-    clear_outer_clues();
-    log_process('', true);
-    const container = document.querySelector('.sudoku-container');
-    if (!container) return;
-    const grid = container.querySelector('.sudoku-grid');
-    if (!grid) return;
-    invalidate_regions_cache();
+//     state.clues_board = null;
+//     clear_inner_numbers();
+//     clear_outer_clues();
+//     log_process('', true);
+//     const container = document.querySelector('.sudoku-container');
+//     if (!container) return;
+//     const grid = container.querySelector('.sudoku-grid');
+//     if (!grid) return;
+//     invalidate_regions_cache();
 
-    // 1) 生成完整终盘（内盘）
-    const solved_interior = generate_solution(interior_size);
-    if (!solved_interior) {
-        log_process('生成终盘失败，无法出题。');
-        show_result('生成失败，请重试。');
-        return;
-    }
+//     // 1) 生成完整终盘（内盘）
+//     const solved_interior = generate_solution(interior_size);
+//     if (!solved_interior) {
+//         log_process('生成终盘失败，无法出题。');
+//         show_result('生成失败，请重试。');
+//         return;
+//     }
 
-    // // 2) 把终盘暂时填入内部以便标记外部提示（可见数）
-    // for (let r = 1; r <= interior_size; r++) {
-    //     for (let c = 1; c <= interior_size; c++) {
-    //         const val = solved_interior[r - 1][c - 1];
-    //         const input = grid.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
-    //         if (input) input.value = val;
-    //     }
-    // }
-    // 2) 把终盘临时填入内部以便标记外部提示（可见数）
-    const board_all = Array.from({ length: total_size }, () => Array.from({ length: total_size }, () => 0));
-    for (let r = 1; r <= interior_size; r++) {
-        for (let c = 1; c <= interior_size; c++) {
-            const val = solved_interior[r - 1][c - 1];
-            const input = grid.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
-            // 与DOM同步，填上内部数字
-            if (input) input.value = val;
-            board_all[r][c] = val;
-        }
-    }
+//     // // 2) 把终盘暂时填入内部以便标记外部提示（可见数）
+//     // for (let r = 1; r <= interior_size; r++) {
+//     //     for (let c = 1; c <= interior_size; c++) {
+//     //         const val = solved_interior[r - 1][c - 1];
+//     //         const input = grid.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
+//     //         if (input) input.value = val;
+//     //     }
+//     // }
+//     // 2) 把终盘临时填入内部以便标记外部提示（可见数）
+//     const board_all = Array.from({ length: total_size }, () => Array.from({ length: total_size }, () => 0));
+//     for (let r = 1; r <= interior_size; r++) {
+//         for (let c = 1; c <= interior_size; c++) {
+//             const val = solved_interior[r - 1][c - 1];
+//             const input = grid.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
+//             // 与DOM同步，填上内部数字
+//             if (input) input.value = val;
+//             board_all[r][c] = val;
+//         }
+//     }
 
-    // 使用现有标记函数依据已填内部数字自动标注外部提示
-    mark_outer_clues_skyscraper(interior_size);
+//     // 使用现有标记函数依据已填内部数字自动标注外部提示
+//     mark_outer_clues_skyscraper(interior_size);
 
-    // 将 DOM 中标记的外部提示同步回 board_all 的边界位置
-    for (let r = 0; r < total_size; r++) {
-        for (let c = 0; c < total_size; c++) {
-            if (r === 0 || r === total_size - 1 || c === 0 || c === total_size - 1) {
-                const input = grid.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
-                const v = parseInt(input?.value ?? '', 10);
-                board_all[r][c] = Number.isFinite(v) && v > 0 ? v : 0;
-            }
-        }
-    }
+//     // 将 DOM 中标记的外部提示同步回 board_all 的边界位置
+//     for (let r = 0; r < total_size; r++) {
+//         for (let c = 0; c < total_size; c++) {
+//             if (r === 0 || r === total_size - 1 || c === 0 || c === total_size - 1) {
+//                 const input = grid.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
+//                 const v = parseInt(input?.value ?? '', 10);
+//                 board_all[r][c] = Number.isFinite(v) && v > 0 ? v : 0;
+//             }
+//         }
+//     }
     
-    // 初始化 state.clues_board（从 DOM 同步刚才生成的提示）
-    state.clues_board = Array.from({ length: total_size }, (_, r) => 
-        Array.from({ length: total_size }, (_, c) => {
-            const isBorder = r === 0 || r === total_size - 1 || c === 0 || c === total_size - 1;
-            if (isBorder) {
-                const input = grid.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
-                const v = parseInt(input?.value ?? '', 10);
-                return (Number.isFinite(v) && v > 0) ? v : 0;
-            }
-            return 0;
-        })
-    );
-    // log_process(
-    //     board_all
-    //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
-    //         .join('\n')
-    // );
+//     // 初始化 state.clues_board（从 DOM 同步刚才生成的提示）
+//     state.clues_board = Array.from({ length: total_size }, (_, r) => 
+//         Array.from({ length: total_size }, (_, c) => {
+//             const isBorder = r === 0 || r === total_size - 1 || c === 0 || c === total_size - 1;
+//             if (isBorder) {
+//                 const input = grid.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
+//                 const v = parseInt(input?.value ?? '', 10);
+//                 return (Number.isFinite(v) && v > 0) ? v : 0;
+//             }
+//             return 0;
+//         })
+//     );
+//     // log_process(
+//     //     board_all
+//     //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
+//     //         .join('\n')
+//     // );
 
-    // 清除内部数字，准备进行提示数挖空
-    clear_inner_numbers();
+//     // 清除内部数字，准备进行提示数挖空
+//     clear_inner_numbers();
 
-    // log_process(`注意生成的斜线位置，若无解，请重启网页`);
-    log_process(`正在生成题目，请稍候...`);
-    log_process('九宫：1-5分钟，超时请重启页面或调整限制条件');
-    show_result(`正在生成题目，请稍候...`);
-    show_generating_timer();
+//     // log_process(`注意生成的斜线位置，若无解，请重启网页`);
+//     log_process(`正在生成题目，请稍候...`);
+//     log_process('九宫：1-5分钟，超时请重启页面或调整限制条件');
+//     show_result(`正在生成题目，请稍候...`);
+//     show_generating_timer();
 
-    setTimeout(() => {
-        const {puzzle: inner_puzzle} = generate_puzzle(interior_size, score_lower_limit, holes_count, board_all);
+//     setTimeout(() => {
+//         const {puzzle: inner_puzzle} = generate_puzzle(interior_size, score_lower_limit, holes_count, board_all);
 
-        // 3) 按对称规则尝试删除外提示（对抗搜索）
-        const SYMMETRY_TYPES = ['central','central','central','central','central','diagonal','diagonal','anti-diagonal','anti-diagonal','horizontal','vertical'];
-        const symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
+//         // 3) 按对称规则尝试删除外提示（对抗搜索）
+//         const SYMMETRY_TYPES = ['central','central','central','central','central','diagonal','diagonal','anti-diagonal','anti-diagonal','horizontal','vertical'];
+//         const symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
 
-        const get_symmetric_position = (row, col, size, symmetry) => {
-            // symmetry = 'diagonal';
-            switch (symmetry) {
-                case 'central': return [size - 1 - row, size - 1 - col];
-                case 'diagonal': return [col, row];
-                case 'anti-diagonal': return [size - 1 - col, size - 1 - row];
-                case 'horizontal': return [size - 1 - row, col];
-                case 'vertical': return [row, size - 1 - col];
-                default: return [row, col];
-            }
-        };
+//         const get_symmetric_position = (row, col, size, symmetry) => {
+//             // symmetry = 'diagonal';
+//             switch (symmetry) {
+//                 case 'central': return [size - 1 - row, size - 1 - col];
+//                 case 'diagonal': return [col, row];
+//                 case 'anti-diagonal': return [size - 1 - col, size - 1 - row];
+//                 case 'horizontal': return [size - 1 - row, col];
+//                 case 'vertical': return [row, size - 1 - col];
+//                 default: return [row, col];
+//             }
+//         };
 
-        // 收集所有外提示位置（排除四个角落）
-        let clue_positions = [];
-        for (let i = 1; i <= interior_size; i++) {
-            clue_positions.push([0, i]);            // 上边缘
-            clue_positions.push([total_size - 1, i]); // 下边缘
-            clue_positions.push([i, 0]);            // 左边缘
-            clue_positions.push([i, total_size - 1]); // 右边缘
-        }
-        shuffle(clue_positions);
+//         // 收集所有外提示位置（排除四个角落）
+//         let clue_positions = [];
+//         for (let i = 1; i <= interior_size; i++) {
+//             clue_positions.push([0, i]);            // 上边缘
+//             clue_positions.push([total_size - 1, i]); // 下边缘
+//             clue_positions.push([i, 0]);            // 左边缘
+//             clue_positions.push([i, total_size - 1]); // 右边缘
+//         }
+//         shuffle(clue_positions);
 
-        const processed = new Set();
-        for (const [r, c] of clue_positions) {
-            if (processed.has(`${r},${c}`)) continue;
-            if (state.clues_board[r][c] === 0) continue;
+//         const processed = new Set();
+//         for (const [r, c] of clue_positions) {
+//             if (processed.has(`${r},${c}`)) continue;
+//             if (state.clues_board[r][c] === 0) continue;
 
-            const [sr, sc] = get_symmetric_position(r, c, total_size, symmetry);
+//             const [sr, sc] = get_symmetric_position(r, c, total_size, symmetry);
             
-            // 确保对称位置也是有效的边界（非角落）
-            const isSymmetricBorder = (sr === 0 || sr === total_size - 1 || sc === 0 || sc === total_size - 1) && 
-                                    !((sr === 0 || sr === total_size - 1) && (sc === 0 || sc === total_size - 1));
+//             // 确保对称位置也是有效的边界（非角落）
+//             const isSymmetricBorder = (sr === 0 || sr === total_size - 1 || sc === 0 || sc === total_size - 1) && 
+//                                     !((sr === 0 || sr === total_size - 1) && (sc === 0 || sc === total_size - 1));
             
-            const val1 = state.clues_board[r][c];
-            const val2 = isSymmetricBorder ? state.clues_board[sr][sc] : 0;
+//             const val1 = state.clues_board[r][c];
+//             const val2 = isSymmetricBorder ? state.clues_board[sr][sc] : 0;
 
-            // 尝试删除
-            state.clues_board[r][c] = 0;
-            if (isSymmetricBorder) state.clues_board[sr][sc] = 0;
+//             // 尝试删除
+//             state.clues_board[r][c] = 0;
+//             if (isSymmetricBorder) state.clues_board[sr][sc] = 0;
             
-            const input1 = grid.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
-            const input2 = isSymmetricBorder ? grid.querySelector(`input[data-row="${sr}"][data-col="${sc}"]`) : null;
-            if (input1) input1.value = '';
-            if (input2) input2.value = '';
+//             const input1 = grid.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
+//             const input2 = isSymmetricBorder ? grid.querySelector(`input[data-row="${sr}"][data-col="${sc}"]`) : null;
+//             if (input1) input1.value = '';
+//             if (input2) input2.value = '';
 
-            // // 检测唯一解 (传入全空的内盘进行校验)
-            // const puzzle = Array.from({ length: interior_size }, () => Array(interior_size).fill(0));
-            // 检测唯一解 (构造包含当前外提示和空内盘的完整棋盘供求解器使用)
-            const puzzle = state.clues_board.map(row => [...row]);
-            for (let ir = 1; ir <= interior_size; ir++) {
-                for (let ic = 1; ic <= interior_size; ic++) {
-                    // puzzle[ir][ic] = inner_puzzle[ir - 1][ic - 1];
-                    const val = inner_puzzle[ir - 1][ic - 1];
-                    // 如果是 0，则赋予全部候选数数组，否则赋予固定值
-                    puzzle[ir][ic] = val === 0 
-                        ? Array.from({ length: interior_size }, (_, i) => i + 1) 
-                        : val;
-                }
-            }
+//             // // 检测唯一解 (传入全空的内盘进行校验)
+//             // const puzzle = Array.from({ length: interior_size }, () => Array(interior_size).fill(0));
+//             // 检测唯一解 (构造包含当前外提示和空内盘的完整棋盘供求解器使用)
+//             const puzzle = state.clues_board.map(row => [...row]);
+//             for (let ir = 1; ir <= interior_size; ir++) {
+//                 for (let ic = 1; ic <= interior_size; ic++) {
+//                     // puzzle[ir][ic] = inner_puzzle[ir - 1][ic - 1];
+//                     const val = inner_puzzle[ir - 1][ic - 1];
+//                     // 如果是 0，则赋予全部候选数数组，否则赋予固定值
+//                     puzzle[ir][ic] = val === 0 
+//                         ? Array.from({ length: interior_size }, (_, i) => i + 1) 
+//                         : val;
+//                 }
+//             }
             
-            backup_original_board();
-            const res = solve(puzzle, interior_size, isValid, true);
-            restore_original_board();
+//             backup_original_board();
+//             const res = solve(puzzle, interior_size, isValid, true);
+//             restore_original_board();
 
-            if (res.solution_count === 1) {
-                // 唯一解，确认删除
-                // log_process(`尝试删除提示 (${r},${c}) & (${sr},${sc}): 唯一解`);
-            } else {
-                // 不是唯一解，还原
-                state.clues_board[r][c] = val1;
-                if (input1) input1.value = val1;
-                if (isSymmetricBorder) {
-                    state.clues_board[sr][sc] = val2;
-                    if (input2) input2.value = val2;
-                }
-                // log_process(`尝试删除提示 (${r+1},${c+1}) & (${sr+1},${sc+1}): 非唯一解，已还原`);
-            }
-            processed.add(`${r},${c}`);
-            processed.add(`${sr},${sc}`);
-        }
+//             if (res.solution_count === 1) {
+//                 // 唯一解，确认删除
+//                 // log_process(`尝试删除提示 (${r},${c}) & (${sr},${sc}): 唯一解`);
+//             } else {
+//                 // 不是唯一解，还原
+//                 state.clues_board[r][c] = val1;
+//                 if (input1) input1.value = val1;
+//                 if (isSymmetricBorder) {
+//                     state.clues_board[sr][sc] = val2;
+//                     if (input2) input2.value = val2;
+//                 }
+//                 // log_process(`尝试删除提示 (${r+1},${c+1}) & (${sr+1},${sc+1}): 非唯一解，已还原`);
+//             }
+//             processed.add(`${r},${c}`);
+//             processed.add(`${sr},${sc}`);
+//         }
 
-        generate_puzzle(interior_size, score_lower_limit, holes_count, inner_puzzle);
-        hide_generating_timer();
-        const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
-        show_result(`已生成${interior_size}宫格数独题目（用时${elapsed}秒）`);
-    }, 0);
-}
+//         generate_puzzle(interior_size, score_lower_limit, holes_count, inner_puzzle);
+//         hide_generating_timer();
+//         const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
+//         show_result(`已生成${interior_size}宫格数独题目（用时${elapsed}秒）`);
+//     }, 0);
+// }
 
 // 根据摩天楼外提示规则标记候选数（从 board 读取外提示）
 export function apply_skyscraper_marks(board, size) {

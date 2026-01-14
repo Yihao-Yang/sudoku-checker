@@ -22,7 +22,7 @@ export function create_renban_sudoku(size) {
     log_process('出题：');
     log_process('10秒，超1分钟请重启页面或调整限制条件');
     log_process('若自动生成图案无解请重启页面');
-    log_process('若手动给的标记不合理可能会产生错误');
+    log_process('若手动给的标记不合理可能会被代码忽视');
     log_process('');
     log_process('自动出题：');
     log_process('蓝色：自动添加标记出题');
