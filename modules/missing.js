@@ -34,8 +34,27 @@ export function create_missing_sudoku(size) {
     
     // 重置状态
     set_current_mode('missing');
+    show_result(`当前模式为缺一门数独`);
+    log_process('', true);
+    log_process('规则：');
+    log_process('黑格：无需填写数字');
+    log_process('');
+    log_process('技巧：');
+    // log_process('"变型"：用到变型条件删数的技巧');
+    log_process('"_n"后缀：区域内剩余空格数/区块用到的空格数');
+    // log_process('"额外区域"：附加的不可重复区域');
+    // log_process('"特定组合"：受附加条件影响的区域');
+    log_process('');
+    log_process('出题：');
+    log_process('10秒，超1分钟请重启页面或调整限制条件');
+    log_process('若手动给的标记不合理可能会被代码忽视');
+    log_process('');
+    log_process('自动出题：');
+    // log_process('自动添加标记出题');
+    log_process('蓝色：自动添加标记出题');
+    log_process('绿色：根据给定标记出题（功能未完成）');
     // state.is_missing_mode = true;
-    clear_result();
+    // clear_result();
     invalidate_regions_cache();
     missing_cells = [];
 
@@ -110,8 +129,9 @@ export function create_missing_sudoku(size) {
     // 主功能按钮
     
     extraButtons.innerHTML = '';
+    add_Extra_Button('缺一门', () => {create_missing_sudoku(size)});
     add_Extra_Button('添加标记', toggle_marking_mode);
-    add_Extra_Button('验证唯一性', check_missing_uniqueness);
+    // add_Extra_Button('验证唯一性', check_missing_uniqueness);
     // add_Extra_Button('清除数字', clear_numbers);
     add_Extra_Button('清除标记', clear_marks);
     add_Extra_Button('自动出题', () => generate_missing_puzzle(size));
@@ -222,13 +242,13 @@ export function generate_missing_puzzle(size) {
 
     // 允许用户自定义分值下限
     let score_lower_limit = 0;
-    if (typeof window !== 'undefined') {
-        const input = window.prompt(
-            `请输入你想要的题目分值下限（六宫简单0，普通20，困难40：九宫简单0，普通100，困难200）：`,
-            '0'
-        );
-        score_lower_limit = Number(input) || 0;
-    }
+    // if (typeof window !== 'undefined') {
+    //     const input = window.prompt(
+    //         `请输入你想要的题目分值下限（六宫简单0，普通20，困难40：九宫简单0，普通100，困难200）：`,
+    //         '0'
+    //     );
+    //     score_lower_limit = Number(input) || 0;
+    // }
 
     // 根据分值下限自动设置难度
     let difficulty = 'easy';
@@ -441,7 +461,10 @@ function setup_missing_event_listeners() {
  * 切换标记模式
  */
 function toggle_marking_mode() {
-    const btn = document.querySelector('#extraButtons button:first-child');
+    // const btn = document.querySelector('#extraButtons button:first-child');
+    const btns = document.querySelectorAll('#extraButtons button');
+    const btn = btns[1]; // 第二个按钮是“添加标记”
+    
     
     is_missing_mode_active = !is_missing_mode_active;
     
@@ -654,7 +677,9 @@ export function clear_marks() {
     is_missing_mode_active = false;
     
     // 重置按钮文本
-    const btn = document.querySelector('#extraButtons button:first-child');
+    // const btn = document.querySelector('#extraButtons button:first-child');
+    const btns = document.querySelectorAll('#extraButtons button');
+    const btn = btns[1]; // 第二个按钮
     if (btn) btn.textContent = '添加标记';
     
     show_result("已清除所有黑格标记，保留数字", 'info');

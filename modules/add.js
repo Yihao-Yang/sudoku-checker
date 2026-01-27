@@ -1,16 +1,36 @@
 import { state, set_current_mode } from '../solver/state.js';
-import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, add_Extra_Button, clear_all_inputs, clear_marks } from '../solver/core.js';
+import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, add_Extra_Button, clear_all_inputs, clear_marks, show_generating_timer, hide_generating_timer } from '../solver/core.js';
 import { create_technique_panel } from '../solver/classic.js';
-import { get_all_regions, solve, invalidate_regions_cache } from '../solver/solver_tool.js';
+import { get_all_regions, solve, invalidate_regions_cache, sync_marks_board_from_dom } from '../solver/solver_tool.js';
 import { generate_puzzle, generate_solution, generate_solution_old, generate_solved_board_brute_force } from '../solver/generate.js';
 
 // 新数独主入口
 export function create_add_sudoku(size) {
     set_current_mode('add');
+    show_result(`当前模式为加法数独`);
+    log_process('', true);
+    log_process('规则：');
+    log_process('标记：覆盖格内数字之和');
+    log_process('');
+    log_process('技巧：');
+    // log_process('"变型"：用到变型条件删数的技巧');
+    log_process('"_n"后缀：区域内剩余空格数/区块用到的空格数');
+    // log_process('"额外区域"：附加的不可重复区域');
+    log_process('"特定组合"：受附加条件影响的区域');
+    log_process('');
+    log_process('出题：');
+    log_process('10秒，超1分钟请重启页面或调整限制条件');
+    log_process('若手动给的标记不合理可能会被代码忽视');
+    log_process('');
+    log_process('自动出题：');
+    log_process('蓝色：自动添加标记出题');
+    log_process('绿色：根据给定标记出题');
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
     invalidate_regions_cache();
+    // 清空 marks_board
+    state.marks_board = [];
 
     // 技巧设置（可根据需要调整）
     state.techniqueSettings = {
@@ -106,372 +126,23 @@ export function create_add_sudoku(size) {
     // 添加新数独专属按钮
     const extra_buttons = document.getElementById('extraButtons');
     extra_buttons.innerHTML = '';
+    add_Extra_Button('加法', () => {create_add_sudoku(size)}, '#2196F3');
     // add_Extra_Button('清除标记', clear_add_marks, '#FF5722');
     add_Extra_Button('清除标记', clear_marks);
     add_Extra_Button('自动出题', () => generate_add_puzzle(size));
     // 可添加唯一性验证等按钮
 }
 
-// // 自动生成加法数独题目（生成圆圈并调用generate_puzzle）
-// export function generate_add_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
-//     clear_all_inputs();
-//     // 清除已有圆圈
-//     const container = document.querySelector('.sudoku-container');
-//     if (!container) return;
-//     Array.from(container.querySelectorAll('.vx-mark')).forEach(mark => mark.remove());
-
-//     // 生成圆圈数量
-//     let min_marks = 2, max_marks = 4;
-//     if (size === 6) { min_marks = 10; max_marks = 12; }
-//     if (size === 9) { min_marks = 26; max_marks = 28; }
-//     const num_marks = Math.floor(Math.random() * (max_marks - min_marks + 1)) + min_marks;
-//     // log_process(`计划生成圆圈数量：${num_marks}`);
-
-//     // 选取对称类型
-//     const SYMMETRY_TYPES = [
-//         'central','central','central','central','central',
-//         'diagonal','diagonal',
-//         'anti-diagonal','anti-diagonal',
-//         'horizontal',
-//         'vertical',
-//         // 'none'
-//     ];
-//     const symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
-
-//     // 获取对称点
-//     function get_symmetric(row, col, size, symmetry, type) {
-//         // type: 'v' 竖线，'h' 横线，'x' 交点（四格）
-//         switch (symmetry) {
-//             case 'central':
-//                 if (type === 'v') {
-//                     return [size - 1 - row, size - 2 - col, 'v'];
-//                 } else if (type === 'h') {
-//                     return [size - 2 - row, size - 1 - col, 'h'];
-//                 } else { // x
-//                     return [size - 2 - row, size - 2 - col, 'x'];
-//                 }
-//             case 'diagonal':
-//                 if (type === 'v') {
-//                     return [col, row, 'h'];
-//                 } else if (type === 'h') {
-//                     return [col, row, 'v'];
-//                 } else { // x
-//                     return [col, row, 'x'];
-//                 }
-//             case 'anti-diagonal':
-//                 if (type === 'v') {
-//                     return [size - 2 - col, size - 1 - row, 'h'];
-//                 } else if (type === 'h') {
-//                     return [size - 1 - col, size - 2 - row, 'v'];
-//                 } else { // x
-//                     return [size - 2 - col, size - 2 - row, 'x'];
-//                 }
-//             case 'horizontal':
-//                 if (type === 'v') {
-//                     return [size - 1 - row, col, 'v'];
-//                 } else if (type === 'h') {
-//                     return [size - 2 - row, col, 'h'];
-//                 } else { // x
-//                     return [size - 2 - row, col, 'x'];
-//                 }
-//             case 'vertical':
-//                 if (type === 'v') {
-//                     return [row, size - 2 - col, 'v'];
-//                 } else if (type === 'h') {
-//                     return [row, size - 1 - col, 'h'];
-//                 } else { // x
-//                     return [row, size - 2 - col, 'x'];
-//                 }
-//             default:
-//                 return [row, col, type];
-//         }
-//     }
-//     // log_process(`即将生成加法数独，圆圈数量：${num_marks}，对称类型：${symmetry}`);
-
-//     // 随机生成圆圈位置和数字（不贴边线，带对称）
-//     const positions_set = new Set();
-//     let marks_added = 0;
-//     let try_count = 0;
-//     const MAX_TRY = 1000;
-//     while (marks_added < num_marks && try_count < MAX_TRY) {
-//         try_count++;
-//         // 随机决定横线、竖线或交点
-//         const rand = Math.random();
-//         let type;
-//         if (rand < 0.2) type = 'v';
-//         else if (rand < 0.4) type = 'h';
-//         else type = 'x';
-        
-//         let row, col;
-//         if (type === 'v') {
-//             row = Math.floor(Math.random() * size);
-//             col = Math.floor(Math.random() * (size - 1));
-//         } else if (type === 'h') {
-//             row = Math.floor(Math.random() * (size - 1));
-//             col = Math.floor(Math.random() * size);
-//         } else { // 'x' 交点，行列必须在 1..size-1
-//             row = Math.floor(Math.random() * (size - 1));
-//             col = Math.floor(Math.random() * (size - 1));
-//          }
-//         const key = `${type}-${row}-${col}`;
-//         if (positions_set.has(key)) continue;
-
-//         // 计算对称点
-//         const [sym_row, sym_col, sym_type] = get_symmetric(row, col, size, symmetry, type);
-//         const sym_key = `${sym_type}-${sym_row}-${sym_col}`;
-
-//         // 两个点都不能重复且都不能贴右/下边线
-// // -        if (
-// // -            sym_row >= 0 && sym_row < size && sym_col >= 0 && sym_col < size &&
-// // -            ((type === 'v' && col < size - 1) || (type === 'h' && row < size - 1)) &&
-// // -            ((sym_type === 'v' && sym_col < size - 1) || (sym_type === 'h' && sym_row < size - 1)) &&
-// // -            !positions_set.has(key) && !positions_set.has(sym_key)
-// // -        ) {
-//         const valid_primary = (
-//             type === 'v' ? (row >= 0 && row < size && col >= 0 && col < size - 1) :
-//             type === 'h' ? (row >= 0 && row < size - 1 && col >= 0 && col < size) :
-//             (row >= 0 && row < size - 1 && col >= 0 && col < size - 1)
-//         );
-//         const valid_sym = (
-//             sym_type === 'v' ? (sym_row >= 0 && sym_row < size && sym_col >= 0 && sym_col < size - 1) :
-//             sym_type === 'h' ? (sym_row >= 0 && sym_row < size - 1 && sym_col >= 0 && sym_col < size) :
-//             (sym_row >= 0 && sym_row < size - 1 && sym_col >= 0 && sym_col < size - 1)
-//         );
-
-//         if (valid_primary && valid_sym && !positions_set.has(key) && !positions_set.has(sym_key)) {
-//             positions_set.add(key);
-//             positions_set.add(sym_key);
-//             add_circle(row, col, size, container, type);
-//             add_circle(sym_row, sym_col, size, container, sym_type);
-//             // 检查是否有解
-//             // 构造当前盘面
-//             const grid = container.querySelector('.sudoku-grid');
-//             let board = [];
-//             for (let r = 0; r < size; r++) {
-//                 board[r] = [];
-//                 for (let c = 0; c < size; c++) {
-//                     board[r][c] = 0;
-//                 }
-//             }
-//             // 调用solve
-//             backup_original_board();
-//             const result = solve(board.map(r => r.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), size, is_valid_add, true);
-//             log_process(`尝试添加圆圈位置：${type}(${row},${col}) 和 ${type}(${sym_row},${sym_col})，解的数量：${result.solution_count}`);
-//             if (result.solution_count === 0 || result.solution_count === -2) {
-//                 log_process('当前圆圈位置无解，重新生成');
-//                 restore_original_board();
-//                 // // 无解，撤销圆圈
-//                 // positions_set.delete(`${row},${col}`);
-//                 // positions_set.delete(`${sym_row},${sym_col}`);
-//                 // 无解，从positions_set中移除对应的键值
-//                 positions_set.delete(key);
-//                 positions_set.delete(sym_key);
-//                 // 移除最后两个圆圈
-//                 const marks = container.querySelectorAll('.vx-mark');
-//                 if (marks.length >= 2) {
-//                     marks[marks.length - 1].remove();
-//                     marks[marks.length - 2].remove();
-//                 }
-//                 // marks_added -= 2; // 同步减少计数
-//                 continue;
-//             }
-//             if (result.solution_count === 1) {
-//                 marks_added += 2;
-//                 return;
-//                 break;
-//             }
-//             marks_added += 2;
-//         }
-//         // 如果对称点和主点重合，只添加一次
-// // -        else if (
-// // -            sym_row === row && sym_col === col &&
-// // -            !positions_set.has(key)
-// // -        ) {
-//         else if (valid_primary && sym_row === row && sym_col === col && !positions_set.has(key)) {
-//             positions_set.add(key);
-//             add_circle(row, col, size, container, type);
-//             // 检查是否有解
-//             // 构造当前盘面
-//             const grid = container.querySelector('.sudoku-grid');
-//             let board = [];
-//             for (let r = 0; r < size; r++) {
-//                 board[r] = [];
-//                 for (let c = 0; c < size; c++) {
-//                     board[r][c] = 0;
-//                 }
-//             }
-//             // 调用solve
-//             backup_original_board();
-//             const result = solve(board.map(r => r.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), size, is_valid_add, true);
-//             log_process(`尝试添加圆圈 at (${row},${col})，解数：${result.solution_count}`);
-//             if (result.solution_count === 0 || result.solution_count === -2) {
-//                 log_process('当前圆圈位置无解，重新生成');
-//                 restore_original_board();
-//                 // // 无解，撤销圆圈
-//                 // positions_set.delete(`${row},${col}`);
-//                 // positions_set.delete(`${sym_row},${sym_col}`);
-//                 // 无解，从positions_set中移除对应的键值
-//                 positions_set.delete(key);
-//                 // positions_set.delete(sym_key);
-//                 // 移除最后两个圆圈
-//                 const marks = container.querySelectorAll('.vx-mark');
-//                 if (marks.length >= 1) {
-//                     marks[marks.length - 1].remove();
-//                 }
-//                 // marks_added -= 1; // 同步减少计数
-//                 continue;
-//             }
-//             if (result.solution_count === 1) {
-//                 marks_added += 1;
-//                 return;
-//                 break;
-//             }
-//             marks_added += 1;
-//         }
-//     }
-//     if (try_count >= MAX_TRY) {
-//         log_process('自动出题失败，请重试或减少圆圈数量！');
-//     }
-
-//     // 生成题目
-//     generate_puzzle(size, score_lower_limit, holes_count);
-
-//     // 辅助函数:添加加法标记（与add_add_mark一致）
-//     function add_circle(row, col, size, container, type) {
-//         const grid = container.querySelector('.sudoku-grid');
-//         if (!grid) return;
-
-//         const cell_width = grid.offsetWidth / size;
-//         const cell_height = grid.offsetHeight / size;
-
-//         let mark_x, mark_y, key;
-//         if (type === 'v') {
-//             // 竖线：连接[row, col]和[row, col+1]
-//             mark_x = (col + 1) * cell_width;
-//             mark_y = row * cell_height + cell_height / 2;
-//             key = `v-${row}-${col + 1}`;
-//         } else if (type === 'h') {
-//             // 横线：连接[row, col]和[row+1, col]
-//             mark_x = col * cell_width + cell_width / 2;
-//             mark_y = (row + 1) * cell_height;
-//             key = `h-${row + 1}-${col}`;
-//         } else if (type === 'x') {
-//             // 交点（四格）：位于行/列交叉处 (row, col) 表示位于第 row 行与第 col 列的交点
-//             mark_x = (col + 1) * cell_width;
-//             mark_y = (row + 1) * cell_height;
-//             // key = null; // 交点不设置 v-/h- key，solver 会按位置解析为四格提示
-//             key = `x-${row + 1}-${col + 1}`;
-//         } else {
-//             return;
-//         }
-
-//         const grid_offset_left = grid.offsetLeft;
-//         const grid_offset_top = grid.offsetTop;
-
-//         // 防止重复添加 v/h 的重复；对于交点使用位置判重
-//         const existingMarks = Array.from(container.querySelectorAll('.vx-mark'));
-//         if (key) {
-//             if (existingMarks.some(m => m.dataset.key === key)) return;
-//         } else {
-//             // 对于交点，避免同一位置重复（使用左右/上下偏移 2px 判断）
-//             if (existingMarks.some(m => {
-//                 const l = parseInt(m.style.left || '0', 10);
-//                 const t = parseInt(m.style.top || '0', 10);
-//                 return Math.abs(l - (grid_offset_left + mark_x - 15)) <= 2 && Math.abs(t - (grid_offset_top + mark_y - 15)) <= 2;
-//             })) return;
-//         }
-
-//         const mark = document.createElement('div');
-//         mark.className = 'vx-mark';
-//         if (key) mark.dataset.key = key;
-//         mark.style.position = 'absolute';
-//         mark.style.left = `${grid_offset_left + mark_x - 15}px`;
-//         mark.style.top = `${grid_offset_top + mark_y - 15}px`;
-//         mark.style.width = '30px';
-//         mark.style.height = '30px';
-//         // 黑色边框
-//         mark.style.border = '1px solid #000';
-//         mark.style.boxSizing = 'border-box';
-
-//         // 创建只显示数字的输入框
-//         const input = document.createElement('input');
-//         input.type = 'text';
-//         input.maxLength = 2;
-//         input.style.width = '38px';
-//         input.style.height = '28px';
-//         input.style.fontSize = '22px';
-//         input.style.textAlign = 'center';
-//         input.style.border = 'none';
-//         input.style.background = 'transparent';
-//         input.style.outline = 'none';
-//         input.style.position = 'absolute';
-//         input.style.left = '50%';
-//         input.style.top = '50%';
-//         input.style.transform = 'translate(-50%, -50%)';
-//         input.style.color = '#333';
-
-//         // 根据 size 设置半排除数组
-//         let semi_excluded_values = [];
-//         if (size === 6) {
-//             semi_excluded_values = [3, 4, 10, 11];
-//         } else if (size === 9) {
-//             semi_excluded_values = [3, 4, 16, 17];
-//         }
-        
-//         if (type === 'x') {
-//             // 四格提示：根据 size 在指定范围内随机取值
-//             let sum;
-//             if (size === 4) {
-//                 // 四宫：6-14
-//                 sum = Math.floor(Math.random() * (14 - 6 + 1)) + 6;
-//             } else if (size === 6) {
-//                 // 六宫：6-22
-//                 sum = Math.floor(Math.random() * (22 - 6 + 1)) + 6;
-//             } else if (size === 9) {
-//                 // 九宫：可根据需要调整范围，这里暂定 10-30
-//                 sum = Math.floor(Math.random() * (34 - 6 + 1)) + 6;
-//             } else {
-//                 // 其他尺寸：使用 4*size 的上下浮动
-//                 sum = Math.floor(Math.random() * (size * 2)) + size * 2;
-//             }
-//             input.value = `${sum}`;
-//         } else {
-//             // 两格提示：生成两个不同数字的和
-//             let left, right, add;
-//             do {
-//                 left = Math.floor(Math.random() * size) + 1;
-//                 right = Math.floor(Math.random() * size) + 1;
-//                 if (left === right) continue;
-//                 add = left + right;
-//                 // 半排除
-//                 if (semi_excluded_values.includes(add) && Math.random() < 0.5) continue;
-//                 break;
-//             } while (true);
-//             input.value = `${add}`;
-//         }
-
-//         mark.ondblclick = function(e) {
-//             e.stopPropagation();
-//             mark.remove();
-//         };
-//         input.ondblclick = function(e) {
-//             e.stopPropagation();
-//             mark.remove();
-//         };
-
-//         mark.appendChild(input);
-//         container.appendChild(mark);
-//         input.focus();
-//     }
-
-// }
-
+// 自动生成加法数独题目（生成圆圈并调用generate_puzzle）
 export function generate_add_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
     // 记录开始时间
     const start_time = performance.now();
     clear_all_inputs();
+    clear_marks();
     invalidate_regions_cache();
     log_process('', true);
+    // 清空 marks_board
+    state.marks_board = [];
     // 清除已有圆圈
     const container = document.querySelector('.sudoku-container');
     if (!container) return;
@@ -492,7 +163,7 @@ export function generate_add_puzzle(size, score_lower_limit = 0, holes_count = u
         inputs[i].value = '';
     }
 
-    // 第二步开始：逐步添加对称的提示标记
+    // 第二步开始：逐步添加对称的提示标记（仅写入 state.marks_board）
     log_process("第二步：开始添加对称提示标记...");
     
     // const SYMMETRY_TYPES = [
@@ -518,290 +189,335 @@ export function generate_add_puzzle(size, score_lower_limit = 0, holes_count = u
     // else if (size === 9) MAX_MARKS = 28;
     // else MAX_MARKS = (size-2) * (size-1); // 其它尺寸保持原有策略
     let try_count = 0;
-    const MAX_TRY = 100;
+    const MAX_TRY = 50;
 
-    try {
-        while (try_count < MAX_TRY && marks_added < MAX_MARKS) {
-            try_count++;
-            
-            // 随机选择标记类型
-            const rand = Math.random();
-            let type;
-            if (rand < 0.4) type = 'v';      // 30% 竖线
-            else if (rand < 0.8) type = 'h'; // 30% 横线  
-            else type = 'x';                 // 40% 交点
+    log_process(`正在生成题目，请稍候...`);
+    log_process('九宫：1分钟，超时请重启页面或调整限制条件');
+    show_result(`正在生成题目，请稍候...`);
+    show_generating_timer();
 
-            // 随机选择主位置
-            let row, col;
-            if (type === 'v') {
-                row = Math.floor(Math.random() * size);
-                col = Math.floor(Math.random() * (size - 1));
-            } else if (type === 'h') {
-                row = Math.floor(Math.random() * (size - 1));
-                col = Math.floor(Math.random() * size);
-            } else { // 'x'
-                row = Math.floor(Math.random() * (size - 1));
-                col = Math.floor(Math.random() * (size - 1));
-            }
+    // 构建候选池（蛇形命名）
+    function build_candidate_pool(size, symmetry) {
+        const candidate_pool = [];
+        const add_candidate = (row, col, type) => {
+            if (!is_valid_position(row, col, size, type)) return;
+            if (is_mark_exists_state(row, col, type)) return;
 
-            // 计算对称位置
             const [sym_row, sym_col, sym_type] = get_symmetric(row, col, size, symmetry, type);
-            
-            // 检查位置有效性
-            if (!is_valid_position(row, col, size, type) || 
-                !is_valid_position(sym_row, sym_col, size, sym_type)) {
-                continue;
-            }
+            if (!is_valid_position(sym_row, sym_col, size, sym_type)) return;
+            if (!(row === sym_row && col === sym_col && type === sym_type) && is_mark_exists_state(sym_row, sym_col, sym_type)) return;
 
-            // 检查是否已存在标记
-            if (is_mark_exists(row, col, type, container) || 
-                is_mark_exists(sym_row, sym_col, sym_type, container)) {
-                continue;
-            }
-
-            // 计算主标记的和（基于终盘）
-            const main_sum = calculate_sum_from_solved(row, col, type, solvedBoard, size);
-            if (main_sum === null) continue;
-
-            // 计算对称标记的和
-            const sym_sum = calculate_sum_from_solved(sym_row, sym_col, sym_type, solvedBoard, size);
-            if (sym_sum === null) continue;
-
-            // 添加主标记
-            add_circle_with_sum(row, col, size, container, type, main_sum);
-            
-            // 添加对称标记（如果不是同一个位置）
-            if (!(row === sym_row && col === sym_col && type === sym_type)) {
-                add_circle_with_sum(sym_row, sym_col, size, container, sym_type, sym_sum);
-                marks_added += 2;
-            } else {
-                marks_added += 1;
-            }
-
-            log_process(`添加标记: ${type}(${row},${col})=${main_sum}, ${sym_type}(${sym_row},${sym_col})=${sym_sum}`);
-
-            // 第四步：验证唯一性
-            log_process("验证唯一性...");
-            // const currentBoard = get_current_board_state(size);
-            // backup_original_board();
-            
-            // const result = solve(
-            //     currentBoard.map(row => row.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), 
-            //     size, 
-            //     is_valid_add, 
-            //     true
-            // );
-
-            // 使用完全空白的盘面进行验证
-            const emptyBoard = Array(size).fill().map(() => Array(size).fill(0));
-            backup_original_board();
-            
-            const result = solve(
-                emptyBoard.map(row => row.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), 
-                size, 
-                is_valid_add, 
-                true
-            );
-
-            if (result.solution_count === 1) {
-                log_process(`✓ 找到唯一解！共添加 ${marks_added} 个标记`);
-                // 第五步：优化标记，删除无用条件
-                optimize_marks(container, size, symmetry);
-                // 生成最终题目（挖空）
-                // generate_puzzle(size, score_lower_limit, holes_count);
-                return;
-            } else if (result.solution_count === 0) {
-                log_process("✗ 无解，移除最后添加的标记");
-                // 移除最后添加的标记
-                remove_last_marks(container, (row === sym_row && col === sym_col && type === sym_type) ? 1 : 2);
-                marks_added -= (row === sym_row && col === sym_col && type === sym_type) ? 1 : 2;
-            } else {
-                log_process(`多个解（${result.solution_count}），继续添加标记...`);
-            }
-
-            restore_original_board();
-        }
-    } finally {
-        
-        // 记录结束时间
-        const end_time = performance.now();
-        const elapsed = ((end_time - start_time) / 1000).toFixed(3); // 秒，保留三位小数
-        show_result(`已生成${size}宫格数独题目（用时${elapsed}秒）`);
-    }
-
-    if (try_count >= MAX_TRY) {
-        log_process("自动出题失败：达到最大尝试次数");
-    } else {
-        log_process("自动出题完成（可能非唯一解）");
-        // generate_puzzle(size, score_lower_limit, holes_count);
-    }
-
-    // 新增：优化标记函数
-    function optimize_marks(container, size, symmetry) {
-        log_process("开始优化标记，删除无用条件...");
-        
-        // 获取所有标记并按对称组分组
-        const markGroups = group_marks_by_symmetry(container, size, symmetry);
-        log_process(`共找到 ${markGroups.length} 组对称标记`);
-        
-        let removed_count = 0;
-        
-        // 按组尝试删除标记
-        for (let i = 0; i < markGroups.length; i++) {
-            const group = markGroups[i];
-            log_process(`尝试删除第 ${i + 1} 组标记: ${group.mainKey} 和 ${group.symKey}`);
-            
-            // 临时移除这组标记
-            const removedMarks = temporarily_remove_marks(container, [group.mainKey, group.symKey]);
-
-            const emptyBoard = Array(size).fill().map(() => Array(size).fill(0));
-            backup_original_board();
-            
-            const result = solve(
-                emptyBoard.map(row => row.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), 
-                size, 
-                is_valid_add, 
-                true
-            );
-            
-            if (result.solution_count === 1) {
-                // 删除后仍然唯一解，保留删除
-                log_process(`✓ 删除第 ${i + 1} 组标记后仍唯一解，永久删除`);
-                permanently_remove_marks(removedMarks);
-                removed_count += 2;
-            } else {
-                // 删除后不唯一解，恢复标记
-                log_process(`✗ 删除第 ${i + 1} 组标记后解不唯一，恢复标记`);
-                restore_marks(container, removedMarks);
-            }
-            
-            restore_original_board();
-        }
-        
-        log_process(`优化完成，共删除了 ${removed_count} 个无用标记`);
-    }
-
-    // 新增：按对称性分组标记
-    function group_marks_by_symmetry(container, size, symmetry) {
-        const allMarks = Array.from(container.querySelectorAll('.vx-mark'));
-        const groups = [];
-        const processedKeys = new Set();
-        
-        for (const mark of allMarks) {
-            const key = mark.dataset.key;
-            if (!key || processedKeys.has(key)) continue;
-            
-            // 解析标记信息
-            const [type, row_str, col_str] = key.split('-');
-            const row = parseInt(row_str, 10);
-            const col = parseInt(col_str, 10);
-            
-            // 根据标记类型和对称性计算原始位置
-            let original_row, original_col, original_type;
-            
-            if (type === 'v') {
-                // 竖线标记：key格式 v-row-col，对应位置 (row, col-1)
-                original_row = row;
-                original_col = col - 1;
-                original_type = 'v';
-            } else if (type === 'h') {
-                // 横线标记：key格式 h-row-col，对应位置 (row-1, col)
-                original_row = row - 1;
-                original_col = col;
-                original_type = 'h';
+            // 相邻冲突：
+            // v/h 不允许与 x 相邻；x 不允许与 v/h 相邻，同时也校验对称位
+            if (type === 'v' || type === 'h') {
+                if (has_adjacent_x_state(row, col, type)) return;
+                if ((sym_type === 'v' || sym_type === 'h') && has_adjacent_x_state(sym_row, sym_col, sym_type)) return;
             } else if (type === 'x') {
-                // 交点标记：key格式 x-row-col，对应位置 (row-1, col-1)
-                original_row = row - 1;
-                original_col = col - 1;
-                original_type = 'x';
-            } else {
-                continue;
+                if (has_adjacent_vh_state(row, col)) return;
+                if (sym_type === 'x' && has_adjacent_vh_state(sym_row, sym_col)) return;
             }
-            
-            // 计算对称位置
-            const [sym_row, sym_col, sym_type] = get_symmetric(original_row, original_col, size, symmetry, original_type);
-            const symKey = get_mark_key(sym_row, sym_col, sym_type);
-            
-            // 查找对称标记
-            const symMark = allMarks.find(m => m.dataset.key === symKey);
-            
-            if (symMark && !processedKeys.has(symKey)) {
-                groups.push({
-                    mainKey: key,
-                    symKey: symKey,
-                    mainMark: mark,
-                    symMark: symMark
-                });
-                processedKeys.add(key);
-                processedKeys.add(symKey);
-            } else if (!symMark) {
-                // 如果没有找到对称标记，单独成组（可能是中心对称点）
-                groups.push({
-                    mainKey: key,
-                    symKey: null,
-                    mainMark: mark,
-                    symMark: null
-                });
-                processedKeys.add(key);
+
+            candidate_pool.push({ row, col, type, sym_row, sym_col, sym_type });
+        };
+
+        // v 候选：row ∈ [0,size-1], col ∈ [0,size-2]
+        for (let r = 0; r < size; r++) {
+            for (let c = 0; c < size - 1; c++) {
+                add_candidate(r, c, 'v');
             }
         }
-        
+
+        // h 候选：row ∈ [0,size-2], col ∈ [0,size-1]
+        for (let r = 0; r < size - 1; r++) {
+            for (let c = 0; c < size; c++) {
+                add_candidate(r, c, 'h');
+            }
+        }
+
+        // x 候选：row ∈ [0,size-2], col ∈ [0,size-2]
+        for (let r = 0; r < size - 1; r++) {
+            for (let c = 0; c < size - 1; c++) {
+                add_candidate(r, c, 'x');
+            }
+        }
+
+        return candidate_pool;
+    }
+
+    setTimeout(() => {
+        // try {
+            while (try_count < MAX_TRY && marks_added < MAX_MARKS) {
+                try_count++;
+                
+                const candidate_pool = build_candidate_pool(size, symmetry);
+                if (!candidate_pool || candidate_pool.length === 0) {
+                    break;
+                }
+                const pick_index = Math.floor(Math.random() * candidate_pool.length);
+                const picked = candidate_pool[pick_index];
+                const { row, col, type, sym_row, sym_col, sym_type } = picked;
+
+                // 计算主标记的和（基于终盘）
+                const main_sum = calculate_sum_from_solved(row, col, type, solvedBoard, size);
+                if (main_sum === null) continue;
+
+                // 计算对称标记的和
+                const sym_sum = calculate_sum_from_solved(sym_row, sym_col, sym_type, solvedBoard, size);
+                if (sym_sum === null) continue;
+
+                // 添加主标记与对称标记（写入 state）
+                const samePosSym = (row === sym_row && col === sym_col && type === sym_type);
+                const addedMain = add_mark_to_state(row, col, type, main_sum);
+                let addedSym = false;
+                if (!samePosSym) {
+                    addedSym = add_mark_to_state(sym_row, sym_col, sym_type, sym_sum);
+                }
+
+                if (!addedMain || (!samePosSym && !addedSym)) {
+                    // 若因重复或无效未成功添加，跳过本次
+                    continue;
+                }
+                marks_added += samePosSym ? 1 : 2;
+
+                // log_process(`添加标记: ${type}(${row},${col})=${main_sum}, ${sym_type}(${sym_row},${sym_col})=${sym_sum}`);
+
+                // 第四步：验证唯一性
+                // log_process("验证唯一性...");
+                // const currentBoard = get_current_board_state(size);
+                // backup_original_board();
+                
+                // const result = solve(
+                //     currentBoard.map(row => row.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), 
+                //     size, 
+                //     is_valid_add, 
+                //     true
+                // );
+
+                // 使用完全空白的盘面进行验证
+                const emptyBoard = Array(size).fill().map(() => Array(size).fill(0));
+                backup_original_board();
+                
+                const result = solve(
+                    emptyBoard.map(row => row.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)), 
+                    size, 
+                    is_valid_add, 
+                    true
+                );
+
+                if (result.solution_count === 1) {
+                    log_process(`✓ 找到唯一解！共添加 ${marks_added} 个标记`);
+                    // 第五步：优化标记（基于 state），删除无用条件
+                    optimize_marks_state(size, symmetry);
+                    // 唯一解后渲染到界面
+                    render_marks_from_state(size, container);
+                    // 生成最终题目（挖空）
+                    const board = Array.from({ length: size }, () => Array.from({ length: size }, () => 0));
+                    generate_puzzle(size, score_lower_limit, holes_count, board);
+                    // generate_puzzle(size, score_lower_limit, holes_count);
+                    hide_generating_timer();
+                    const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
+                    show_result(`加法数独生成成功，耗时${elapsed}秒`);
+                    return;
+                } else if (result.solution_count === 0) {
+                    log_process("✗ 无解，移除最后添加的标记");
+                    // 移除最后添加的标记（基于 state）
+                    const removeCount = (row === sym_row && col === sym_col && type === sym_type) ? 1 : 2;
+                    remove_last_marks_from_state(removeCount);
+                    marks_added = Math.max(0, marks_added - removeCount);
+                } else {
+                    // log_process(`多个解（${result.solution_count}），继续添加标记...`);
+                }
+
+                restore_original_board();
+            }
+        // } finally {
+            // log_process('', true)
+            // log_process(`比例数独生成完成`);
+            // log_process(`点击检查唯一性查看技巧和分值`);
+            // const board = Array.from({ length: size }, () => Array.from({ length: size }, () => 0));
+            // generate_puzzle(size, score_lower_limit, holes_count, board);
+        hide_generating_timer();
+        const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
+        show_result(`加法数独生成失败，耗时${elapsed}秒）`);
+            
+        if (try_count >= MAX_TRY) {
+            log_process("自动出题失败：达到最大尝试次数");
+            render_marks_from_state(size, container);
+        } else {
+            log_process("自动出题完成（可能非唯一解）");
+            render_marks_from_state(size, container);
+            // generate_puzzle(size, score_lower_limit, holes_count);
+        }
+            // // 记录结束时间
+            // const end_time = performance.now();
+            // const elapsed = ((end_time - start_time) / 1000).toFixed(3); // 秒，保留三位小数
+            // show_result(`已生成${size}宫格数独题目（用时${elapsed}秒）`);
+        // }
+    }, 0);
+
+
+    // 基于 state 的标记辅助函数
+    function mark_key_from_state(m) {
+        return get_mark_key(m.r, m.c, m.kind);
+    }
+
+    function is_mark_exists_state(row, col, type) {
+        return Array.isArray(state.marks_board) &&
+               state.marks_board.some(m => m.kind === type && m.r === row && m.c === col);
+    }
+
+    function add_mark_to_state(row, col, type, sum) {
+        if (!is_valid_position(row, col, size, type)) return false;
+        if (is_mark_exists_state(row, col, type)) return false;
+        state.marks_board.push({ kind: type, r: row, c: col, sum });
+        return true;
+    }
+
+    function remove_last_marks_from_state(count) {
+        if (!Array.isArray(state.marks_board)) return;
+        if (count <= 0) return;
+        state.marks_board.splice(Math.max(0, state.marks_board.length - count), count);
+    }
+
+    function render_marks_from_state(size, container) {
+        // 清理旧 DOM
+        Array.from(container.querySelectorAll('.vx-mark')).forEach(m => m.remove());
+        // 从 state 渲染
+        for (const m of state.marks_board || []) {
+            add_circle_with_sum(m.r, m.c, size, container, m.kind, m.sum);
+        }
+    }
+
+    // 检测 v/h 是否与 x 相邻（基于 state）
+    function has_adjacent_x_state(row, col, type) {
+        if (!(type === 'v' || type === 'h')) return false;
+        const marks = Array.isArray(state.marks_board) ? state.marks_board : [];
+        for (const m of marks) {
+            if (m.kind !== 'x') continue;
+            const rx = m.r, cx = m.c; // x 的原始坐标（2x2 的左上角）
+            if (type === 'v') {
+                // v(row,col) 的两个端点对应 x(row-1,col) 与 x(row,col)
+                if ((rx === row - 1 && cx === col) || (rx === row && cx === col)) {
+                    return true;
+                }
+            } else {
+                // h(row,col) 的两个端点对应 x(row,col-1) 与 x(row,col)
+                if ((rx === row && cx === col - 1) || (rx === row && cx === col)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // 检测 x 是否与 v/h 相邻（基于 state）
+    function has_adjacent_vh_state(row, col) {
+        const marks = Array.isArray(state.marks_board) ? state.marks_board : [];
+        for (const m of marks) {
+            if (m.kind === 'v') {
+                // 与 x(row,col) 相邻的 v 为 v(row,col) 与 v(row+1,col)
+                if ((m.r === row && m.c === col) || (m.r === row + 1 && m.c === col)) {
+                    return true;
+                }
+            } else if (m.kind === 'h') {
+                // 与 x(row,col) 相邻的 h 为 h(row,col) 与 h(row,col+1)
+                if ((m.r === row && m.c === col) || (m.r === row && m.c === col + 1)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    function group_marks_by_symmetry_state(size, symmetry) {
+        const marks = Array.isArray(state.marks_board) ? state.marks_board.slice() : [];
+        const groups = [];
+        const processed = new Set();
+
+        for (const m of marks) {
+            const key = mark_key_from_state(m);
+            if (processed.has(key)) continue;
+
+            const [sr, sc, st] = get_symmetric(m.r, m.c, size, symmetry, m.kind);
+            const symKey = get_mark_key(sr, sc, st);
+            const symMark = marks.find(x => mark_key_from_state(x) === symKey);
+
+            if (symMark && !processed.has(symKey)) {
+                groups.push({ mainKey: key, symKey: symKey });
+                processed.add(key);
+                processed.add(symKey);
+            } else {
+                groups.push({ mainKey: key, symKey: null });
+                processed.add(key);
+            }
+        }
         return groups;
     }
 
-
-    // 修改临时移除函数
-    function temporarily_remove_marks(container, keys) {
-        const removedMarks = [];
-        
-        for (const key of keys) {
-            if (!key) continue;
-            const mark = container.querySelector(`.vx-mark[data-key="${key}"]`);
-            if (mark) {
-                // 创建占位符元素来精确记录位置
-                const placeholder = document.createElement('div');
-                placeholder.className = 'mark-placeholder';
-                placeholder.style.display = 'none';
-                placeholder.dataset.originalKey = key;
-                
-                // 用占位符替换标记
-                mark.parentNode.insertBefore(placeholder, mark);
-                
-                removedMarks.push({
-                    key: key,
-                    element: mark,
-                    parent: mark.parentNode,
-                    placeholder: placeholder,
-                    originalNextSibling: mark.nextSibling
-                });
-                
-                // 从DOM中移除标记
-                mark.remove();
+    function temporarily_remove_marks_state(keys) {
+        const removed = [];
+        const keySet = new Set((keys || []).filter(Boolean));
+        const next = [];
+        for (const m of state.marks_board || []) {
+            const k = mark_key_from_state(m);
+            if (keySet.has(k)) {
+                removed.push(m);
+            } else {
+                next.push(m);
             }
         }
-        
-        return removedMarks;
+        state.marks_board = next;
+        return removed;
     }
 
-    // 修改恢复函数
-    function restore_marks(container, removedMarks) {
-        for (const markInfo of removedMarks) {
-            if (markInfo.element && markInfo.placeholder && markInfo.placeholder.parentNode) {
-                // 用原始标记替换占位符
-                markInfo.placeholder.parentNode.replaceChild(markInfo.element, markInfo.placeholder);
+    function restore_marks_state(removedMarks) {
+        for (const m of removedMarks || []) {
+            if (!is_mark_exists_state(m.r, m.c, m.kind)) {
+                state.marks_board.push(m);
             }
         }
     }
 
-    // 修改永久删除函数
-    function permanently_remove_marks(removedMarks) {
-        for (const markInfo of removedMarks) {
-            // 移除占位符（如果存在）
-            if (markInfo.placeholder && markInfo.placeholder.parentNode) {
-                markInfo.placeholder.remove();
+    function permanently_remove_marks_state(/* removedMarks */) {
+        // 已在 temporarily_remove_marks_state 中删除，无需额外处理
+    }
+
+    function optimize_marks_state(size, symmetry) {
+        log_process("开始优化标记（基于 state），删除无用条件...");
+        const groups = group_marks_by_symmetry_state(size, symmetry);
+        // log_process(`共找到 ${groups.length} 组对称标记`);
+
+        let removed_count = 0;
+
+        for (let i = 0; i < groups.length; i++) {
+            const g = groups[i];
+            // log_process(`尝试删除第 ${i + 1} 组标记: ${g.mainKey}${g.symKey ? ' 和 ' + g.symKey : ''}`);
+
+            const removedMarks = temporarily_remove_marks_state([g.mainKey, g.symKey].filter(Boolean));
+
+            const emptyBoard = Array(size).fill().map(() => Array(size).fill(0));
+            backup_original_board();
+
+            const result = solve(
+                emptyBoard.map(row => row.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)),
+                size,
+                is_valid_add,
+                true
+            );
+
+            if (result.solution_count === 1) {
+                // log_process(`✓ 删除第 ${i + 1} 组后仍唯一解，永久删除`);
+                permanently_remove_marks_state(removedMarks);
+                removed_count += removedMarks.length;
+            } else {
+                // log_process(`✗ 删除第 ${i + 1} 组后解不唯一，恢复`);
+                restore_marks_state(removedMarks);
             }
-            // 标记已经被移除，不需要额外操作
+
+            restore_original_board();
         }
+
+        log_process(`优化完成，共删除了 ${removed_count} 个无用标记`);
     }
 
     // 辅助函数
@@ -1135,51 +851,53 @@ export function is_valid_add(board, size, row, col, num) {
             }
         }
     }
-
+    let marks;
+    if (Array.isArray(state.marks_board) && state.marks_board.length > 0) {
+        marks = state.marks_board;
+    } else {
+        const container = document.querySelector('.sudoku-container');
+        marks = sync_marks_board_from_dom(size, container);
+    }
     // 2. 加法标记判断
-    const container = document.querySelector('.sudoku-container');
-    const marks = container ? container.querySelectorAll('.vx-mark') : [];
-    for (const mark of marks) {
-        const input = mark.querySelector('input');
-        const value = input && input.value.trim();
-        const add = parseInt(value, 10);
-        if (isNaN(add)) continue;
+    // const marks = state.marks_board;
+    if (Array.isArray(marks)) {
+        for (const m of marks) {
+            const add = m.sum;
 
-        // 解析标记的唯一key
-        const key = mark.dataset.key;
+            if (m.kind === 'v') {
+                const r = m.r, c = m.c;
+                if (!((row === r && col === c) || (row === r && col === c + 1))) continue;
 
-        if (key) {
-            let cell_a, cell_b;
-            if (key.startsWith('v-')) {
-                const [_, row_str, col_str] = key.split('-');
-                const r = parseInt(row_str, 10);
-                const c = parseInt(col_str, 10);
-                cell_a = [r, c - 1];
-                cell_b = [r, c];
-            } else if (key.startsWith('h-')) {
-                const [_, row_str, col_str] = key.split('-');
-                const r = parseInt(row_str, 10);
-                const c = parseInt(col_str, 10);
-                cell_a = [r - 1, c];
-                cell_b = [r, c];
-            } else if (key.startsWith('x-')) {
-                const [_, row_str, col_str] = key.split('-');
-                const row_mark = parseInt(row_str, 10);
-                const col_mark = parseInt(col_str, 10);
-                if (!Number.isInteger(row_mark) || !Number.isInteger(col_mark)) continue;
+                const other = (row === r && col === c) ? [r, c + 1] : [r, c];
+                const other_value = board[other[0]] && board[other[0]][other[1]];
+                if (typeof other_value !== 'number' || other_value <= 0 || Array.isArray(other_value)) continue;
 
-                const cells = [
-                    [row_mark - 1, col_mark - 1],
-                    [row_mark - 1, col_mark],
-                    [row_mark, col_mark - 1],
-                    [row_mark, col_mark]
-                ].filter(([r, c]) => r >= 0 && r < size && c >= 0 && c < size);
-                if (cells.length !== 4) continue;
+                if (num + other_value !== add) return false;
+                continue;
+            }
+
+            if (m.kind === 'h') {
+                const r = m.r, c = m.c;
+                if (!((row === r && col === c) || (row === r + 1 && col === c))) continue;
+
+                const other = (row === r && col === c) ? [r + 1, c] : [r, c];
+                const other_value = board[other[0]] && board[other[0]][other[1]];
+                if (typeof other_value !== 'number' || other_value <= 0 || Array.isArray(other_value)) continue;
+
+                if (num + other_value !== add) return false;
+                continue;
+            }
+
+            if (m.kind === 'x') {
+                const r = m.r, c = m.c;
+                const cells = [[r, c], [r, c + 1], [r + 1, c], [r + 1, c + 1]];
+
+                if (!cells.some(([rr, cc]) => rr === row && cc === col)) continue;
 
                 const values = [];
                 let allNumbers = true;
-                for (const [r, c] of cells) {
-                    const v = (r === row && c === col) ? num : board[r][c];
+                for (const [rr, cc] of cells) {
+                    const v = (rr === row && cc === col) ? num : board[rr][cc];
                     if (typeof v !== 'number' || v <= 0 || Array.isArray(v)) {
                         allNumbers = false;
                         break;
@@ -1191,142 +909,147 @@ export function is_valid_add(board, size, row, col, num) {
                 const sumVal = values.reduce((s, x) => s + x, 0);
                 if (sumVal !== add) return false;
                 continue;
-            } else {
-                continue;
             }
-
-            // 判断当前格是否在标记两格之一
-            let other_cell;
-            if (row === cell_a[0] && col === cell_a[1]) {
-                other_cell = cell_b;
-            } else if (row === cell_b[0] && col === cell_b[1]) {
-                other_cell = cell_a;
-            } else {
-                continue; // 当前格与此标记无关
-            }
-
-            // 获取当前格和另一格的值
-            const this_value = num;
-            const other_value = board[other_cell[0]] && board[other_cell[0]][other_cell[1]];
-
-            // 只有两个格子都填了确定数字才检查合法性，否则跳过
-            if (typeof other_value !== 'number' || other_value <= 0 || Array.isArray(other_value)) continue;
-
-            // 判断加法关系
-            if (this_value + other_value !== add) {
-                return false;
-            }
-
-            continue;
         }
 
-        // ----- 四格交点提示（新增逻辑：mark 无 key 时） -----
-        // mark.style.left/top 是基于 container 的绝对像素位置（add_add_mark 中设置）
-        const grid = container ? container.querySelector('.sudoku-grid') : null;
-        if (!grid) continue;
-
-        const grid_offset_left = grid.offsetLeft;
-        const grid_offset_top = grid.offsetTop;
-        const cell_width = grid.offsetWidth / size;
-        const cell_height = grid.offsetHeight / size;
-
-        const left = parseInt(mark.style.left, 10);
-        const top = parseInt(mark.style.top, 10);
-        if (isNaN(left) || isNaN(top)) continue;
-
-        // 还原 add_add_mark 中设置时使用的偏移 (+15, +10 或 +15)
-        // 这里采用与 add_add_mark/ add_circle 中相同的逆向计算方式
-        const col_mark = Math.round((left - grid_offset_left + 15) / cell_width);
-        const row_mark = Math.round((top - grid_offset_top + 15) / cell_height);
-
-        const cells = [
-            [row_mark - 1, col_mark - 1],
-            [row_mark - 1, col_mark],
-            [row_mark, col_mark - 1],
-            [row_mark, col_mark]
-        ].filter(([r, c]) => r >= 0 && r < size && c >= 0 && c < size);
-
-        // 只有完整四格才作为四格提示处理
-        if (cells.length !== 4) continue;
-
-        // 收集四格的值（将当前正在尝试放入的 num 视为该格的值）
-        const values = [];
-        let allNumbers = true;
-        for (const [r, c] of cells) {
-            const v = (r === row && c === col) ? num : board[r][c];
-            if (typeof v !== 'number' || v <= 0 || Array.isArray(v)) {
-                allNumbers = false;
-                break;
-            }
-            values.push(v);
-        }
-
-        // 只有在四格都为确定数字时才进行和校验；部分填入时跳过
-        if (!allNumbers) continue;
-
-        const sum = values.reduce((s, x) => s + x, 0);
-        if (sum !== add) {
-            return false;
-        }
+        return true;
     }
+    // const container = document.querySelector('.sudoku-container');
+    // const marks = container ? container.querySelectorAll('.vx-mark') : [];
+    //     const container = document.querySelector('.sudoku-container');
+    // const marks = Array.isArray(state.marks_board)
+    //     ? state.marks_board
+    //     : sync_marks_board_from_dom(size, container);
+    // for (const mark of marks) {
+    //     const input = mark.querySelector('input');
+    //     const value = input && input.value.trim();
+    //     const add = parseInt(value, 10);
+    //     if (isNaN(add)) continue;
 
-    return true;
-}
+    //     // 解析标记的唯一key
+    //     const key = mark.dataset.key;
 
-// // 需要新增的生成终盘函数
-// function generate_solved_add_board(size) {
-//     // 创建一个空的候选网格
-//     const emptyBoard = Array(size).fill().map(() => 
-//         Array(size).fill().map(() => [...Array(size)].map((_, i) => i + 1))
-//     );
-    
-//     // 使用 solver 生成一个解
-//     const result = solve(emptyBoard, size, is_valid_add, false);
-    
-//     if (result.solutions && result.solutions.length > 0) {
-//         return result.solutions[0];
-//     }
-    
-//     // 如果 solver 失败，尝试备用方法
-//     log_process("Solver生成终盘失败，尝试备用方法...");
-//     return generate_solved_board_brute_force(size);
-// }
+    //     if (key) {
+    //         let cell_a, cell_b;
+    //         if (key.startsWith('v-')) {
+    //             const [_, row_str, col_str] = key.split('-');
+    //             const r = parseInt(row_str, 10);
+    //             const c = parseInt(col_str, 10);
+    //             cell_a = [r, c - 1];
+    //             cell_b = [r, c];
+    //         } else if (key.startsWith('h-')) {
+    //             const [_, row_str, col_str] = key.split('-');
+    //             const r = parseInt(row_str, 10);
+    //             const c = parseInt(col_str, 10);
+    //             cell_a = [r - 1, c];
+    //             cell_b = [r, c];
+    //         } else if (key.startsWith('x-')) {
+    //             const [_, row_str, col_str] = key.split('-');
+    //             const row_mark = parseInt(row_str, 10);
+    //             const col_mark = parseInt(col_str, 10);
+    //             if (!Number.isInteger(row_mark) || !Number.isInteger(col_mark)) continue;
 
-// // 备用方法：暴力生成终盘
-// function generate_solved_board_brute_force(size) {
-//     // 这是一个简化的暴力生成方法，实际可能需要更复杂的实现
-//     const board = Array(size).fill().map(() => Array(size).fill(0));
-    
-//     function backtrack(row, col) {
-//         if (row === size) return true;
-        
-//         const nextCol = (col + 1) % size;
-//         const nextRow = nextCol === 0 ? row + 1 : row;
-        
-//         const numbers = [...Array(size)].map((_, i) => i + 1);
-//         // 随机打乱数字顺序
-//         for (let i = numbers.length - 1; i > 0; i--) {
-//             const j = Math.floor(Math.random() * (i + 1));
-//             [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
-//         }
-        
-//         for (const num of numbers) {
-//             if (is_valid_add(board, size, row, col, num)) {
-//                 board[row][col] = num;
-//                 if (backtrack(nextRow, nextCol)) {
-//                     return true;
-//                 }
-//                 board[row][col] = 0;
-//             }
-//         }
-//         return false;
-//     }
-    
-//     return backtrack(0, 0) ? board : null;
-// }
+    //             const cells = [
+    //                 [row_mark - 1, col_mark - 1],
+    //                 [row_mark - 1, col_mark],
+    //                 [row_mark, col_mark - 1],
+    //                 [row_mark, col_mark]
+    //             ].filter(([r, c]) => r >= 0 && r < size && c >= 0 && c < size);
+    //             if (cells.length !== 4) continue;
 
-function clear_add_marks() {
-    const container = document.querySelector('.sudoku-container');
-    if (!container) return;
-    container.querySelectorAll('.vx-mark').forEach(mark => mark.remove());
+    //             const values = [];
+    //             let allNumbers = true;
+    //             for (const [r, c] of cells) {
+    //                 const v = (r === row && c === col) ? num : board[r][c];
+    //                 if (typeof v !== 'number' || v <= 0 || Array.isArray(v)) {
+    //                     allNumbers = false;
+    //                     break;
+    //                 }
+    //                 values.push(v);
+    //             }
+    //             if (!allNumbers) continue;
+
+    //             const sumVal = values.reduce((s, x) => s + x, 0);
+    //             if (sumVal !== add) return false;
+    //             continue;
+    //         } else {
+    //             continue;
+    //         }
+
+    //         // 判断当前格是否在标记两格之一
+    //         let other_cell;
+    //         if (row === cell_a[0] && col === cell_a[1]) {
+    //             other_cell = cell_b;
+    //         } else if (row === cell_b[0] && col === cell_b[1]) {
+    //             other_cell = cell_a;
+    //         } else {
+    //             continue; // 当前格与此标记无关
+    //         }
+
+    //         // 获取当前格和另一格的值
+    //         const this_value = num;
+    //         const other_value = board[other_cell[0]] && board[other_cell[0]][other_cell[1]];
+
+    //         // 只有两个格子都填了确定数字才检查合法性，否则跳过
+    //         if (typeof other_value !== 'number' || other_value <= 0 || Array.isArray(other_value)) continue;
+
+    //         // 判断加法关系
+    //         if (this_value + other_value !== add) {
+    //             return false;
+    //         }
+
+    //         continue;
+    //     }
+
+    //     // ----- 四格交点提示（新增逻辑：mark 无 key 时） -----
+    //     // mark.style.left/top 是基于 container 的绝对像素位置（add_add_mark 中设置）
+    //     const grid = container ? container.querySelector('.sudoku-grid') : null;
+    //     if (!grid) continue;
+
+    //     const grid_offset_left = grid.offsetLeft;
+    //     const grid_offset_top = grid.offsetTop;
+    //     const cell_width = grid.offsetWidth / size;
+    //     const cell_height = grid.offsetHeight / size;
+
+    //     const left = parseInt(mark.style.left, 10);
+    //     const top = parseInt(mark.style.top, 10);
+    //     if (isNaN(left) || isNaN(top)) continue;
+
+    //     // 还原 add_add_mark 中设置时使用的偏移 (+15, +10 或 +15)
+    //     // 这里采用与 add_add_mark/ add_circle 中相同的逆向计算方式
+    //     const col_mark = Math.round((left - grid_offset_left + 15) / cell_width);
+    //     const row_mark = Math.round((top - grid_offset_top + 15) / cell_height);
+
+    //     const cells = [
+    //         [row_mark - 1, col_mark - 1],
+    //         [row_mark - 1, col_mark],
+    //         [row_mark, col_mark - 1],
+    //         [row_mark, col_mark]
+    //     ].filter(([r, c]) => r >= 0 && r < size && c >= 0 && c < size);
+
+    //     // 只有完整四格才作为四格提示处理
+    //     if (cells.length !== 4) continue;
+
+    //     // 收集四格的值（将当前正在尝试放入的 num 视为该格的值）
+    //     const values = [];
+    //     let allNumbers = true;
+    //     for (const [r, c] of cells) {
+    //         const v = (r === row && c === col) ? num : board[r][c];
+    //         if (typeof v !== 'number' || v <= 0 || Array.isArray(v)) {
+    //             allNumbers = false;
+    //             break;
+    //         }
+    //         values.push(v);
+    //     }
+
+    //     // 只有在四格都为确定数字时才进行和校验；部分填入时跳过
+    //     if (!allNumbers) continue;
+
+    //     const sum = values.reduce((s, x) => s + x, 0);
+    //     if (sum !== add) {
+    //         return false;
+    //     }
+    // }
+
+    // return true;
 }

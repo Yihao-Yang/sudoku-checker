@@ -237,7 +237,7 @@ export function generate_product_puzzle(size, score_lower_limit = 0, holes_count
         // generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
         // const {puzzle} = 
         const elapsed_1 = ((performance.now() - start_time) / 1000).toFixed(3);
-        log_process(`乘积数独生成完成，耗时${elapsed_1}秒）`);
+        log_process(`乘积数独生成完成，耗时${elapsed_1}秒`);
         log_process('', true);
         log_process(`乘积数独生成完成`);
         log_process(`点击检查唯一性查看技巧和分值`);
@@ -246,7 +246,7 @@ export function generate_product_puzzle(size, score_lower_limit = 0, holes_count
         // generate_puzzle(size, score_lower_limit, holes_count);
         hide_generating_timer();
         const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
-        show_result(`乘积数独生成完成，耗时${elapsed}秒）`);
+        show_result(`乘积数独生成完成，耗时${elapsed}秒`);
 
         if (!unique_found) {
             if (try_count >= MAX_TRY) {

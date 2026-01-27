@@ -241,7 +241,7 @@ export function generate_ratio_puzzle(size, score_lower_limit = 0, holes_count =
         generate_puzzle(size, score_lower_limit, holes_count, board);
         hide_generating_timer();
         const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
-        show_result(`比例数独生成完成，耗时${elapsed}秒）`);
+        show_result(`比例数独生成完成，耗时${elapsed}秒`);
 
         if (!unique_found) {
             if (try_count >= MAX_TRY) {

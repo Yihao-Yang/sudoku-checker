@@ -7,7 +7,7 @@ import { create_anti_diagonal_sudoku } from '../modules/anti_diagonal.js';
 import { create_hashtag_sudoku } from '../modules/hashtag.js';
 import { create_multi_diagonal_sudoku } from '../modules/multi_diagonal.js';
 import { create_consecutive_sudoku } from '../modules/consecutive.js';
-import { create_missing_sudoku } from '../modules/missing.js';
+import { create_missing_sudoku, check_missing_uniqueness } from '../modules/missing.js';
 import { create_window_sudoku } from '../modules/window.js';
 import { create_pyramid_sudoku } from '../modules/pyramid.js';
 import { create_isomorphic_sudoku } from '../modules/isomorphic.js';
@@ -47,7 +47,7 @@ import {
     change_candidates_mode,
     show_logical_solution
 } from './core.js';
-import { solve, isValid, eliminate_candidates, invalidate_regions_cache } from './solver_tool.js';
+import { solve, isValid, eliminate_candidates, invalidate_regions_cache, sync_marks_board_from_dom } from './solver_tool.js';
 
 // 最关键的创建数独函数
 export function create_sudoku_grid(size) {
@@ -296,7 +296,7 @@ export function create_sudoku_grid(size) {
         // add_Extra_Button('斜井', () => create_hashtag_sudoku(4));
         add_Extra_Button('斜线', () => create_multi_diagonal_sudoku(4));
         add_Extra_Button('黑白点', () => create_kropki_sudoku(4));
-        add_Extra_Button('连续', () => create_consecutive_sudoku(4));
+        // add_Extra_Button('连续', () => create_consecutive_sudoku(4));
         add_Extra_Button('缺一门', () => create_missing_sudoku(4));
         add_Extra_Button('同位', () => create_isomorphic_sudoku(4));
         add_Extra_Button('额外区域', () => create_extra_region_sudoku(4));
@@ -325,7 +325,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('斜井', () => create_hashtag_sudoku(6));
         add_Extra_Button('斜线', () => create_multi_diagonal_sudoku(6));
         add_Extra_Button('黑白点', () => create_kropki_sudoku(6));
-        add_Extra_Button('连续', () => create_consecutive_sudoku(6));
+        // add_Extra_Button('连续', () => create_consecutive_sudoku(6));
         add_Extra_Button('缺一门', () => create_missing_sudoku(6));
         add_Extra_Button('同位', () => create_isomorphic_sudoku(6));
         add_Extra_Button('额外区域', () => create_extra_region_sudoku(6));
@@ -355,8 +355,8 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('斜井', () => create_hashtag_sudoku(9));
         add_Extra_Button('斜线', () => create_multi_diagonal_sudoku(9));
         add_Extra_Button('VX', () => create_vx_sudoku(9));
-        add_Extra_Button('黑白点', () => create_kropki_sudoku(9));
-        add_Extra_Button('连续', () => create_consecutive_sudoku(9));
+        // add_Extra_Button('黑白点', () => create_kropki_sudoku(9));
+        // add_Extra_Button('连续', () => create_consecutive_sudoku(9));
         add_Extra_Button('缺一门', () => create_missing_sudoku(9));
         add_Extra_Button('窗口', () => create_window_sudoku(9));
         add_Extra_Button('金字塔', () => create_pyramid_sudoku(9));
@@ -986,6 +986,10 @@ export function check_uniqueness() {
     const container = document.querySelector('.sudoku-container');
     const size = state.current_grid_size;
 
+    if (state.current_mode === 'missing') {
+        check_missing_uniqueness();
+        return;
+    }
 
     // 备份当前题目状态
     backup_original_board();
@@ -1046,6 +1050,9 @@ export function check_uniqueness() {
     //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
     //         .join('\n')
     // );
+    if (state.current_mode === 'add') {
+        sync_marks_board_from_dom(size, container);
+    }
 
     // 判断当前模式，选择不同的有效性检测函数
     let valid_func = isValid;

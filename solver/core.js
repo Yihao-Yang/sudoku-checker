@@ -1278,7 +1278,7 @@ function composeCanvasWithWatermark(baseCanvas, watermarkImg) {
     ctx.drawImage(baseCanvas, 0, 0);
 
     // 再把水印覆盖到右下角
-    const margin = Math.round(Math.min(out.width, out.height) * 0.02); // 边距
+    const margin = Math.round(Math.min(out.width, out.height) * 0.01); // 边距
     const targetW = Math.round(out.width * 0.32); // 水印宽度占比（可按喜好调 0.25~0.4）
     const maxW = out.width - margin * 2;
     const maxH = out.height - margin * 2;
@@ -1296,7 +1296,7 @@ function composeCanvasWithWatermark(baseCanvas, watermarkImg) {
     const y = out.height - wmH - margin;
 
     ctx.imageSmoothingEnabled = true;
-    ctx.globalAlpha = 1; // 想淡一点就改成 0.8~0.9
+    ctx.globalAlpha = 0.8; // 想淡一点就改成 0.8~0.9
     ctx.drawImage(watermarkImg, x, y, wmW, wmH);
     ctx.globalAlpha = 1;
 

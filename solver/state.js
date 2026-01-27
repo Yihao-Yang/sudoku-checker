@@ -15,6 +15,7 @@ export const state = {
     total_score_sum: 0,
 
     clues_board: null,
+    marks_board: null,
 
     box_missing_subsets: {},
     row_missing_subsets: {},

@@ -221,7 +221,7 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
     if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
         log_process(`${size}宫格数独生成成功，分值：${state.solve_stats.total_score}，提示数: ${size*size-holesDug}`);
     } else {
-        log_process(`${size}宫格数独生成成功，分值：${state.solve_stats.total_score}，提示数: ${size*size-holesDug}，数字对称模式: ${symmetry}`);
+        log_process(`${size}宫格数独生成成功，分值：${state.solve_stats.total_score}，提示数: ${size*size-holesDug}`);
     }
 
     // 3. 填充到网格
@@ -495,21 +495,21 @@ export function generate_exterior_puzzle(size, score_lower_limit = 0, holes_coun
 export function generate_solution(sudoku_size, existing_numbers = null, symmetry = 'none', pre_solved_board = null) {
     // log_process("生成终盘...");
     // if (!pre_solved_board) {
-        if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
-            let board = pre_solved_board;
-            if (!pre_solved_board) {
-                board = generate_solution_old(sudoku_size);
-            }
-            if (!board) {
-                show_result('多次尝试无法生成终盘，终止本次生成流程');
-                log_process('多次尝试无法生成终盘，终止本次生成流程');
-                hide_generating_timer();
-                throw new Error('多次尝试无法生成终盘，终止本次生成流程');
-                // log_process('无解')
-                return null;
-            }
-            return board;
+    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper' || state.current_mode === 'pyramid') {
+        let board = pre_solved_board;
+        if (!pre_solved_board) {
+            board = generate_solution_old(sudoku_size);
         }
+        if (!board) {
+            show_result('多次尝试无法生成终盘，终止本次生成流程');
+            log_process('多次尝试无法生成终盘，终止本次生成流程');
+            hide_generating_timer();
+            throw new Error('多次尝试无法生成终盘，终止本次生成流程');
+            // log_process('无解')
+            return null;
+        }
+        return board;
+    }
     // }
     // if (pre_solved_board && Array.isArray(pre_solved_board) && pre_solved_board.length === sudoku_size + 2) {
     //     pre_solved_board = pre_solved_board.slice(1, -1).map(row => row.slice(1, -1));
@@ -685,7 +685,7 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
     
     // 用逻辑解更新候选数
     if (result.solution_count === 1) {
-        log_process("初始检测即得到唯一解");
+        // log_process("初始检测即得到唯一解");
         // 如果使用外部终盘，需要验证解是否匹配
         if (use_external_board) {
             let matches = true;
@@ -699,7 +699,7 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
                 if (!matches) break;
             }
             if (matches) {
-                log_process("初始解匹配外部终盘，返回题目盘面");
+                // log_process("初始解匹配外部终盘，返回题目盘面");
                 // 返回只包含给定数字的稀疏盘面
                 return Array.from({ length: sudoku_size }, (_, r) =>
                     Array.from({ length: sudoku_size }, (_, c) => {
@@ -713,7 +713,7 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
             }
         } else {
             // 没有外部终盘，返回题目盘面（只包含给定数字）
-            log_process("返回题目盘面（只包含给定数字）");
+            // log_process("返回题目盘面（只包含给定数字）");
             return Array.from({ length: sudoku_size }, (_, r) =>
                 Array.from({ length: sudoku_size }, (_, c) => {
                     const found = given_numbers.find(item => item.row === r && item.col === c);
@@ -1224,7 +1224,7 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
     let changed;
 
     // 在这些模式下跳过分值比较，直接以唯一解为准进行挖洞
-    const SKIP_SCORE_MODES = new Set(['VX', 'kropki', 'consecutive', 'X_sums', 'sandwich', 'skyscraper']);
+    const SKIP_SCORE_MODES = new Set(['VX', 'kropki', 'consecutive', 'X_sums', 'sandwich', 'skyscraper', 'pyramid']);
     const skipScore = SKIP_SCORE_MODES.has(state.current_mode);
 
     // 获取所有区域并计算每个格子所属的区域数量
@@ -1241,6 +1241,9 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
             { type: '对角线', index: 1, cells: diag1_cells },
             { type: '对角线', index: 2, cells: diag2_cells }
         ];
+    // } else if (state.current_mode === 'pyramid') {
+    //     regions = [
+    //     ];
     }
     const special_regions = get_special_combination_regions(null, size, state.current_mode);
     if (Array.isArray(special_regions) && special_regions.length > 0) {

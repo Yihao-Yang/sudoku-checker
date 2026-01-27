@@ -85,6 +85,24 @@ function getInequalityConstraintMap(size) {
 // 新数独主入口
 export function create_inequality_sudoku(size) {
     set_current_mode('inequality');
+    show_result(`当前模式为不等号数独`);
+    log_process('', true);
+    log_process('规则：');
+    log_process('标记：两侧格内数字大小关系');
+    log_process('');
+    log_process('技巧：');
+    // log_process('"变型"：用到变型条件删数的技巧');
+    log_process('"_n"后缀：区域内剩余空格数/区块用到的空格数');
+    // log_process('"额外区域"：附加的不可重复区域');
+    log_process('"特定组合"：受附加条件影响的区域');
+    log_process('');
+    log_process('出题：');
+    log_process('10秒，超1分钟请重启页面或调整限制条件');
+    log_process('若手动给的标记不合理可能会被代码忽视');
+    log_process('');
+    log_process('自动出题：');
+    log_process('蓝色：自动添加标记出题');
+    log_process('绿色：根据给定标记出题');
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
@@ -184,6 +202,7 @@ export function create_inequality_sudoku(size) {
     // 添加新数独专属按钮
     const extra_buttons = document.getElementById('extraButtons');
     extra_buttons.innerHTML = '';
+    add_Extra_Button('不等号', () => {create_inequality_sudoku(size)}, '#2196F3');
     add_Extra_Button('清除标记', clear_marks);
     add_Extra_Button('自动出题', () => generate_inequality_puzzle(size), '#2196F3');
     // 可添加唯一性验证等按钮

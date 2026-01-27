@@ -25,6 +25,26 @@ let current_kropki_type = 'B'; // 默认使用黑点/白点标记 B/W
 export function create_kropki_sudoku(size) {
     // 保留外部 mode 名称为 kropki（避免改动其它模块），但 UI/逻辑实现为黑白点
     set_current_mode('kropki');
+    show_result(`当前模式为黑白点数独`);
+    log_process('', true);
+    log_process('规则：');
+    log_process('标记：两侧格内数字关系');
+    log_process('黑点：两倍');
+    log_process('白点：差1');
+    log_process('');
+    log_process('技巧：');
+    // log_process('"变型"：用到变型条件删数的技巧');
+    log_process('"_n"后缀：区域内剩余空格数/区块用到的空格数');
+    // log_process('"额外区域"：附加的不可重复区域');
+    log_process('"特定组合"：受附加条件影响的区域');
+    log_process('');
+    log_process('出题：');
+    log_process('10秒，超1分钟请重启页面或调整限制条件');
+    log_process('若手动给的标记不合理可能会被代码忽视');
+    log_process('');
+    log_process('自动出题：');
+    log_process('蓝色：自动添加标记出题');
+    log_process('绿色：根据给定标记出题');
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
@@ -129,6 +149,7 @@ export function create_kropki_sudoku(size) {
     const extraButtons = document.getElementById('extraButtons');
     if (extraButtons) {
         extraButtons.innerHTML = '';
+        add_Extra_Button('黑白点', () => {create_kropki_sudoku(size)}, '#2196F3');
         add_Extra_Button('清除标记', clear_marks);
         add_Extra_Button('一键标记', auto_mark_kropki);
         add_Extra_Button('自动出题', () => generate_kropki_puzzle(size), '#2196F3');
@@ -209,7 +230,9 @@ export function generate_kropki_puzzle(size, score_lower_limit = 0, holes_count 
         `黑白点标记生成完成，标记${marksAdded}个（耗时${elapsed}秒）`,
         marksAdded > 0 ? 'success' : 'info'
     );
-
+    // 生成最终题目（挖空）
+    const board = Array.from({ length: effectiveSize }, () => Array.from({ length: effectiveSize }, () => 0));
+    generate_puzzle(effectiveSize, score_lower_limit, holes_count, board);
     // generate_puzzle(effectiveSize, score_lower_limit, holes_count, solvedBoard);
 }
 
