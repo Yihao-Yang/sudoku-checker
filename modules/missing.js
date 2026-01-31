@@ -824,7 +824,8 @@ function dig_missing_holes(puzzle, size, missingCells, symmetry = 'none') {
         }
     } while (changed);
 
-    log_process(`生成${size}宫格缺一门数独，提示数: ${size*size-holes_dug-size}，对称模式: ${symmetry}`);
+    // log_process(`生成${size}宫格缺一门数独，提示数: ${size*size-holes_dug-size}，对称模式: ${symmetry}`);
+    log_process(`生成${size}宫格缺一门数独`);
     return holes_dug;
 }
 

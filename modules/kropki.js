@@ -9,7 +9,9 @@ import {
     add_Extra_Button,
     clear_all_inputs,
     fill_solution,
-    clear_marks
+    clear_marks, 
+    show_generating_timer, 
+    hide_generating_timer
 } from '../solver/core.js';
 import { state, set_current_mode } from '../solver/state.js';
 import { create_technique_panel } from '../solver/classic.js';
@@ -36,7 +38,7 @@ export function create_kropki_sudoku(size) {
     // log_process('"变型"：用到变型条件删数的技巧');
     log_process('"_n"后缀：区域内剩余空格数/区块用到的空格数');
     // log_process('"额外区域"：附加的不可重复区域');
-    log_process('"特定组合"：受附加条件影响的区域');
+    log_process('"特定组合"：受附加条件影响的区域（仅考虑有标记部分）');
     log_process('');
     log_process('出题：');
     log_process('10秒，超1分钟请重启页面或调整限制条件');
@@ -206,7 +208,7 @@ export function generate_kropki_puzzle(size, score_lower_limit = 0, holes_count 
         }
     }
 
-    const startTime = performance.now();
+    const start_time = performance.now();
     clear_all_inputs();
     log_process('', true);
     reset_kropki_highlights(container);
@@ -224,15 +226,28 @@ export function generate_kropki_puzzle(size, score_lower_limit = 0, holes_count 
     log_process('第二步：标记全部符合条件的黑/白点关系...');
     const marksAdded = populate_all_kropki_marks(container, solvedBoard, effectiveSize);
 
-    const elapsed = ((performance.now() - startTime) / 1000).toFixed(3);
+    const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
     log_process(`总计标记 ${marksAdded} 个符合条件的相邻格`);
     show_result(
         `黑白点标记生成完成，标记${marksAdded}个（耗时${elapsed}秒）`,
         marksAdded > 0 ? 'success' : 'info'
     );
-    // 生成最终题目（挖空）
-    const board = Array.from({ length: effectiveSize }, () => Array.from({ length: effectiveSize }, () => 0));
-    generate_puzzle(effectiveSize, score_lower_limit, holes_count, board);
+
+    
+    log_process(`正在生成题目，请稍候...`);
+    // log_process('九宫：1分钟，超时请重启页面或调整限制条件');
+    show_result(`正在生成题目，请稍候...`);
+    show_generating_timer();
+    setTimeout(() => {
+
+        // 生成最终题目（挖空）
+        const board = Array.from({ length: effectiveSize }, () => Array.from({ length: effectiveSize }, () => 0));
+        generate_puzzle(effectiveSize, score_lower_limit, holes_count, board);
+        hide_generating_timer();
+        const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
+        show_result(`黑白点数独生成成功，耗时${elapsed}秒`);
+    
+    }, 0);
     // generate_puzzle(effectiveSize, score_lower_limit, holes_count, solvedBoard);
 }
 

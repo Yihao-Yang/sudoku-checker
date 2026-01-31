@@ -1,5 +1,5 @@
 import { state, set_current_mode } from '../solver/state.js';
-import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, add_Extra_Button, clear_all_inputs, clear_marks } from '../solver/core.js';
+import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, add_Extra_Button, clear_all_inputs, clear_marks, show_generating_timer, hide_generating_timer } from '../solver/core.js';
 import { create_technique_panel } from '../solver/classic.js';
 import { get_all_regions, solve, invalidate_regions_cache } from '../solver/solver_tool.js';
 import { generate_solved_board_brute_force, shuffle, generate_puzzle } from '../solver/generate.js';
@@ -243,82 +243,91 @@ export function generate_inequality_puzzle(size, score_lower_limit = 0, holes_co
     let marks_added = 0;
     let try_count = 0;
 
-    // 添加不等号标记，直到达到唯一解
-    while (try_count < MAX_TRY && marks_added < MAX_MARKS) {
-        try_count++;
-
-        const type = Math.random() < 0.5 ? 'v' : 'h';
-        const row = type === 'v' ? Math.floor(Math.random() * size) : Math.floor(Math.random() * (size - 1));
-        const col = type === 'v' ? Math.floor(Math.random() * (size - 1)) : Math.floor(Math.random() * size);
-
-        if (!is_valid_position(row, col, size, type)) continue;
-
-        const [sym_row, sym_col, sym_type] = get_symmetric(row, col, size, symmetry, type);
-        if (!is_valid_position(sym_row, sym_col, size, sym_type)) continue;
-
-        if (is_mark_exists(row, col, type, container) || is_mark_exists(sym_row, sym_col, sym_type, container)) {
-            continue;
-        }
-
-        const addedMarks = [];
-        const maininequality = calculate_inequality_from_solved(row, col, type, solvedBoard);
-        if (!maininequality) continue;
-
-        const mainMark = add_inequality_mark_with_value(row, col, size, container, type, maininequality);
-        if (!mainMark) continue;
-        addedMarks.push(mainMark);
-
-        const symmetric_is_same = row === sym_row && col === sym_col && type === sym_type;
-        if (!symmetric_is_same) {
-            const syminequality = calculate_inequality_from_solved(sym_row, sym_col, sym_type, solvedBoard);
-            if (!syminequality) {
-                remove_marks(addedMarks);
-                continue;
-            }
-            const symMark = add_inequality_mark_with_value(sym_row, sym_col, size, container, sym_type, syminequality);
-            if (!symMark) {
-                remove_marks(addedMarks);
-                continue;
-            }
-            addedMarks.push(symMark);
-        }
-
-        marks_added += addedMarks.length;
-
-        // 检查唯一性
-        backup_original_board();
-        const result = solve(create_solver_board(size), size, is_valid_inequality, true);
-        restore_original_board();
-
-        if (result.solution_count === 1) {
-            log_process(`✓ 通过标记达到唯一解！共添加 ${marks_added} 个标记`);
-            break;
-        }
-
-        if (result.solution_count === 0 || result.solution_count === -2) {
-            log_process('✗ 无解，移除最后添加的标记');
-            remove_marks(addedMarks);
-            marks_added -= addedMarks.length;
-        } else {
-            log_process(`当前解数：${result.solution_count}，继续添加标记...`);
-        }
-    }
-
-    // 第二步：调用 generate_puzzle 函数出题
-    log_process('第三步：调用标准出题流程生成题目...');
-    const puzzle_result = generate_puzzle(size, score_lower_limit, holes_count, solvedBoard);
+    log_process(`正在生成题目，请稍候...`);
+    // log_process('九宫：1分钟，超时请重启页面或调整限制条件');
+    show_result(`正在生成题目，请稍候...`);
+    show_generating_timer();
     
-    if (!puzzle_result) {
-        log_process('出题失败！');
-        return;
-    }
+    setTimeout(() => {
+        // 添加不等号标记，直到达到唯一解
+        while (try_count < MAX_TRY && marks_added < MAX_MARKS) {
+            try_count++;
 
-    // 第三步：优化删除多余的不等号标记
-    log_process('第四步：开始优化删除多余的不等号标记...');
-    optimize_marks(container, size, symmetry);
+            const type = Math.random() < 0.5 ? 'v' : 'h';
+            const row = type === 'v' ? Math.floor(Math.random() * size) : Math.floor(Math.random() * (size - 1));
+            const col = type === 'v' ? Math.floor(Math.random() * (size - 1)) : Math.floor(Math.random() * size);
 
-    const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
-    show_result(`不等号数独出题完成（耗时${elapsed}秒）`);
+            if (!is_valid_position(row, col, size, type)) continue;
+
+            const [sym_row, sym_col, sym_type] = get_symmetric(row, col, size, symmetry, type);
+            if (!is_valid_position(sym_row, sym_col, size, sym_type)) continue;
+
+            if (is_mark_exists(row, col, type, container) || is_mark_exists(sym_row, sym_col, sym_type, container)) {
+                continue;
+            }
+
+            const addedMarks = [];
+            const maininequality = calculate_inequality_from_solved(row, col, type, solvedBoard);
+            if (!maininequality) continue;
+
+            const mainMark = add_inequality_mark_with_value(row, col, size, container, type, maininequality);
+            if (!mainMark) continue;
+            addedMarks.push(mainMark);
+
+            const symmetric_is_same = row === sym_row && col === sym_col && type === sym_type;
+            if (!symmetric_is_same) {
+                const syminequality = calculate_inequality_from_solved(sym_row, sym_col, sym_type, solvedBoard);
+                if (!syminequality) {
+                    remove_marks(addedMarks);
+                    continue;
+                }
+                const symMark = add_inequality_mark_with_value(sym_row, sym_col, size, container, sym_type, syminequality);
+                if (!symMark) {
+                    remove_marks(addedMarks);
+                    continue;
+                }
+                addedMarks.push(symMark);
+            }
+
+            marks_added += addedMarks.length;
+
+            // 检查唯一性
+            backup_original_board();
+            const result = solve(create_solver_board(size), size, is_valid_inequality, true);
+            restore_original_board();
+
+            if (result.solution_count === 1) {
+                log_process(`✓ 通过标记达到唯一解！共添加 ${marks_added} 个标记`);
+                break;
+            }
+
+            if (result.solution_count === 0 || result.solution_count === -2) {
+                log_process('✗ 无解，移除最后添加的标记');
+                remove_marks(addedMarks);
+                marks_added -= addedMarks.length;
+            } else {
+                log_process(`当前解数：${result.solution_count}，继续添加标记...`);
+            }
+        }
+
+        // 第二步：调用 generate_puzzle 函数出题
+        log_process('第三步：调用标准出题流程生成题目...');
+        const puzzle_result = generate_puzzle(size, score_lower_limit, holes_count, solvedBoard);
+        
+        if (!puzzle_result) {
+            log_process('出题失败！');
+            return;
+        }
+
+        // 第三步：优化删除多余的不等号标记
+        log_process('第四步：开始优化删除多余的不等号标记...');
+        optimize_marks(container, size, symmetry);
+
+        generate_puzzle(size, score_lower_limit, holes_count, puzzle_result);
+        const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
+        show_result(`不等号数独出题完成（耗时${elapsed}秒）`);
+        hide_generating_timer();
+    }, 0);
 
     // ==================== 内部函数定义 ====================
     
