@@ -920,8 +920,23 @@ export function solve_By_Elimination(board, size) {
                             if (chinese_name) {
                                 technique_counts[chinese_name]++;
                                 total_score += technique_scores[score_key] || 0;
-                            }
 
+                                // === 新增：唯余法 / 各种“排除”一旦填出数字就截断 ===
+                                const isEliminationOrSingle =
+                                    chinese_name.includes('唯余') ||  // 唯余法_1~9
+                                    chinese_name.includes('排除');         // 宫排除 / 行列排除 / 额外区域排除 / 一刀流宫排除 等
+                                if (state.check_next && isEliminationOrSingle) {
+                                    state.check_next = false; // 重置检查标志，避免重复检查
+                                    return {
+                                        changed: true,
+                                        hasEmptyCandidate: false,
+                                        technique_counts,
+                                        total_score,
+                                        technique_scores
+                                    };
+                                }
+                                // === 新增结束 ===
+                            }
                         }
 
                     }

@@ -974,9 +974,13 @@ export function create_technique_panel() {
 /**
  * 验证数独的唯一解
  */
-export function check_uniqueness() {
+export function check_uniqueness(check_next = false) {
     // 记录开始时间
     const start_time = performance.now();
+    state.check_next = false;
+    if (check_next === true) {
+        state.check_next = true;
+    }
     // 清空之前的日志
     log_process('', true);
     invalidate_regions_cache();

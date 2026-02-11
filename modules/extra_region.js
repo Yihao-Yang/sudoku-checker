@@ -124,7 +124,6 @@ export function create_extra_region_sudoku(size) {
                     state.extra_region_cells.delete(cell_key);
                     cell.classList.remove('extra-region-cell');
                     cell.classList.remove('gray-cell');
-                    cell.classList.remove('gray-cell');
                 } else {
                     state.extra_region_cells.add(cell_key);
                     cell.classList.add('extra-region-cell');
@@ -362,7 +361,10 @@ export function generate_extra_region_puzzle(size, score_lower_limit = 0, holes_
             let key = `${row},${col}`;
             state.extra_region_cells.add(key);
             let cell = document.querySelector(`.sudoku-cell.extra-region-mode[data-row="${row}"][data-col="${col}"]`);
-            if (cell) cell.classList.add('extra-region-cell');
+            if (cell) {
+                cell.classList.add('extra-region-cell');
+                cell.classList.add('gray-cell');
+            }
         }
     }
 
@@ -506,5 +508,6 @@ export function clear_extra_region_marks(size) {
     const cells = document.querySelectorAll('.sudoku-cell.extra-region-mode');
     cells.forEach(cell => {
         cell.classList.remove('extra-region-cell');
+        cell.classList.remove('gray-cell');
     });
 }

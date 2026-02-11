@@ -26,6 +26,7 @@ export const state = {
         technique_counts: {},
         total_score: 0,
     },
+    check_next: false,
 };
 
 // 设置当前模式(会自动取消其他模式)

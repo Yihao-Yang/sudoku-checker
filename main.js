@@ -40,7 +40,8 @@ function initializeEventHandlers() {
     const sixGridBtn = document.getElementById('sixGrid');
     const nineGridBtn = document.getElementById('nineGrid');
     const checkSolutionBtn = document.getElementById('checkSolution');
-    const checkUniquenessBtn = document.getElementById('checkUniqueness');
+    const check_nextBtn = document.getElementById('check_next');
+    const check_uniquenessBtn = document.getElementById('check_uniqueness');
     const hide_solutionBtn = document.getElementById('hide_solution');
     const generatepuzzleBtn = document.getElementById('generate_puzzle');
     const clearAllBtn = document.getElementById('clearAll');
@@ -49,7 +50,8 @@ function initializeEventHandlers() {
     sixGridBtn.addEventListener('click', () => create_sudoku_grid(6));
     nineGridBtn.addEventListener('click', () => create_sudoku_grid(9));
     // checkSolutionBtn.addEventListener('click', check_solution);
-    checkUniquenessBtn.addEventListener('click', check_uniqueness);
+    check_uniquenessBtn.addEventListener('click', () => check_uniqueness(false));
+    check_nextBtn.addEventListener('click', () => check_uniqueness(true));
     hide_solutionBtn.addEventListener('click', hide_solution);
     clearAllBtn.addEventListener('click', clear_all_inputs);
     
