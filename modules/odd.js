@@ -48,6 +48,7 @@ export function create_odd_sudoku(size) {
         All_Quad: false,
         Cell_Elimination: true,
         Brute_Force: false,
+        Special_Combination_Region_Cell_Elimination_1: true,
         Lookup_Table: true,
     };
     // 唯余法全部默认开启
