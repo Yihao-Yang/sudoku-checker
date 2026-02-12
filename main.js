@@ -167,6 +167,25 @@ function initializeEventHandlers() {
     scoreInput.parentNode.insertBefore(batchBtn, scoreInput.nextSibling);
     batchBtn.parentNode.insertBefore(batchInput, batchBtn.nextSibling);
 
+    // 添加跳转卡点按钮
+    const jumpBtn = document.createElement('button');
+    jumpBtn.id = 'jumpScoreBtn';
+    jumpBtn.textContent = '跳转卡点';
+    jumpBtn.style.marginLeft = '5px';
+
+    // 插入到分值下限输入框后面
+    check_nextBtn.parentNode.insertBefore(jumpBtn, check_uniquenessBtn);
+
+    jumpBtn.addEventListener('click', async () => {
+        let maxLoop = 100; // 防止死循环
+        while (maxLoop-- > 0) {
+            check_uniqueness(true);
+            // 等待异步渲染（如有），可适当延时
+            await new Promise(resolve => setTimeout(resolve, 200));
+            if (state.solve_stats.total_score > 30 || state.solve_stats.total_score === 0) break;
+        }
+    });
+
     generatepuzzleBtn.addEventListener('click', async () => {
         const scoreLowerLimit = parseInt(scoreInput.value, 10) || 0;
         // const holesCount = parseInt(holesInput.value, 10);
