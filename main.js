@@ -182,7 +182,7 @@ function initializeEventHandlers() {
             check_uniqueness(true);
             // 等待异步渲染（如有），可适当延时
             await new Promise(resolve => setTimeout(resolve, 200));
-            if (state.solve_stats.total_score > 30 || state.solve_stats.total_score === 0) break;
+            if (state.solve_stats.total_score > 29 || state.solve_stats.total_score === 0) break;
         }
     });
 
