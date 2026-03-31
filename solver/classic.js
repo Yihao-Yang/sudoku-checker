@@ -386,6 +386,187 @@ export function create_sudoku_grid(size) {
 
 // 创建技巧开关面板
 export function create_technique_panel() {
+    const techniqueMultiplierTargets = {
+        Box_Elimination: '宫排除分值倍率',
+        Box_Elimination_1: '宫排除_1分值倍率',
+        Box_Elimination_2: '宫排除_2分值倍率',
+        Box_Elimination_3: '宫排除_3分值倍率',
+        Box_Elimination_4: '宫排除_4分值倍率',
+        Box_Elimination_5: '宫排除_5分值倍率',
+        Box_Elimination_6: '宫排除_6分值倍率',
+        Box_Elimination_7: '宫排除_7分值倍率',
+        Box_Elimination_8: '宫排除_8分值倍率',
+        Box_Elimination_9: '宫排除_9分值倍率',
+        Row_Col_Elimination: '行列排除分值倍率',
+        Row_Col_Elimination_1: '行列排除_1分值倍率',
+        Row_Col_Elimination_2: '行列排除_2分值倍率',
+        Row_Col_Elimination_3: '行列排除_3分值倍率',
+        Row_Col_Elimination_4: '行列排除_4分值倍率',
+        Row_Col_Elimination_5: '行列排除_5分值倍率',
+        Row_Col_Elimination_6: '行列排除_6分值倍率',
+        Row_Col_Elimination_7: '行列排除_7分值倍率',
+        Row_Col_Elimination_8: '行列排除_8分值倍率',
+        Row_Col_Elimination_9: '行列排除_9分值倍率',
+        Extra_Region_Elimination: '额外区域排除分值倍率',
+        Extra_Region_Elimination_1: '额外区域排除_1分值倍率',
+        Extra_Region_Elimination_2: '额外区域排除_2分值倍率',
+        Extra_Region_Elimination_3: '额外区域排除_3分值倍率',
+        Extra_Region_Elimination_4: '额外区域排除_4分值倍率',
+        Extra_Region_Elimination_5: '额外区域排除_5分值倍率',
+        Extra_Region_Elimination_6: '额外区域排除_6分值倍率',
+        Extra_Region_Elimination_7: '额外区域排除_7分值倍率',
+        Extra_Region_Elimination_8: '额外区域排除_8分值倍率',
+        Extra_Region_Elimination_9: '额外区域排除_9分值倍率',
+        Box_Block: '宫区块分值倍率',
+        Box_Block_2: '宫区块_2分值倍率',
+        Box_Block_3: '宫区块_3分值倍率',
+        Box_Block_4: '宫区块_4分值倍率',
+        Box_Block_5: '宫区块_5分值倍率',
+        Box_Block_6: '宫区块_6分值倍率',
+        Box_Block_7: '宫区块_7分值倍率',
+        Box_Block_8: '宫区块_8分值倍率',
+        Box_Block_9: '宫区块_9分值倍率',
+        Row_Col_Block: '行列区块分值倍率',
+        Row_Col_Block_2: '行列区块_2分值倍率',
+        Row_Col_Block_3: '行列区块_3分值倍率',
+        Row_Col_Block_4: '行列区块_4分值倍率',
+        Row_Col_Block_5: '行列区块_5分值倍率',
+        Row_Col_Block_6: '行列区块_6分值倍率',
+        Row_Col_Block_7: '行列区块_7分值倍率',
+        Row_Col_Block_8: '行列区块_8分值倍率',
+        Row_Col_Block_9: '行列区块_9分值倍率',
+        Variant_Box_Block: '变型宫区块分值倍率',
+        Variant_Box_Block_2: '变型宫区块_2分值倍率',
+        Variant_Box_Block_3: '变型宫区块_3分值倍率',
+        Variant_Box_Block_4: '变型宫区块_4分值倍率',
+        Variant_Box_Block_5: '变型宫区块_5分值倍率',
+        Variant_Box_Block_6: '变型宫区块_6分值倍率',
+        Variant_Box_Block_7: '变型宫区块_7分值倍率',
+        Variant_Box_Block_8: '变型宫区块_8分值倍率',
+        Variant_Box_Block_9: '变型宫区块_9分值倍率',
+        Variant_Row_Col_Block: '变型行列区块分值倍率',
+        Variant_Row_Col_Block_2: '变型行列区块_2分值倍率',
+        Variant_Row_Col_Block_3: '变型行列区块_3分值倍率',
+        Variant_Row_Col_Block_4: '变型行列区块_4分值倍率',
+        Variant_Row_Col_Block_5: '变型行列区块_5分值倍率',
+        Variant_Row_Col_Block_6: '变型行列区块_6分值倍率',
+        Variant_Row_Col_Block_7: '变型行列区块_7分值倍率',
+        Variant_Row_Col_Block_8: '变型行列区块_8分值倍率',
+        Variant_Row_Col_Block_9: '变型行列区块_9分值倍率',
+        Extra_Region_Block: '额外区域区块分值倍率',
+        Extra_Region_Block_2: '额外区域区块_2分值倍率',
+        Extra_Region_Block_3: '额外区域区块_3分值倍率',
+        Extra_Region_Block_4: '额外区域区块_4分值倍率',
+        Extra_Region_Block_5: '额外区域区块_5分值倍率',
+        Extra_Region_Block_6: '额外区域区块_6分值倍率',
+        Extra_Region_Block_7: '额外区域区块_7分值倍率',
+        Extra_Region_Block_8: '额外区域区块_8分值倍率',
+        Extra_Region_Block_9: '额外区域区块_9分值倍率',
+        Variant_Extra_Region_Block: '变型额外区域区块分值倍率',
+        Variant_Extra_Region_Block_2: '变型额外区域区块_2分值倍率',
+        Variant_Extra_Region_Block_3: '变型额外区域区块_3分值倍率',
+        Variant_Extra_Region_Block_4: '变型额外区域区块_4分值倍率',
+        Variant_Extra_Region_Block_5: '变型额外区域区块_5分值倍率',
+        Variant_Extra_Region_Block_6: '变型额外区域区块_6分值倍率',
+        Variant_Extra_Region_Block_7: '变型额外区域区块_7分值倍率',
+        Variant_Extra_Region_Block_8: '变型额外区域区块_8分值倍率',
+        Variant_Extra_Region_Block_9: '变型额外区域区块_9分值倍率',
+        Box_Pair_Block: '宫组合区块分值倍率',
+        Extra_Region_Pair_Block: '额外区域组合区块分值倍率',
+        Box_Hidden_Pair: '宫隐性数对分值倍率',
+        Row_Col_Hidden_Pair: '行列隐性数对分值倍率',
+        Extra_Region_Hidden_Pair: '额外区域隐性数对分值倍率',
+        Box_Naked_Pair: '宫显性数对分值倍率',
+        Row_Col_Naked_Pair: '行列显性数对分值倍率',
+        Extra_Region_Naked_Pair: '额外区域显性数对分值倍率',
+        Box_Hidden_Triple: '宫隐性三数组分值倍率',
+        Row_Col_Hidden_Triple: '行列隐性三数组分值倍率',
+        Extra_Region_Hidden_Triple: '额外区域隐性三数组分值倍率',
+        Box_Naked_Triple: '宫显性三数组分值倍率',
+        Row_Col_Naked_Triple: '行列显性三数组分值倍率',
+        Extra_Region_Naked_Triple: '额外区域显性三数组分值倍率',
+        Box_Hidden_Quad: '宫隐性四数组分值倍率',
+        Row_Col_Hidden_Quad: '行列隐性四数组分值倍率',
+        Extra_Region_Hidden_Quad: '额外区域隐性四数组分值倍率',
+        Box_Naked_Quad: '宫显性四数组分值倍率',
+        Row_Col_Naked_Quad: '行列显性四数组分值倍率',
+        Extra_Region_Naked_Quad: '额外区域显性四数组分值倍率',
+        Cell_Elimination_1: '余1唯余法分值倍率',
+        Cell_Elimination_2: '余2唯余法分值倍率',
+        Cell_Elimination_3: '余3唯余法分值倍率',
+        Cell_Elimination_4: '余4唯余法分值倍率',
+        Cell_Elimination_5: '余5唯余法分值倍率',
+        Cell_Elimination_6: '余6唯余法分值倍率',
+        Cell_Elimination_7: '余7唯余法分值倍率',
+        Cell_Elimination_8: '余8唯余法分值倍率',
+        Cell_Elimination_9: '余9唯余法分值倍率',
+        special_combination_must_not_contain: '特定组合必不含分值倍率',
+        Special_Combination_Region_Most_Not_Contain_1: '特定组合必不含_1分值倍率',
+        Special_Combination_Region_Most_Not_Contain_2: '特定组合必不含_2分值倍率',
+        Special_Combination_Region_Most_Not_Contain_3: '特定组合必不含_3分值倍率',
+        Special_Combination_Region_Most_Not_Contain_4: '特定组合必不含_4分值倍率',
+        Special_Combination_Region_Most_Not_Contain_n: '特定组合必不含_n分值倍率',
+        special_combination_must_contain: '特定组合必含分值倍率',
+        Special_Combination_Region_Most_Contain_1: '特定组合必含_1分值倍率',
+        Special_Combination_Region_Most_Contain_2: '特定组合必含_2分值倍率',
+        Special_Combination_Region_Most_Contain_3: '特定组合必含_3分值倍率',
+        Special_Combination_Region_Most_Contain_4: '特定组合必含_4分值倍率',
+        Special_Combination_Region_Most_Contain_n: '特定组合必含_n分值倍率',
+        special_combination_cell_elimination: '特定组合唯余分值倍率',
+        Special_Combination_Region_Cell_Elimination_1: '特定组合唯余_1分值倍率',
+        Special_Combination_Region_Cell_Elimination_2: '特定组合唯余_2分值倍率',
+        Special_Combination_Region_Cell_Elimination_3: '特定组合唯余_3分值倍率',
+        Special_Combination_Region_Cell_Elimination_4: '特定组合唯余_4分值倍率',
+        Special_Combination_Region_Cell_Elimination_n: '特定组合唯余_n分值倍率',
+        special_combination_elimination: '特定组合遍历分值倍率',
+        Special_Combination_Region_Elimination_1: '特定组合遍历_1分值倍率',
+        Special_Combination_Region_Elimination_2: '特定组合遍历_2分值倍率',
+        Special_Combination_Region_Elimination_3: '特定组合遍历_3分值倍率',
+        Special_Combination_Region_Elimination_4: '特定组合遍历_4分值倍率',
+        Special_Combination_Region_Elimination_n: '特定组合遍历_n分值倍率',
+        special_combination_block: '特定组合区块分值倍率',
+        Special_Combination_Region_Block_1: '特定组合区块_1分值倍率',
+        Special_Combination_Region_Block_2: '特定组合区块_2分值倍率',
+        Special_Combination_Region_Block_3: '特定组合区块_3分值倍率',
+        Special_Combination_Region_Block_4: '特定组合区块_4分值倍率',
+        Special_Combination_Region_Block_n: '特定组合区块_n分值倍率',
+        multi_special_combination: '多特定组合分值倍率',
+        Multi_Special_Combination_Region_Most_Not_Contain_1: '多特定组合必不含_1分值倍率',
+        Multi_Special_Combination_Region_Most_Not_Contain_2: '多特定组合必不含_2分值倍率',
+        Multi_Special_Combination_Region_Most_Not_Contain_3: '多特定组合必不含_3分值倍率',
+        Multi_Special_Combination_Region_Most_Not_Contain_4: '多特定组合必不含_4分值倍率',
+        Multi_Special_Combination_Region_Most_Not_Contain_n: '多特定组合必不含_n分值倍率',
+        Multi_Special_Combination_Region_Most_Contain_1: '多特定组合必含_1分值倍率',
+        Multi_Special_Combination_Region_Most_Contain_2: '多特定组合必含_2分值倍率',
+        Multi_Special_Combination_Region_Most_Contain_3: '多特定组合必含_3分值倍率',
+        Multi_Special_Combination_Region_Most_Contain_4: '多特定组合必含_4分值倍率',
+        Multi_Special_Combination_Region_Most_Contain_n: '多特定组合必含_n分值倍率',
+        Multi_Special_Combination_Region_Cell_Elimination_1: '多特定组合唯余_1分值倍率',
+        Multi_Special_Combination_Region_Cell_Elimination_2: '多特定组合唯余_2分值倍率',
+        Multi_Special_Combination_Region_Cell_Elimination_3: '多特定组合唯余_3分值倍率',
+        Multi_Special_Combination_Region_Cell_Elimination_4: '多特定组合唯余_4分值倍率',
+        Multi_Special_Combination_Region_Cell_Elimination_n: '多特定组合唯余_n分值倍率',
+        Multi_Special_Combination_Region_Elimination_1: '多特定组合遍历_1分值倍率',
+        Multi_Special_Combination_Region_Elimination_2: '多特定组合遍历_2分值倍率',
+        Multi_Special_Combination_Region_Elimination_3: '多特定组合遍历_3分值倍率',
+        Multi_Special_Combination_Region_Elimination_4: '多特定组合遍历_4分值倍率',
+        Multi_Special_Combination_Region_Elimination_n: '多特定组合遍历_n分值倍率',
+        Multi_Special_Combination_Region_Block_1: '多特定组合区块_1分值倍率',
+        Multi_Special_Combination_Region_Block_2: '多特定组合区块_2分值倍率',
+        Multi_Special_Combination_Region_Block_3: '多特定组合区块_3分值倍率',
+        Multi_Special_Combination_Region_Block_4: '多特定组合区块_4分值倍率',
+        Multi_Special_Combination_Region_Block_n: '多特定组合区块_n分值倍率',
+    };
+
+    if (!state.techniqueScoreMultipliers) {
+        state.techniqueScoreMultipliers = {};
+    }
+    Object.keys(techniqueMultiplierTargets).forEach((techniqueId) => {
+        if (state.techniqueScoreMultipliers[techniqueId] === undefined) {
+            state.techniqueScoreMultipliers[techniqueId] = 1;
+        }
+    });
+
     const panel = document.createElement('div');
     panel.id = 'techniquePanel';
     panel.style.position = 'absolute';  // 改为绝对定位
@@ -472,15 +653,93 @@ export function create_technique_panel() {
             id: 'block',
             name: '区块',
         items: [
-            { id: 'Box_Block', name: '宫区块', default: true },
-            { id: 'Variant_Box_Block', name: '变型宫区块', default: false },
+            {
+                id: 'Box_Block',
+                name: '宫区块',
+                items: [
+                    { id: 'Box_Block_2', name: '宫区块_2', default: true },
+                    { id: 'Box_Block_3', name: '宫区块_3', default: true },
+                    { id: 'Box_Block_4', name: '宫区块_4', default: true },
+                    { id: 'Box_Block_5', name: '宫区块_5', default: true },
+                    { id: 'Box_Block_6', name: '宫区块_6', default: true },
+                    { id: 'Box_Block_7', name: '宫区块_7', default: true },
+                    { id: 'Box_Block_8', name: '宫区块_8', default: true },
+                    { id: 'Box_Block_9', name: '宫区块_9', default: true },
+                ]
+            },
+            {
+                id: 'Variant_Box_Block',
+                name: '变型宫区块',
+                items: [
+                    { id: 'Variant_Box_Block_2', name: '变型宫区块_2', default: false },
+                    { id: 'Variant_Box_Block_3', name: '变型宫区块_3', default: false },
+                    { id: 'Variant_Box_Block_4', name: '变型宫区块_4', default: false },
+                    { id: 'Variant_Box_Block_5', name: '变型宫区块_5', default: false },
+                    { id: 'Variant_Box_Block_6', name: '变型宫区块_6', default: false },
+                    { id: 'Variant_Box_Block_7', name: '变型宫区块_7', default: false },
+                    { id: 'Variant_Box_Block_8', name: '变型宫区块_8', default: false },
+                    { id: 'Variant_Box_Block_9', name: '变型宫区块_9', default: false },
+                ]
+            },
             // { id: 'Box_Block_One_Cut', name: '一刀流宫区块', default: true },
             { id: 'Box_Pair_Block', name: '宫组合区块', default: true },
             { id: 'Extra_Region_Pair_Block', name: '额外区域组合区块', default: false },
-            { id: 'Row_Col_Block', name: '行列区块', default: true },
-            { id: 'Variant_Row_Col_Block', name: '变型行列区块', default: false },
-            { id: 'Extra_Region_Block', name: '额外区域区块', default: false },
-            { id: 'Variant_Extra_Region_Block', name: '变型额外区域区块', default: false },
+            {
+                id: 'Row_Col_Block',
+                name: '行列区块',
+                items: [
+                    { id: 'Row_Col_Block_2', name: '行列区块_2', default: true },
+                    { id: 'Row_Col_Block_3', name: '行列区块_3', default: true },
+                    { id: 'Row_Col_Block_4', name: '行列区块_4', default: true },
+                    { id: 'Row_Col_Block_5', name: '行列区块_5', default: true },
+                    { id: 'Row_Col_Block_6', name: '行列区块_6', default: true },
+                    { id: 'Row_Col_Block_7', name: '行列区块_7', default: true },
+                    { id: 'Row_Col_Block_8', name: '行列区块_8', default: true },
+                    { id: 'Row_Col_Block_9', name: '行列区块_9', default: true },
+                ]
+            },
+            {
+                id: 'Variant_Row_Col_Block',
+                name: '变型行列区块',
+                items: [
+                    { id: 'Variant_Row_Col_Block_2', name: '变型行列区块_2', default: false },
+                    { id: 'Variant_Row_Col_Block_3', name: '变型行列区块_3', default: false },
+                    { id: 'Variant_Row_Col_Block_4', name: '变型行列区块_4', default: false },
+                    { id: 'Variant_Row_Col_Block_5', name: '变型行列区块_5', default: false },
+                    { id: 'Variant_Row_Col_Block_6', name: '变型行列区块_6', default: false },
+                    { id: 'Variant_Row_Col_Block_7', name: '变型行列区块_7', default: false },
+                    { id: 'Variant_Row_Col_Block_8', name: '变型行列区块_8', default: false },
+                    { id: 'Variant_Row_Col_Block_9', name: '变型行列区块_9', default: false },
+                ]
+            },
+            {
+                id: 'Extra_Region_Block',
+                name: '额外区域区块',
+                items: [
+                    { id: 'Extra_Region_Block_2', name: '额外区域区块_2', default: false },
+                    { id: 'Extra_Region_Block_3', name: '额外区域区块_3', default: false },
+                    { id: 'Extra_Region_Block_4', name: '额外区域区块_4', default: false },
+                    { id: 'Extra_Region_Block_5', name: '额外区域区块_5', default: false },
+                    { id: 'Extra_Region_Block_6', name: '额外区域区块_6', default: false },
+                    { id: 'Extra_Region_Block_7', name: '额外区域区块_7', default: false },
+                    { id: 'Extra_Region_Block_8', name: '额外区域区块_8', default: false },
+                    { id: 'Extra_Region_Block_9', name: '额外区域区块_9', default: false },
+                ]
+            },
+            {
+                id: 'Variant_Extra_Region_Block',
+                name: '变型额外区域区块',
+                items: [
+                    { id: 'Variant_Extra_Region_Block_2', name: '变型额外区域区块_2', default: false },
+                    { id: 'Variant_Extra_Region_Block_3', name: '变型额外区域区块_3', default: false },
+                    { id: 'Variant_Extra_Region_Block_4', name: '变型额外区域区块_4', default: false },
+                    { id: 'Variant_Extra_Region_Block_5', name: '变型额外区域区块_5', default: false },
+                    { id: 'Variant_Extra_Region_Block_6', name: '变型额外区域区块_6', default: false },
+                    { id: 'Variant_Extra_Region_Block_7', name: '变型额外区域区块_7', default: false },
+                    { id: 'Variant_Extra_Region_Block_8', name: '变型额外区域区块_8', default: false },
+                    { id: 'Variant_Extra_Region_Block_9', name: '变型额外区域区块_9', default: false },
+                ]
+            },
             // { id: 'Special_Combination_Region_Block', name: '特定组合区块', default: false }, // 新增特定组合区块
             // { id: 'Multi_Special_Combination_Region_Block', name: '多特定组合区块', default: false } // 新增多特定组合区块
         ]
@@ -720,7 +979,13 @@ export function create_technique_panel() {
                                 'Extra_Region_Elimination_7', 'Extra_Region_Elimination_8', 'Extra_Region_Elimination_9'],
             'Cell_Elimination': ['Cell_Elimination_1', 'Cell_Elimination_2', 'Cell_Elimination_3',
                                 'Cell_Elimination_4', 'Cell_Elimination_5', 'Cell_Elimination_6',
-                                'Cell_Elimination_7', 'Cell_Elimination_8', 'Cell_Elimination_9']
+                                'Cell_Elimination_7', 'Cell_Elimination_8', 'Cell_Elimination_9'],
+            'Box_Block': ['Box_Block_2', 'Box_Block_3', 'Box_Block_4', 'Box_Block_5', 'Box_Block_6', 'Box_Block_7', 'Box_Block_8', 'Box_Block_9'],
+            'Variant_Box_Block': ['Variant_Box_Block_2', 'Variant_Box_Block_3', 'Variant_Box_Block_4', 'Variant_Box_Block_5', 'Variant_Box_Block_6', 'Variant_Box_Block_7', 'Variant_Box_Block_8', 'Variant_Box_Block_9'],
+            'Row_Col_Block': ['Row_Col_Block_2', 'Row_Col_Block_3', 'Row_Col_Block_4', 'Row_Col_Block_5', 'Row_Col_Block_6', 'Row_Col_Block_7', 'Row_Col_Block_8', 'Row_Col_Block_9'],
+            'Variant_Row_Col_Block': ['Variant_Row_Col_Block_2', 'Variant_Row_Col_Block_3', 'Variant_Row_Col_Block_4', 'Variant_Row_Col_Block_5', 'Variant_Row_Col_Block_6', 'Variant_Row_Col_Block_7', 'Variant_Row_Col_Block_8', 'Variant_Row_Col_Block_9'],
+            'Extra_Region_Block': ['Extra_Region_Block_2', 'Extra_Region_Block_3', 'Extra_Region_Block_4', 'Extra_Region_Block_5', 'Extra_Region_Block_6', 'Extra_Region_Block_7', 'Extra_Region_Block_8', 'Extra_Region_Block_9'],
+            'Variant_Extra_Region_Block': ['Variant_Extra_Region_Block_2', 'Variant_Extra_Region_Block_3', 'Variant_Extra_Region_Block_4', 'Variant_Extra_Region_Block_5', 'Variant_Extra_Region_Block_6', 'Variant_Extra_Region_Block_7', 'Variant_Extra_Region_Block_8', 'Variant_Extra_Region_Block_9']
         };
         
         // 同步父级技巧到子项
@@ -838,6 +1103,35 @@ export function create_technique_panel() {
 
                 subGroupTitleContainer.appendChild(subGroupCheckbox);
                 subGroupTitleContainer.appendChild(subGroupTitle);
+
+                if (techniqueMultiplierTargets[item.id]) {
+                    const multiplierInput = document.createElement('input');
+                    multiplierInput.type = 'number';
+                    multiplierInput.min = '0';
+                    multiplierInput.step = '0.1';
+                    multiplierInput.value = String(state.techniqueScoreMultipliers[item.id] ?? 1);
+                    multiplierInput.title = techniqueMultiplierTargets[item.id];
+                    multiplierInput.style.width = '56px';
+                    multiplierInput.style.marginLeft = '10px';
+                    multiplierInput.style.padding = '2px 4px';
+
+                    const syncMultiplier = () => {
+                        const parsedValue = Number(multiplierInput.value);
+                        state.techniqueScoreMultipliers[item.id] = Number.isFinite(parsedValue) && parsedValue >= 0 ? parsedValue : 1;
+                        if (!Number.isFinite(parsedValue) || parsedValue < 0) {
+                            multiplierInput.value = '1';
+                        }
+                    };
+
+                    multiplierInput.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                    });
+                    multiplierInput.addEventListener('input', syncMultiplier);
+                    multiplierInput.addEventListener('change', syncMultiplier);
+
+                    subGroupTitleContainer.appendChild(multiplierInput);
+                }
+
                 subGroupContainer.appendChild(subGroupTitleContainer);
 
                 const subGroupItems = document.createElement('div');
@@ -872,6 +1166,35 @@ export function create_technique_panel() {
 
                 div.appendChild(checkbox);
                 div.appendChild(label);
+
+                if (techniqueMultiplierTargets[item.id]) {
+                    const multiplierInput = document.createElement('input');
+                    multiplierInput.type = 'number';
+                    multiplierInput.min = '0';
+                    multiplierInput.step = '0.1';
+                    multiplierInput.value = String(state.techniqueScoreMultipliers[item.id] ?? 1);
+                    multiplierInput.title = techniqueMultiplierTargets[item.id];
+                    multiplierInput.style.width = '56px';
+                    multiplierInput.style.marginLeft = '10px';
+                    multiplierInput.style.padding = '2px 4px';
+
+                    const syncMultiplier = () => {
+                        const parsedValue = Number(multiplierInput.value);
+                        state.techniqueScoreMultipliers[item.id] = Number.isFinite(parsedValue) && parsedValue >= 0 ? parsedValue : 1;
+                        if (!Number.isFinite(parsedValue) || parsedValue < 0) {
+                            multiplierInput.value = '1';
+                        }
+                    };
+
+                    multiplierInput.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                    });
+                    multiplierInput.addEventListener('input', syncMultiplier);
+                    multiplierInput.addEventListener('change', syncMultiplier);
+
+                    div.appendChild(multiplierInput);
+                }
+
                 container.appendChild(div);
             }
         });
@@ -1034,6 +1357,9 @@ export function check_uniqueness(check_next = false) {
                     const valStr = input?.value ?? '';
                     if (state.is_candidates_mode && valStr.length > 1) {
                         return [...new Set(valStr.split('').map(Number))].filter(n => n >= 1 && n <= size);
+                    }
+                    if (state.current_mode === 'sandwich' && valStr.trim() === '') {
+                        return null;
                     }
                     const v = parseInt(valStr, 10);
                     return Number.isFinite(v) ? v : 0;

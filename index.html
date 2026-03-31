@@ -22,10 +22,35 @@
     <div class="button-container" id="extraButtons"></div>
 
     <div class="import-container">
-        <input type="text" id="sudokuString" placeholder="输入数独字符串，如: 17...8...5.....86....47..9...2..4..6..7.1.2..3..2..7...3..96....95.....3...3...49">
-        <button id="importSudokuFromString">导入题目</button>
-        <button id="exportSudokuToString">导出题目</button>
-        <input type="text" id="exportedString" placeholder="导出的数独字符串将显示在这里" readonly>
+        <div class="import-export-actions">
+            <div class="import-export-rows">
+                <div class="import-export-row">
+                    <input type="text" id="sudokuString" placeholder="输入数独字符串，如: 17...8...5.....86....47..9...2..4..6..7.1.2..3..2..7...3..96....95.....3...3...49">
+                    <button id="importSudokuFromString">导入题目</button>
+                </div>
+                <div class="import-export-row">
+                    <input type="text" id="exportedString" placeholder="导出的数独字符串将显示在这里" readonly>
+                    <button id="exportSudokuToString">导出题目</button>
+                </div>
+            </div>
+            <div class="export-text-button-wrap">
+                <div class="export-text-actions">
+                    <button id="exportSudokuAsText">导出文本</button>
+                    <button id="selectExportDate">选择日期</button>
+                    <button id="selectExportTime">选择时间</button>
+                    <input type="date" id="exportDatePicker" class="hidden-date-picker">
+                    <input type="time" id="exportTimePicker" class="hidden-date-picker" step="3600">
+                    <select id="exportStarPicker" aria-label="选择导出星级">
+                        <option value="1" selected>星级：1</option>
+                        <option value="2">星级：2</option>
+                        <option value="3">星级：3</option>
+                        <option value="4">星级：4</option>
+                        <option value="5">星级：5</option>
+                    </select>
+                </div>
+                <input type="text" id="exportedTextString" placeholder="导出的文本将显示在这里" readonly>
+            </div>
+        </div>
     </div>
     <div style="height: 20px;"></div>
     <div id="gridDisplay"></div>

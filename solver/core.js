@@ -1012,15 +1012,17 @@ export function restore_original_board() {
         state.is_candidates_mode ? '退出候选数模式' : '切换候选数模式';
 }
 
-export function save_sudoku_as_image(is_puzzle = true, with_watermark = false, watermark_img_src = './potato_sudoku.png') {
+export function save_sudoku_as_image(is_puzzle = true, with_watermark = false, watermark_img_src = './potato_sudoku.png', options = {}) {
     const container = document.querySelector('.sudoku-container');
     if (!container) {
         show_result('请先创建数独网格！', 'error');
         return;
     }
 
-    
+    const { fileName: customFileName, exportSolution = true } = options;
+
     if (is_puzzle) {
+        hide_solution();
         if (state.current_mode === 'missing') {
             check_missing_uniqueness();
         } else {
@@ -1180,17 +1182,18 @@ export function save_sudoku_as_image(is_puzzle = true, with_watermark = false, w
         // 移除临时容器
         document.body.removeChild(tempContainer);
 
-        // 文件名唯一性处理
-        const key = `${mode_name}_${score}_${technique_str}_${is_puzzle ? '题目' : '答案'}`;
-        if (!fileNameCounter[key]) {
-            fileNameCounter[key] = 1;
-        } else {
-            fileNameCounter[key]++;
-        }
-        const count = fileNameCounter[key];
+        let fileName = customFileName;
+        if (!fileName) {
+            const key = `${mode_name}_${score}_${technique_str}_${is_puzzle ? '题目' : '答案'}`;
+            if (!fileNameCounter[key]) {
+                fileNameCounter[key] = 1;
+            } else {
+                fileNameCounter[key]++;
+            }
+            const count = fileNameCounter[key];
 
-        // 文件名格式：分值_分值_技巧_题目/答案_序号.png
-        const fileName = `${mode_name}_${score}_${technique_str}_${is_puzzle ? '题目' : '答案'}_${count}.png`;
+            fileName = `${mode_name}_${score}_${technique_str}_${is_puzzle ? '题目' : '答案'}_${count}.png`;
+        }
             
 let outputCanvas = canvas;
 if (with_watermark) {
@@ -1209,7 +1212,7 @@ if (with_watermark) {
         show_result(is_puzzle ? '数独题目已保存为图片！' : '数独解答已保存为图片！', 'success');
 
         // 如果是题目模式，自动解题并保存解答图片
-        if (is_puzzle) {
+        if (is_puzzle && exportSolution) {
             // check_uniqueness();
             if (state.current_mode === 'missing') {
                 check_missing_uniqueness();

@@ -7,7 +7,8 @@ import {
     save_sudoku_as_image,
     change_candidates_mode,
     show_generating_timer,
-    hide_generating_timer
+    hide_generating_timer,
+    show_result
 } from './solver/core.js';
 
 import { 
@@ -32,6 +33,222 @@ import { generate_ratio_puzzle } from './modules/ratio.js';
 import { generate_odd_puzzle } from './modules/odd.js';
 import { generate_odd_even_puzzle } from './modules/odd_even.js';
 import { create_ratio_sudoku } from './modules/ratio.js';
+import { generate_fortress_puzzle } from './modules/fortress.js';
+import { generate_product_puzzle } from './modules/product.js';
+
+
+const MODE_EXPORT_META = {
+    classic: { type: '标准', rule: '每行、每列、每宫数字均不重复' },
+    diagonal: { type: '对角线', rule: '除标准数独规则外，每条对角线上的数字也均不重复' },
+    anti_diagonal: { type: '反对角', rule: (size) => `除标准数独规则外，每条对角线上只能出现${size / 3}个数字` },
+    multi_diagonal: { type: '斜线', rule: '除标准数独规则外，每条斜线上的数字也均不重复' },
+    extra_region: { type: '额外区域', rule: '除标准数独规则外，每个额外区域内的数字也均不重复' },
+    renban: { type: '灰格连续', rule: '除标准数独规则外，每个灰色额外区域内的数字连续' },
+    fortress: { type: '堡垒', rule: '除标准数独规则外，灰格数字大于白格数字' },
+    VX: { type: 'VX', rule: '除标准数独规则外，V(X)：两侧格内数字和为5(10)，满足条件的V(X)均已标出' },
+    ratio: { type: '比例', rule: '除标准数独规则外，带比例标记的相邻格满足比例关系' },
+    product: { type: '乘积', rule: '除标准数独规则外，带乘积标记的区域满足乘积约束' },
+    missing: { type: '缺一门', rule: '除标准数独规则外，黑格不填数字' }
+};
+
+function format_export_date(date = new Date()) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function format_export_hour(date = new Date()) {
+    return String(date.getHours()).padStart(2, '0');
+}
+
+function normalize_export_time_value(value) {
+    if (!value) {
+        return '';
+    }
+    const hour = String(value).split(':')[0] || '';
+    if (!hour) {
+        return '';
+    }
+    return `${hour.padStart(2, '0')}:00`;
+}
+
+function get_size_prefix(size) {
+    const map = { 4: '四宫', 6: '六宫', 9: '九宫' };
+    return map[size] || `${size}宫`;
+}
+
+function get_mode_meta() {
+    const size = state.current_grid_size;
+    const mode = state.current_mode || 'classic';
+    const meta = MODE_EXPORT_META[mode] || MODE_EXPORT_META.classic;
+    return {
+        type: `${get_size_prefix(size)}${meta.type}`,
+        rule: typeof meta.rule === 'function' ? meta.rule(size) : meta.rule
+    };
+}
+
+function extract_grid_string_from_dom(size, useSolutionOffset = false) {
+    const container = document.querySelector('.sudoku-container');
+    if (!container || !size) return '';
+
+    let result = '';
+    for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
+            const row = useSolutionOffset ? i + 1 : i;
+            const col = useSolutionOffset ? j + 1 : j;
+            const input = container.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
+            const value = input?.value?.trim() || '';
+            result += value === '' || value === '0' ? '.' : value[0];
+        }
+    }
+    return result;
+}
+
+function extract_puzzle_string(size) {
+    if (state.originalBoard && state.originalBoard.length === size) {
+        let result = '';
+        for (let i = 0; i < size; i++) {
+            for (let j = 0; j < size; j++) {
+                const value = `${state.originalBoard[i][j]?.value || ''}`.trim();
+                result += value === '' || value === '0' ? '.' : value[0];
+            }
+        }
+        return result;
+    }
+
+    const needsOffset = ['X_sums', 'sandwich', 'skyscraper'].includes(state.current_mode);
+    return extract_grid_string_from_dom(size, needsOffset);
+}
+
+function extract_solution_string(size) {
+    const needsOffset = ['X_sums', 'sandwich', 'skyscraper'].includes(state.current_mode);
+    return extract_grid_string_from_dom(size, needsOffset);
+}
+
+function download_json_file(payload, fileName) {
+    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.download = fileName;
+    link.href = url;
+    link.click();
+
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function export_sudoku_as_text() {
+    if (!state.current_grid_size) {
+        return;
+    }
+
+    const output = document.getElementById('exportedTextString');
+    if (!output) {
+        return;
+    }
+
+    const size = state.current_grid_size;
+    const { type, rule } = get_mode_meta();
+    const diff = get_export_diff();
+    const selectedDate = document.getElementById('exportDatePicker')?.value;
+    const selectedTime = document.getElementById('exportTimePicker')?.value;
+    const exportDate = selectedDate || format_export_date();
+    const exportTimeValue = normalize_export_time_value(selectedTime);
+    const exportHour = exportTimeValue.split(':')[0];
+    const date = exportHour ? `${exportDate}-${exportHour}` : exportDate;
+    const dateCompact = `${exportDate.replace(/-/g, '')}${exportHour}`;
+    const imageFolder = state.current_mode === 'classic' ? 'classic-' : '';
+    const imagePathFolder = exportHour ? 'hourly-puzzles' : `daily-${imageFolder}puzzles`;
+    const exportBaseFileName = exportHour
+        ? `star${diff}-${dateCompact}`
+        : `star${diff}-${imageFolder}${dateCompact}`;
+    const imageFileName = exportHour
+        ? `${exportBaseFileName}.png`
+        : `${exportBaseFileName}.png`;
+
+    const payload = {
+        diff,
+        date,
+        type,
+        rule,
+        puzzle: extract_puzzle_string(size),
+        solution: extract_solution_string(size),
+        image: `cloud://cloudbase-5gdz784z4b8109d4.636c-cloudbase-5gdz784z4b8109d4-1410842983/${imagePathFolder}/${imageFileName}`,
+        size
+    };
+
+    output.value = JSON.stringify(payload);
+
+    const fileName = `${exportBaseFileName}.json`;
+    download_json_file(payload, fileName);
+    save_sudoku_as_image(true, true, './potato_sudoku.png', {
+        fileName: `${exportBaseFileName}.png`,
+        exportSolution: false
+    });
+}
+
+function open_export_date_picker() {
+    const picker = document.getElementById('exportDatePicker');
+    if (!picker) return;
+
+    if (!picker.value) {
+        picker.value = format_export_date();
+    }
+
+    if (typeof picker.showPicker === 'function') {
+        picker.showPicker();
+    } else {
+        picker.focus();
+        picker.click();
+    }
+}
+
+function open_export_time_picker() {
+    const picker = document.getElementById('exportTimePicker');
+    if (!picker) return;
+
+    if (picker.value) {
+        picker.value = '';
+        sync_export_time_button_text();
+        return;
+    }
+
+    if (typeof picker.showPicker === 'function') {
+        picker.showPicker();
+    } else {
+        picker.focus();
+        picker.click();
+    }
+}
+
+function sync_export_date_button_text() {
+    const picker = document.getElementById('exportDatePicker');
+    const btn = document.getElementById('selectExportDate');
+    if (!picker || !btn) return;
+
+    btn.textContent = picker.value ? `选择日期：${picker.value}` : '选择日期';
+}
+
+function sync_export_time_button_text() {
+    const picker = document.getElementById('exportTimePicker');
+    const btn = document.getElementById('selectExportTime');
+    if (!picker || !btn) return;
+
+    const hour = picker.value ? normalize_export_time_value(picker.value).split(':')[0] : '';
+    btn.textContent = hour ? `选择时间：${hour}点（点击可取消）` : '选择时间(可选)';
+}
+
+function get_export_diff() {
+    const starPicker = document.getElementById('exportStarPicker');
+    const parsed = parseInt(starPicker?.value || '', 10);
+    if ([1, 2, 3, 4, 5].includes(parsed)) {
+        return parsed;
+    }
+    return 1;
+}
+
+
 
 // 初始化事件处理程序
 
@@ -57,7 +274,33 @@ function initializeEventHandlers() {
     
     document.getElementById('importSudokuFromString').addEventListener('click', import_sudoku_from_string);
     document.getElementById('exportSudokuToString').addEventListener('click', export_sudoku_to_string);
+    document.getElementById('exportSudokuAsText').addEventListener('click', () => {
+        hide_solution();
+        check_uniqueness(false);
+        export_sudoku_as_text();
+    });
+    document.getElementById('selectExportDate').addEventListener('click', open_export_date_picker);
+    document.getElementById('selectExportTime').addEventListener('click', open_export_time_picker);
     document.getElementById('saveAsImage').addEventListener('click', save_sudoku_as_image);
+
+    const exportDatePicker = document.getElementById('exportDatePicker');
+    if (exportDatePicker) {
+        if (!exportDatePicker.value) {
+            exportDatePicker.value = format_export_date();
+        }
+        exportDatePicker.addEventListener('change', sync_export_date_button_text);
+        sync_export_date_button_text();
+    }
+
+    const exportTimePicker = document.getElementById('exportTimePicker');
+    if (exportTimePicker) {
+        if (exportTimePicker.value) {
+            exportTimePicker.value = normalize_export_time_value(exportTimePicker.value);
+        }
+        exportTimePicker.addEventListener('change', sync_export_time_button_text);
+        sync_export_time_button_text();
+    }
+
     // 新增：水印版保存
     document.getElementById('saveAsImageWatermark').addEventListener('click', () => {
         save_sudoku_as_image(true, true, './potato_sudoku.png');
@@ -136,22 +379,42 @@ function initializeEventHandlers() {
 
     generatepuzzleBtn.parentNode.insertBefore(scoreInput, generatepuzzleBtn.nextSibling);
 
-    // // 提示数数量输入框
-    // const cluesInput = document.createElement('input');
-    // cluesInput.type = 'number';
-    // cluesInput.id = 'cluesCount';
-    // cluesInput.placeholder = '提示数';
-    // cluesInput.value = '';
-    // cluesInput.style.width = '70px';
-    // cluesInput.style.marginLeft = '10px';
+    // 分值上限输入框
+    const scoreUpperInput = document.createElement('input');
+    scoreUpperInput.type = 'number';
+    scoreUpperInput.id = 'scoreUpperLimit';
+    scoreUpperInput.placeholder = '分值上限';
+    scoreUpperInput.value = '';
+    scoreUpperInput.style.width = '80px';
+    scoreUpperInput.style.marginLeft = '5px';
 
-    // scoreInput.parentNode.insertBefore(cluesInput, scoreInput.nextSibling);
+    scoreInput.parentNode.insertBefore(scoreUpperInput, scoreInput.nextSibling);
+
+    const cluesLowerInput = document.createElement('input');
+    cluesLowerInput.type = 'number';
+    cluesLowerInput.id = 'cluesLowerLimit';
+    cluesLowerInput.placeholder = '已知数下限';
+    cluesLowerInput.value = '';
+    cluesLowerInput.style.width = '80px';
+    cluesLowerInput.style.marginLeft = '5px';
+
+    scoreInput.parentNode.insertBefore(cluesLowerInput, scoreUpperInput.nextSibling);
+
+    const cluesUpperInput = document.createElement('input');
+    cluesUpperInput.type = 'number';
+    cluesUpperInput.id = 'cluesUpperLimit';
+    cluesUpperInput.placeholder = '已知数上限';
+    cluesUpperInput.value = '';
+    cluesUpperInput.style.width = '80px';
+    cluesUpperInput.style.marginLeft = '5px';
+
+    scoreInput.parentNode.insertBefore(cluesUpperInput, cluesLowerInput.nextSibling);
 
 
     // 新增：批量自动出题和保存图片
     const batchBtn = document.createElement('button');
     batchBtn.id = 'batchGenerateSave';
-    batchBtn.textContent = '自动批量';
+    batchBtn.textContent = '自动批量(水印版)';
     batchBtn.style.marginLeft = '5px';
 
     const batchInput = document.createElement('input');
@@ -164,8 +427,14 @@ function initializeEventHandlers() {
     batchInput.style.marginLeft = '10px';
 
     // generatepuzzleBtn.parentNode.insertBefore(batchBtn, generatepuzzleBtn.nextSibling);
-    scoreInput.parentNode.insertBefore(batchBtn, scoreInput.nextSibling);
+    scoreInput.parentNode.insertBefore(batchBtn, cluesUpperInput.nextSibling);
     batchBtn.parentNode.insertBefore(batchInput, batchBtn.nextSibling);
+    // 新增：不带水印的批量按钮
+    const batchNoWMBtn = document.createElement('button');
+    batchNoWMBtn.id = 'batchGenerateSaveNoWM';
+    batchNoWMBtn.textContent = '自动批量';
+    batchNoWMBtn.style.marginLeft = '5px';
+    scoreInput.parentNode.insertBefore(batchNoWMBtn, batchBtn.nextSibling);
 
     // 添加跳转卡点按钮
     const jumpBtn = document.createElement('button');
@@ -186,59 +455,288 @@ function initializeEventHandlers() {
         }
     });
 
-    generatepuzzleBtn.addEventListener('click', async () => {
-        const scoreLowerLimit = parseInt(scoreInput.value, 10) || 0;
-        // const holesCount = parseInt(holesInput.value, 10);
-        // const cluesCount = parseInt(cluesInput.value, 10) || 0;
-        const cluesCount = 0;
+    function generate_once_by_mode(score_lower_limit, holes_count, use_mode_specific_generator) {
+        if (!use_mode_specific_generator) {
+            return generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        }
+
+        if (state.current_mode === 'multi_diagonal') {
+            return generate_multi_diagonal_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        } else if (state.current_mode === 'product') {
+            return generate_product_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        } else if (state.current_mode === 'VX') {
+            return generate_VX_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        } else if (state.current_mode === 'fortress') {
+            return generate_fortress_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        } else if (state.current_mode === 'extra_region') {
+            return generate_extra_region_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        } else if (state.current_mode === 'renban') {
+            return generate_renban_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        } else if (state.current_mode === 'exclusion') {
+            return generate_exclusion_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        } else if (state.current_mode === 'quadruple') {
+            return generate_quadruple_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        } else if (state.current_mode === 'ratio') {
+            return generate_ratio_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        } else if (state.current_mode === 'odd') {
+            return generate_odd_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        } else if (state.current_mode === 'odd_even') {
+            return generate_odd_even_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        } else {
+            return generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        }
+    }
+
+    function get_current_clues_count() {
         const size = state.current_grid_size;
-        const holesCount = size * size - (isNaN(cluesCount) ? 0 : cluesCount);
-        // const holesCount = size * size - 0;
-        // generate_puzzle(state.current_grid_size, scoreLowerLimit, holesCount);
+        const container = document.querySelector('.sudoku-container');
+        const isBorderedMode = ['X_sums', 'sandwich', 'skyscraper'].includes(state.current_mode);
+        let cluesCount = 0;
+
+        for (let row = 0; row < size; row++) {
+            for (let col = 0; col < size; col++) {
+                const actualRow = isBorderedMode ? row + 1 : row;
+                const actualCol = isBorderedMode ? col + 1 : col;
+                const input = container?.querySelector(`input[data-row="${actualRow}"][data-col="${actualCol}"]`);
+                if (input && input.value.trim() !== '') {
+                    cluesCount++;
+                }
+            }
+        }
+
+        return cluesCount;
+    }
+
+    function get_generation_options() {
+        const scoreLowerLimit = parseInt(scoreInput.value, 10) || 0;
+        const parsedScoreUpperLimit = parseInt(scoreUpperInput.value, 10);
+        const scoreUpperLimit = Number.isNaN(parsedScoreUpperLimit) ? Number.POSITIVE_INFINITY : parsedScoreUpperLimit;
+        if (scoreUpperLimit < scoreLowerLimit) {
+            alert('分值上限不能小于分值下限');
+            return null;
+        }
+
+        const size = state.current_grid_size;
+        const totalCellCount = size * size;
+        const parsedCluesLowerLimit = parseInt(cluesLowerInput.value, 10);
+        const cluesLowerLimit = Number.isNaN(parsedCluesLowerLimit) ? 0 : parsedCluesLowerLimit;
+        const parsedCluesUpperLimit = parseInt(cluesUpperInput.value, 10);
+        const cluesUpperLimit = Number.isNaN(parsedCluesUpperLimit) ? Number.POSITIVE_INFINITY : parsedCluesUpperLimit;
+
+        if (cluesLowerLimit < 0 || cluesLowerLimit > totalCellCount) {
+            alert(`已知数下限必须介于0和${totalCellCount}之间`);
+            return null;
+        }
+
+        if (Number.isFinite(cluesUpperLimit) && (cluesUpperLimit < 0 || cluesUpperLimit > totalCellCount)) {
+            alert(`已知数上限必须介于0和${totalCellCount}之间`);
+            return null;
+        }
+
+        if (cluesUpperLimit < cluesLowerLimit) {
+            alert('已知数上限不能小于已知数下限');
+            return null;
+        }
+
+        const holesCount = totalCellCount - cluesLowerLimit;
+
+        return {
+            scoreLowerLimit,
+            scoreUpperLimit,
+            cluesLowerLimit,
+            cluesUpperLimit,
+            holesCount
+        };
+    }
+
+    async function generate_with_constraints(generate_once, options, max_try = 30) {
+        const {
+            scoreLowerLimit,
+            scoreUpperLimit,
+            cluesLowerLimit,
+            cluesUpperLimit
+        } = options;
+        const hasScoreLowerLimit = Number.isFinite(scoreLowerLimit) && scoreLowerLimit > 0;
+        const hasScoreUpperLimit = Number.isFinite(scoreUpperLimit);
+        const hasCluesLowerLimit = Number.isFinite(cluesLowerLimit) && cluesLowerLimit > 0;
+        const hasCluesUpperLimit = Number.isFinite(cluesUpperLimit);
+        const total_try = (hasScoreLowerLimit || hasScoreUpperLimit || hasCluesLowerLimit || hasCluesUpperLimit) ? max_try : 1;
+
+        for (let i = 0; i < total_try; i++) {
+            await Promise.resolve(generate_once(scoreLowerLimit));
+            await new Promise(resolve => setTimeout(resolve, 0));
+
+            const current_score = Number(state.solve_stats && state.solve_stats.total_score);
+            const currentCluesCount = get_current_clues_count();
+
+            if (hasScoreLowerLimit || hasScoreUpperLimit) {
+                if (!Number.isFinite(current_score)) {
+                    continue;
+                }
+
+                if (current_score < scoreLowerLimit) {
+                    continue;
+                }
+
+                if (hasScoreUpperLimit && current_score > scoreUpperLimit) {
+                    continue;
+                }
+            }
+
+            if (hasCluesLowerLimit && currentCluesCount < cluesLowerLimit) {
+                continue;
+            }
+
+            if (hasCluesUpperLimit && currentCluesCount > cluesUpperLimit) {
+                continue;
+            }
+
+            return true;
+        }
+        return false;
+    }
+
+    async function generate_with_score_range(generate_once, score_lower_limit, score_upper_limit, max_try = 30) {
+        return generate_with_constraints(
+            generate_once,
+            {
+                scoreLowerLimit: score_lower_limit,
+                scoreUpperLimit: score_upper_limit,
+                cluesLowerLimit: 0,
+                cluesUpperLimit: Number.POSITIVE_INFINITY
+            },
+            max_try
+        );
+    }
+
+    async function generate_in_constraints(options, use_mode_specific_generator, max_try = 100) {
+        return generate_with_constraints(
+            (current_score_lower_limit) => generate_once_by_mode(current_score_lower_limit, options.holesCount, use_mode_specific_generator),
+            options,
+            max_try
+        );
+    }
+
+    function get_generation_failure_message(options) {
+        const conditions = [];
+        const {
+            scoreLowerLimit,
+            scoreUpperLimit,
+            cluesLowerLimit,
+            cluesUpperLimit
+        } = options;
+
+        if (Number.isFinite(scoreUpperLimit)) {
+            conditions.push(`分值介于${scoreLowerLimit}和${scoreUpperLimit}之间`);
+        } else if (scoreLowerLimit > 0) {
+            conditions.push(`分值不低于${scoreLowerLimit}`);
+        }
+
+        if (Number.isFinite(cluesUpperLimit)) {
+            if (cluesLowerLimit > 0) {
+                conditions.push(`已知数介于${cluesLowerLimit}和${cluesUpperLimit}之间`);
+            } else {
+                conditions.push(`已知数不高于${cluesUpperLimit}`);
+            }
+        } else if (cluesLowerLimit > 0) {
+            conditions.push(`已知数不低于${cluesLowerLimit}`);
+        }
+
+        if (conditions.length === 0) {
+            return '未能在限定次数内生成符合条件的题目，请调整参数后重试。';
+        }
+
+        return `未能在限定次数内生成${conditions.join('，且')}的题目，请调整参数后重试。`;
+    }
+
+    function get_score_range_failure_message(score_lower_limit, score_upper_limit) {
+        return get_generation_failure_message({
+            scoreLowerLimit: score_lower_limit,
+            scoreUpperLimit: score_upper_limit,
+            cluesLowerLimit: 0,
+            cluesUpperLimit: Number.POSITIVE_INFINITY
+        });
+    }
+
+    function create_mode_specific_generate_handler(generate_once) {
+        return async () => {
+            const options = get_generation_options();
+            if (!options) {
+                return;
+            }
+
+            const generated = await generate_with_constraints(
+                (current_score_lower_limit) => generate_once(current_score_lower_limit, options.holesCount),
+                options
+            );
+
+            if (!generated) {
+                show_result(get_generation_failure_message(options));
+            }
+        };
+    }
+
+    state.get_generation_options = get_generation_options;
+    state.generate_with_constraints = generate_with_constraints;
+    state.generate_with_score_range = generate_with_score_range;
+    state.get_generation_failure_message = get_generation_failure_message;
+    state.get_score_range_failure_message = get_score_range_failure_message;
+    state.create_mode_specific_generate_handler = create_mode_specific_generate_handler;
+
+    generatepuzzleBtn.addEventListener('click', async () => {
+        const options = get_generation_options();
+        if (!options) {
+            return;
+        }
+
         show_generating_timer();
 
-        setTimeout(() => {
-            generate_puzzle(state.current_grid_size, scoreLowerLimit, holesCount);
+        setTimeout(async () => {
+            const generated = await generate_in_constraints(options, false);
+            if (!generated) {
+                show_result(get_generation_failure_message(options));
+            }
             hide_generating_timer();
         }, 0);
     });
 
-    batchBtn.addEventListener('click', async () => {
-        const count = parseInt(batchInput.value, 10) || 1;
-        const score_lower_limit = parseInt(scoreInput.value, 10) || 0;
-        const size = state.current_grid_size;
-        // 从 cluesInput 读取用户输入的提示数，和单次生成保持一致
-        // const cluesCount = parseInt(cluesInput.value, 10) || 0;
-        const cluesCount = 0;
-        const holes_count = size * size - (isNaN(cluesCount) ? 0 : cluesCount);
+    async function runBatchGenerateAndSave(count, options, withWatermark) {
         if (isNaN(count) || count < 1) return;
+
         for (let i = 0; i < count; i++) {
-            if (state.current_mode === 'multi_diagonal') {
-                generate_multi_diagonal_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-            } else if (state.current_mode === 'VX') {
-                generate_vx_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-            } else if (state.current_mode === 'extra_region') {
-                generate_extra_region_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-            } else if (state.current_mode === 'renban') {
-                generate_renban_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-            } else if (state.current_mode === 'exclusion') {
-                generate_exclusion_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-            } else if (state.current_mode === 'quadruple') {
-                generate_quadruple_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-            } else if (state.current_mode === 'ratio') {
-                generate_ratio_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-            } else if (state.current_mode === 'odd') {
-                generate_odd_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-            } else if (state.current_mode === 'odd_even') {
-                generate_odd_even_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-            } else {
-                generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-            }
-            // 等待出题和保存图片完成
+            const generated = await generate_in_constraints(options, true);
+            if (!generated) continue;
+
             await new Promise(resolve => setTimeout(resolve, 800));
-            save_sudoku_as_image(true);
+            if (withWatermark) {
+                save_sudoku_as_image(true, true, './potato_sudoku.png');
+            } else {
+                save_sudoku_as_image(true);
+            }
             await new Promise(resolve => setTimeout(resolve, 1200));
         }
+    }
+
+    // 原有带水印批量按钮调用
+    batchBtn.addEventListener('click', async () => {
+        const options = get_generation_options();
+        if (!options) {
+            return;
+        }
+
+        const count = parseInt(batchInput.value, 10) || 1;
+        await runBatchGenerateAndSave(count, options, true);
+    });
+
+    // 新增：不带水印批量按钮调用
+    batchNoWMBtn.addEventListener('click', async () => {
+        const options = get_generation_options();
+        if (!options) {
+            return;
+        }
+
+        const count = parseInt(batchInput.value, 10) || 1;
+        await runBatchGenerateAndSave(count, options, false);
     });
 }
 

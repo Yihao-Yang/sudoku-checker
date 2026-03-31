@@ -63,7 +63,7 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
 
     // 尝试次数限制
     let try_count = 0;
-    const MAX_TRY = 20;
+    const MAX_TRY = 30;
     const existing_numbers = null;
     while (true) {
         try_count++;
@@ -204,16 +204,6 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
         // log_process(size);
         result = solve(test_board, size, isValid, true);
 
-        // 老分值判断（包含用户输入的下限）
-        if (state.solve_stats.total_score < score_lower_limit) {
-            log_process(`题目分值为${state.solve_stats.total_score}，低于下限${score_lower_limit}，重新生成...`);
-            // 如果 pre_solved_board 是外部传入的，跳出重试循环（因为无法改变外部终盘），返回当前结果或继续下一 symmetry？
-            if (pre_solved_board) {
-                log_process('外部传入终盘未达分值要求，停止进一步尝试。');
-                break;
-            }
-            continue;
-        }
         break;
     }
 

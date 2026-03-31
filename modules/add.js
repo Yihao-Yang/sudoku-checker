@@ -129,7 +129,7 @@ export function create_add_sudoku(size) {
     add_Extra_Button('加法', () => {create_add_sudoku(size)}, '#2196F3');
     // add_Extra_Button('清除标记', clear_add_marks, '#FF5722');
     add_Extra_Button('清除标记', clear_marks);
-    add_Extra_Button('自动出题', () => generate_add_puzzle(size));
+    add_Extra_Button('自动出题', state.create_mode_specific_generate_handler?.((score_lower_limit, holes_count) => generate_add_puzzle(size, score_lower_limit, holes_count)) || (() => generate_add_puzzle(size)), '#2196F3');
     // 可添加唯一性验证等按钮
 }
 

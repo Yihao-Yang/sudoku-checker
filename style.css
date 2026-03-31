@@ -54,10 +54,10 @@ button:hover {
 }
 
 #importSudokuFromString {
-    background-color: #2196F3;
+    background-color: #4CAF50;
 }
 #importSudokuFromString:hover {
-    background-color: #0b7dda;
+    background-color: #45a049;
 }
 
 .controls button {
@@ -228,37 +228,79 @@ box-sizing: border-box;
 .import-container {
     margin-top: 20px;
     display: flex;
-    gap: 10px;
-    align-items: center;
+    justify-content: center;
     flex-wrap: wrap;
     width: 80%;
     max-width: 800px;
 }
 
-#sudokuString {
-    flex-grow: 1;
-    padding: 12px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 1rem;
-}
-
-.export-container {
-    margin-top: 20px;
+.import-export-actions {
     display: flex;
+    align-items: flex-start;
     gap: 10px;
-    align-items: center;
-    flex-wrap: wrap;
-    width: 80%;
-    max-width: 800px;
+    width: 100%;
+    justify-content: center;
 }
 
-#exportedString {
-    flex-grow: 1;
-    padding: 12px;
+.import-export-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 0 0 auto;
+    margin-left: 84px;
+}
+
+.import-export-row {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+}
+
+.export-text-button-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: 12px;
+}
+
+.export-text-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.hidden-date-picker {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+#sudokuString,
+#exportedString,
+#exportedTextString {
+    width: 260px;
+    flex: 0 0 260px;
+    max-width: min(260px, 100%);
+    padding: 8px 12px;
     border: 1px solid #ddd;
     border-radius: 8px;
     font-size: 1rem;
+    box-sizing: border-box;
+}
+
+.import-export-row button,
+.export-text-button-wrap button {
+    white-space: nowrap;
+}
+
+#exportStarPicker {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+    background-color: #fff;
 }
 
 .candidates-grid {

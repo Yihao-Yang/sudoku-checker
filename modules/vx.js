@@ -152,7 +152,7 @@ export function create_vx_sudoku(size = 9) {
         add_Extra_Button('VX', () => {create_vx_sudoku(size)}, '#2196F3');
         add_Extra_Button('清除标记', clear_marks);
         add_Extra_Button('一键标记', auto_mark_vx);
-        add_Extra_Button('自动出题', () => generate_vx_puzzle(size), '#2196F3');
+        add_Extra_Button('自动出题', state.create_mode_specific_generate_handler?.((score_lower_limit, holes_count) => generate_vx_puzzle(size, score_lower_limit, holes_count)) || (() => generate_vx_puzzle(size)), '#2196F3');
         // add_Extra_Button('检查VX规则', check_vx_rules);
         // add_Extra_Button('验证VX唯一性', check_vx_uniqueness);
     }

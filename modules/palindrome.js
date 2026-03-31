@@ -28,9 +28,8 @@ export function create_palindrome_sudoku(size) {
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
-    state.multi_diagonal_lines = [];
     invalidate_regions_cache();
-    clear_multi_diagonal_marks();
+
     // 技巧设置（可根据需要调整）
     state.techniqueSettings = {
         Box_Elimination: true,
@@ -266,62 +265,8 @@ export function add_multi_diagonal_mark() {
         const row1 = Math.round((y1 / 100) * size - 0.5);
         const col2 = Math.round((x2 / 100) * size - 0.5);
         const row2 = Math.round((y2 / 100) * size - 0.5);
-        // 检查该线是否已存在，若存在则删除，否则画线
-        if (toggle_line_if_exists(size, [row1, col1], [row2, col2])) {
-            show_result('已删除该标记线。');
-        } else {
-            draw_multi_diagonal_line(size, [row1, col1], [row2, col2]);
-            // 记录到 state.multi_diagonal_lines
-            if (!state.multi_diagonal_lines) state.multi_diagonal_lines = [];
-            state.multi_diagonal_lines.push([[row1, col1], [row2, col2]]);
-            show_result('已添加标记线。');
-        }
-    }
-
-    // 检查两点间是否已有线，若有则删除，返回true，否则返回false
-    function toggle_line_if_exists(size, start, end) {
-        // 检查 state.multi_diagonal_lines
-        if (!state.multi_diagonal_lines) state.multi_diagonal_lines = [];
-        // 判断两端点是否已存在（无向线段）
-        const idx = state.multi_diagonal_lines.findIndex(line =>
-            (line[0][0] === start[0] && line[0][1] === start[1] && line[1][0] === end[0] && line[1][1] === end[1]) ||
-            (line[0][0] === end[0] && line[0][1] === end[1] && line[1][0] === start[0] && line[1][1] === start[1])
-        );
-        if (idx !== -1) {
-            // 删除SVG中的对应线
-            const svg = grid.querySelector('.mark-svg');
-            if (svg) {
-                // 百分比中心
-                function percent_center(row, col) {
-                    return {
-                        x: (col + 0.5) * (100 / size),
-                        y: (row + 0.5) * (100 / size)
-                    };
-                }
-                const p1 = percent_center(start[0], start[1]);
-                const p2 = percent_center(end[0], end[1]);
-                // 找到SVG中对应的line元素
-                const lines = Array.from(svg.querySelectorAll('line'));
-                for (const lineElem of lines) {
-                    const x1 = parseFloat(lineElem.getAttribute('x1'));
-                    const y1 = parseFloat(lineElem.getAttribute('y1'));
-                    const x2 = parseFloat(lineElem.getAttribute('x2'));
-                    const y2 = parseFloat(lineElem.getAttribute('y2'));
-                    // 允许浮点误差
-                    if (
-                        ((Math.abs(x1 - p1.x) < 1e-2 && Math.abs(y1 - p1.y) < 1e-2 && Math.abs(x2 - p2.x) < 1e-2 && Math.abs(y2 - p2.y) < 1e-2) ||
-                        (Math.abs(x1 - p2.x) < 1e-2 && Math.abs(y1 - p2.y) < 1e-2 && Math.abs(x2 - p1.x) < 1e-2 && Math.abs(y2 - p1.y) < 1e-2))
-                    ) {
-                        lineElem.remove();
-                        break;
-                    }
-                }
-            }
-            // 删除state中的线
-            state.multi_diagonal_lines.splice(idx, 1);
-            return true;
-        }
-        return false;
+        // 调用统一画线函数
+        draw_multi_diagonal_line(size, [row1, col1], [row2, col2]);
     }
 
     function on_cell_click(e) {

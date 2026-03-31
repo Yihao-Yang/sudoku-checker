@@ -102,7 +102,7 @@ export function create_exclusion_sudoku(size) {
     extra_buttons.innerHTML = '';
     add_Extra_Button('排除', () => {create_exclusion_sudoku(size)}, '#2196F3');
     add_Extra_Button('清除标记', clear_marks);
-    add_Extra_Button('自动出题', () => generate_exclusion_puzzle(size), '#2196F3');
+    add_Extra_Button('自动出题', state.create_mode_specific_generate_handler?.((score_lower_limit, holes_count) => generate_exclusion_puzzle(size, score_lower_limit, holes_count)) || (() => generate_exclusion_puzzle(size)), '#2196F3');
     // add_Extra_Button('隐藏答案', restore_original_board, '#2196F3');
 }
 

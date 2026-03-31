@@ -126,7 +126,7 @@ export function create_ratio_sudoku(size) {
     extra_buttons.innerHTML = '';
     add_Extra_Button('比例', () => {create_ratio_sudoku(size)}, '#2196F3');
     add_Extra_Button('清除标记', clear_marks);
-    add_Extra_Button('自动出题', () => generate_ratio_puzzle(size), '#2196F3');
+    add_Extra_Button('自动出题', state.create_mode_specific_generate_handler?.((score_lower_limit, holes_count) => generate_ratio_puzzle(size, score_lower_limit, holes_count)) || (() => generate_ratio_puzzle(size)), '#2196F3');
     // 可添加唯一性验证等按钮
 }
 

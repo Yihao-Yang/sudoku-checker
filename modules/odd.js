@@ -113,7 +113,7 @@ export function create_odd_sudoku(size) {
     add_Extra_Button('奇数', () => {create_odd_sudoku(size)}, '#2196F3');
     add_Extra_Button('添加标记', toggle_mark_mode, '#2196F3');
     add_Extra_Button('清除标记', clear_odd_marks, '#2196F3');
-    add_Extra_Button('自动出题', () => generate_odd_puzzle(size), '#2196F3');
+    add_Extra_Button('自动出题', state.create_mode_specific_generate_handler?.((score_lower_limit, holes_count) => generate_odd_puzzle(size, score_lower_limit, holes_count)) || (() => generate_odd_puzzle(size)), '#2196F3');
 
     // 切换标记模式
     function toggle_mark_mode() {

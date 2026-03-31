@@ -145,7 +145,7 @@ export function create_renban_sudoku(size) {
     add_Extra_Button('灰格连续', () => {create_renban_sudoku(size)}, '#2196F3');
     add_Extra_Button('添加标记', toggle_mark_mode, '#2196F3');
     add_Extra_Button('清除标记', () => clear_renban_marks(state.current_grid_size), '#2196F3');
-    add_Extra_Button('自动出题', () => generate_renban_puzzle(size), '#2196F3');
+    add_Extra_Button('自动出题', state.create_mode_specific_generate_handler?.((score_lower_limit, holes_count) => generate_renban_puzzle(size, score_lower_limit, holes_count)) || (() => generate_renban_puzzle(size)), '#2196F3');
 
     for (let i = 0; i < size * size; i++) {
         const row = Math.floor(i / size);

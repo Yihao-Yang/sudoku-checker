@@ -99,7 +99,7 @@ export function create_extra_region_sudoku(size) {
     add_Extra_Button('额外区域', () => {create_extra_region_sudoku(size)}, '#2196F3');
     add_Extra_Button('添加标记', toggle_mark_mode, '#2196F3');
     add_Extra_Button('清除标记', () => clear_extra_region_marks(state.current_grid_size), '#2196F3');
-    add_Extra_Button('自动出题', () => generate_extra_region_puzzle(size), '#2196F3');
+    add_Extra_Button('自动出题', state.create_mode_specific_generate_handler?.((score_lower_limit, holes_count) => generate_extra_region_puzzle(size, score_lower_limit, holes_count)) || (() => generate_extra_region_puzzle(size)), '#2196F3');
 
     for (let i = 0; i < size * size; i++) {
         const row = Math.floor(i / size);
