@@ -7,8 +7,47 @@ import { apply_quadruple_marks, is_valid_quadruple } from "../modules/quadruple.
 import { apply_odd_marks, is_valid_odd } from "../modules/odd.js";
 import { apply_odd_even_marks, is_valid_odd_even } from "../modules/odd_even.js";
 import { apply_exclusion_marks, is_valid_exclusion } from "../modules/exclusion.js";
+import { apply_inequality_marks } from "../modules/inequality.js";
 import { get_all_mark_lines, get_cells_on_line } from "../modules/multi_diagonal.js";
 // import { is_valid_quadruple } from '../modules/quadruple.js';
+
+
+function apply_fortress_marks(board, size) {
+    const directions = [
+        [-1, 0],
+        [1, 0],
+        [0, -1],
+        [0, 1],
+    ];
+
+    for (const key of state.fortress_cells || []) {
+        const [row, col] = key.split(',').map(Number);
+        if (!Number.isInteger(row) || !Number.isInteger(col)) continue;
+
+        for (const [dr, dc] of directions) {
+            const neighbor_row = row + dr;
+            const neighbor_col = col + dc;
+
+            if (
+                neighbor_row < 0 || neighbor_row >= size ||
+                neighbor_col < 0 || neighbor_col >= size
+            ) {
+                continue;
+            }
+
+            if (state.fortress_cells.has(`${neighbor_row},${neighbor_col}`)) {
+                continue;
+            }
+
+            if (Array.isArray(board[row][col])) {
+                board[row][col] = board[row][col].filter(candidate => candidate !== 1);
+            }
+            if (Array.isArray(board[neighbor_row][neighbor_col])) {
+                board[neighbor_row][neighbor_col] = board[neighbor_row][neighbor_col].filter(candidate => candidate !== size);
+            }
+        }
+    }
+}
 
 
 export function solve_By_Elimination(board, size) {
@@ -2236,6 +2275,10 @@ export function check_lookup_table(board, size) {
         apply_odd_even_marks(board, size);
     } else if (state.current_mode === 'exclusion') {
         apply_exclusion_marks(board, size);
+    } else if (state.current_mode === 'inequality') {
+        apply_inequality_marks(board, size);
+    } else if (state.current_mode === 'fortress') {
+        apply_fortress_marks(board, size);
     }
 }
 // 特定组合必含核心函数

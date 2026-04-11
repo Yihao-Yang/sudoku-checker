@@ -966,7 +966,8 @@ export function generate_solution_old(size) {
     }
 
     let attempt_count = 0; // 新增回溯计数器
-    const max_attempts = 1000000; // 最大尝试次数
+    const max_attempts_dom = document.getElementById('maxAttemptsInput');
+    const max_attempts = max_attempts_dom && max_attempts_dom.value ? parseInt(max_attempts_dom.value) : 10000; // 最大尝试次数
     // const max_attempts = 100; // 最大尝试次数
 
     // 检查某区域是否存在某个候选数只剩一格可填

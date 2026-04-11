@@ -373,7 +373,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('加法', () => create_add_sudoku(9));
         add_Extra_Button('乘积', () => create_product_sudoku(9));
         add_Extra_Button('比例', () => create_ratio_sudoku(9));
-        // add_Extra_Button('不等号', () => create_inequality_sudoku(9));
+        add_Extra_Button('不等号', () => create_inequality_sudoku(9));
         add_Extra_Button('奇数', () => create_odd_sudoku(9));
         add_Extra_Button('奇偶', () => create_odd_even_sudoku(9));
         add_Extra_Button('回文', () => create_palindrome_sudoku(9));

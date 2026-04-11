@@ -38,17 +38,34 @@ import { generate_product_puzzle } from './modules/product.js';
 
 
 const MODE_EXPORT_META = {
+    add: { type: '加法', rule: '除标准数独规则外，带标记区域内数字之和等于标记数字' },
     classic: { type: '标准', rule: '每行、每列、每宫数字均不重复' },
+    anti_king: { type: '无缘', rule: '除标准数独规则外，对角相邻位置的数字也均不重复' },
+    anti_knight: { type: '无马', rule: '除标准数独规则外，象棋马步位置的数字也均不重复' },
+    anti_elephant: { type: '无象', rule: '除标准数独规则外，中国象棋象步位置的数字也均不重复' },
     diagonal: { type: '对角线', rule: '除标准数独规则外，每条对角线上的数字也均不重复' },
     anti_diagonal: { type: '反对角', rule: (size) => `除标准数独规则外，每条对角线上只能出现${size / 3}个数字` },
     multi_diagonal: { type: '斜线', rule: '除标准数独规则外，每条斜线上的数字也均不重复' },
+    hashtag: { type: '斜井', rule: '除标准数独规则外，每条井字线上的数字也均不重复' },
     extra_region: { type: '额外区域', rule: '除标准数独规则外，每个额外区域内的数字也均不重复' },
+    window: { type: '窗口', rule: '除标准数独规则外，每个灰色窗口区域内的数字也均不重复' },
+    pyramid: { type: '金字塔', rule: '除标准数独规则外，每个灰色金字塔区域内的数字也均不重复' },
+    isomorphic: { type: '同位', rule: '除标准数独规则外，各宫相同位置上的数字也均不重复' },
+    clone: { type: '克隆', rule: '除标准数独规则外，形状相同的灰色区域中相同位置的数字必须一致' },
     renban: { type: '灰格连续', rule: '除标准数独规则外，每个灰色额外区域内的数字连续' },
+    palindrome: { type: '回文', rule: '除标准数独规则外，每条灰线关于中心对称位置上的数字必须相同' },
     fortress: { type: '堡垒', rule: '除标准数独规则外，灰格数字大于白格数字' },
-    VX: { type: 'VX', rule: '除标准数独规则外，V(X)：两侧格内数字和为5(10)，满足条件的V(X)均已标出' },
+    VX: { type: 'VX', rule: '除标准数独规则外，V(X)表示两侧格内数字和为5(10)，满足条件的V(X)均已标出' },
+    exclusion: { type: '排除', rule: '除标准数独规则外，带标记的周围四格内不包含标记中的数字' },
+    quadruple: { type: '四格提示', rule: '除标准数独规则外，带标记的周围四格内包含标记中的数字' },
     ratio: { type: '比例', rule: '除标准数独规则外，带比例标记的相邻格满足比例关系' },
-    product: { type: '乘积', rule: '除标准数独规则外，带乘积标记的区域满足乘积约束' },
-    missing: { type: '缺一门', rule: '除标准数独规则外，黑格不填数字' }
+    odd: { type: '奇数', rule: '除标准数独规则外，灰色圆圈内只能填奇数' },
+    odd_even: { type: '奇偶', rule: '除标准数独规则外，灰色圆圈内只能填奇数，灰色方框内只能填偶数' },
+    product: { type: '乘积', rule: '除标准数独规则外，带乘积标记的相邻格满足乘积约束' },
+    missing: { type: '缺一门', rule: '除标准数独规则外，黑格不填数字' },
+    X_sums: { type: 'X和', rule: '除标准数独规则外，外提示数等于该方向前X格数字之和，其中X为该方向第一格数字' },
+    sandwich: { type: '三明治', rule: (size) => `除标准数独规则外，外提示数等于该行或列中数字1和${size}之间所有数字之和` },
+    skyscraper: { type: '摩天楼', rule: '除标准数独规则外，外提示数表示从该方向能看到的楼房数，数字越大代表楼越高' }
 };
 
 function format_export_date(date = new Date()) {
@@ -377,7 +394,11 @@ function initializeEventHandlers() {
     scoreInput.style.width = '80px';
     scoreInput.style.marginLeft = '10px';
 
-    generatepuzzleBtn.parentNode.insertBefore(scoreInput, generatepuzzleBtn.nextSibling);
+    const generateRow1 = document.getElementById('generateRow1');
+    const generateRow2 = document.getElementById('generateRow2');
+    const generateRow3 = document.getElementById('generateRow3');
+
+    generateRow1.appendChild(scoreInput);
 
     // 分值上限输入框
     const scoreUpperInput = document.createElement('input');
@@ -388,34 +409,48 @@ function initializeEventHandlers() {
     scoreUpperInput.style.width = '80px';
     scoreUpperInput.style.marginLeft = '5px';
 
-    scoreInput.parentNode.insertBefore(scoreUpperInput, scoreInput.nextSibling);
+    generateRow1.appendChild(scoreUpperInput);
 
     const cluesLowerInput = document.createElement('input');
     cluesLowerInput.type = 'number';
     cluesLowerInput.id = 'cluesLowerLimit';
     cluesLowerInput.placeholder = '已知数下限';
     cluesLowerInput.value = '';
-    cluesLowerInput.style.width = '80px';
+    cluesLowerInput.style.width = '100px';
     cluesLowerInput.style.marginLeft = '5px';
 
-    scoreInput.parentNode.insertBefore(cluesLowerInput, scoreUpperInput.nextSibling);
+    generateRow1.appendChild(cluesLowerInput);
 
     const cluesUpperInput = document.createElement('input');
     cluesUpperInput.type = 'number';
     cluesUpperInput.id = 'cluesUpperLimit';
     cluesUpperInput.placeholder = '已知数上限';
     cluesUpperInput.value = '';
-    cluesUpperInput.style.width = '80px';
+    cluesUpperInput.style.width = '100px';
     cluesUpperInput.style.marginLeft = '5px';
 
-    scoreInput.parentNode.insertBefore(cluesUpperInput, cluesLowerInput.nextSibling);
+    generateRow1.appendChild(cluesUpperInput);
 
+    const attemptsInput = document.createElement('input');
+    attemptsInput.type = 'number';
+    attemptsInput.id = 'maxAttemptsInput';
+    attemptsInput.placeholder = '尝试终盘次数';
+    attemptsInput.value = '10000';
+    attemptsInput.style.width = '100px';
+    attemptsInput.style.marginLeft = '5px';
+    
+    generateRow1.appendChild(attemptsInput);
 
     // 新增：批量自动出题和保存图片
-    const batchBtn = document.createElement('button');
-    batchBtn.id = 'batchGenerateSave';
-    batchBtn.textContent = '自动批量(水印版)';
-    batchBtn.style.marginLeft = '5px';
+    const batchBtnWatermark = document.createElement('button');
+    batchBtnWatermark.id = 'batchGenerateSave';
+    batchBtnWatermark.textContent = '自动批量水印版';
+    batchBtnWatermark.style.marginLeft = '0px';
+
+    const batchNoWMBtn = document.createElement('button');
+    batchNoWMBtn.id = 'batchGenerateSaveNoWM';
+    batchNoWMBtn.textContent = '自动批量';
+    batchNoWMBtn.style.marginLeft = '5px';
 
     const batchInput = document.createElement('input');
     batchInput.type = 'number';
@@ -426,15 +461,21 @@ function initializeEventHandlers() {
     batchInput.style.width = '50px';
     batchInput.style.marginLeft = '10px';
 
-    // generatepuzzleBtn.parentNode.insertBefore(batchBtn, generatepuzzleBtn.nextSibling);
-    scoreInput.parentNode.insertBefore(batchBtn, cluesUpperInput.nextSibling);
-    batchBtn.parentNode.insertBefore(batchInput, batchBtn.nextSibling);
-    // 新增：不带水印的批量按钮
-    const batchNoWMBtn = document.createElement('button');
-    batchNoWMBtn.id = 'batchGenerateSaveNoWM';
-    batchNoWMBtn.textContent = '自动批量';
-    batchNoWMBtn.style.marginLeft = '5px';
-    scoreInput.parentNode.insertBefore(batchNoWMBtn, batchBtn.nextSibling);
+    generateRow2.appendChild(batchBtnWatermark);
+    generateRow2.appendChild(batchNoWMBtn);
+    generateRow2.appendChild(batchInput);
+
+    const batchBtn = batchBtnWatermark; // 为后续 addEventListener 提供引用
+
+    // 移动保存按钮。
+    const saveAsImageBtn = document.getElementById('saveAsImage');
+    const saveAsImageWatermarkBtn = document.getElementById('saveAsImageWatermark');
+    
+    saveAsImageWatermarkBtn.style.marginLeft = '0px';
+    saveAsImageBtn.style.marginLeft = '5px';
+    
+    generateRow3.appendChild(saveAsImageWatermarkBtn);
+    generateRow3.appendChild(saveAsImageBtn);
 
     // 添加跳转卡点按钮
     const jumpBtn = document.createElement('button');

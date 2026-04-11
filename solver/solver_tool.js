@@ -14,7 +14,7 @@ import { is_valid_ratio } from "../modules/ratio.js";
 import { is_valid_VX } from "../modules/vx.js";
 import { is_valid_kropki } from "../modules/kropki.js";
 import { is_valid_consecutive } from "../modules/consecutive.js";
-import { is_valid_inequality } from "../modules/inequality.js";
+import { is_valid_inequality, apply_inequality_candidate_elimination } from "../modules/inequality.js";
 import { apply_odd_marks, is_valid_odd, get_odd_cells } from "../modules/odd.js";
 import { apply_odd_even_marks, is_valid_odd_even, get_odd_even_cells } from "../modules/odd_even.js";
 import { is_valid_anti_king } from "../modules/anti_king.js";
@@ -27,34 +27,28 @@ import { is_valid_sandwich } from "../modules/sandwich.js";
 
 export function eliminate_candidates_classic(board, size, i, j, num, calc_score = true) {
     const eliminations = [];
-    // 根据当前模式获取所有区域
     const mode = (typeof state !== "undefined" && state.current_mode) ? state.current_mode : "classic";
 
-    // 满格区域
     const regions = get_all_regions(size, mode);
     const related_regions = regions.filter(region =>
         region.cells.some(([r, c]) => r === i && c === j)
     );
 
     for (const region of related_regions) {
-        // 只有区域名字是宫、行、列才会进行删数
         if (region.type !== '宫' && region.type !== '行' && region.type !== '列') {
             continue;
         }
-        
+
         for (const [r, c] of region.cells) {
             if (Array.isArray(board[r][c])) {
-                // 新增：无论是否真的被消除，都加分
                 if (calc_score) {
                     const key = `${r},${c},${num}`;
                     if (!state.candidate_elimination_score[key]) {
                         state.candidate_elimination_score[key] = 0;
                     }
                     state.candidate_elimination_score[key] += 1;
-                    // log_process(`候选数消除分值: [${getRowLetter(r+1)}${c+1}] 候选${num} -> 分值=${state.candidate_elimination_score[key]}`);
                 }
 
-                // 只有真的被消除才记录eliminations
                 if (Array.isArray(board[r][c])) {
                     const before = board[r][c].slice();
                     board[r][c] = board[r][c].filter(candidate_num => candidate_num !== num);
@@ -74,27 +68,20 @@ export function eliminate_candidates_classic(board, size, i, j, num, calc_score 
  */
 export function eliminate_candidates(board, size, i, j, num, calc_score = true) {
     const eliminations = [];
-    // 根据当前模式获取所有区域
     const mode = (typeof state !== "undefined" && state.current_mode) ? state.current_mode : "classic";
 
-    // 满格区域
     const regions = get_all_regions(size, mode);
     const related_regions = regions.filter(region =>
         region.cells.some(([r, c]) => r === i && c === j)
     );
 
     for (const region of related_regions) {
-        // 针对有重复四格提示区域，特殊处理
         if (region.type === '有重复四格提示' && Array.isArray(region.clue_nums)) {
-            // log_process(`处理特定组合 ${region.index} (${region.type}) 的候选数排除`);
-            // 统计该区域内已填入num的数量
             let filledCount = 0;
             for (const [r, c] of region.cells) {
                 if (board[r][c] === num) filledCount++;
             }
-            // 统计提示数中num的数量
             const clueCount = region.clue_nums.filter(n => n === num).length;
-            // 如果已填数量达到提示数量，则删去剩余格子的候选
             if (filledCount >= clueCount) {
                 for (const [r, c] of region.cells) {
                     if (Array.isArray(board[r][c])) {
@@ -111,27 +98,23 @@ export function eliminate_candidates(board, size, i, j, num, calc_score = true) 
                         if (eliminated.length > 0) {
                             eliminations.push({ row: r, col: c, eliminated });
                         }
-                        // log_process(`候选数消除分值: [${getRowLetter(r+1)}${c+1}] 候选${num} -> 分值=${state.candidate_elimination_score[key]}`);
                     }
                 }
-                continue; // 已处理该区域，跳过后续处理
+                continue;
             }
-            // 如果未达到提示数量，则不删候选
             continue;
         }
+
         for (const [r, c] of region.cells) {
             if (Array.isArray(board[r][c])) {
-                // 新增：无论是否真的被消除，都加分
                 if (calc_score) {
                     const key = `${r},${c},${num}`;
                     if (!state.candidate_elimination_score[key]) {
                         state.candidate_elimination_score[key] = 0;
                     }
                     state.candidate_elimination_score[key] += 1;
-                    // log_process(`候选数消除分值: [${getRowLetter(r+1)}${c+1}] 候选${num} -> 分值=${state.candidate_elimination_score[key]}`);
                 }
 
-                // 只有真的被消除才记录eliminations
                 if (Array.isArray(board[r][c])) {
                     const before = board[r][c].slice();
                     board[r][c] = board[r][c].filter(candidate_num => candidate_num !== num);
@@ -144,16 +127,15 @@ export function eliminate_candidates(board, size, i, j, num, calc_score = true) 
         }
     }
 
-    // 堡垒数独模式下的特殊处理
     if (mode === 'fortress') {
         const directions = [
-            [-1, 0], // 上
-            [1, 0],  // 下
-            [0, -1], // 左
-            [0, 1],  // 右
+            [-1, 0],
+            [1, 0],
+            [0, -1],
+            [0, 1],
         ];
         const cell_key = `${i},${j}`;
-        const is_gray = state.fortress_cells.has(cell_key); // 判断当前格子是否为灰格
+        const is_gray = state.fortress_cells.has(cell_key);
 
         for (const [dr, dc] of directions) {
             const nr = i + dr;
@@ -164,7 +146,6 @@ export function eliminate_candidates(board, size, i, j, num, calc_score = true) 
                 const is_neighbor_gray = state.fortress_cells.has(neighbor_key);
 
                 if (is_gray && !is_neighbor_gray) {
-                    // 当前格子是灰格，邻居是白格
                     if (Array.isArray(board[nr][nc])) {
                         for (let k = board[nr][nc].length - 1; k >= 0; k--) {
                             const candidate = board[nr][nc][k];
@@ -178,7 +159,6 @@ export function eliminate_candidates(board, size, i, j, num, calc_score = true) 
                         }
                     }
                 } else if (!is_gray && is_neighbor_gray) {
-                    // 当前格子是白格，邻居是灰格
                     if (Array.isArray(board[nr][nc])) {
                         for (let k = board[nr][nc].length - 1; k >= 0; k--) {
                             const candidate = board[nr][nc][k];
@@ -195,7 +175,6 @@ export function eliminate_candidates(board, size, i, j, num, calc_score = true) 
             }
         }
     }
-    // Anti-King模式下，斜对角格也要删除候选
     else if (mode === 'anti_king') {
         const king_moves = [
             [-1, -1], [-1, 1],
@@ -533,105 +512,7 @@ export function eliminate_candidates(board, size, i, j, num, calc_score = true) 
     // }
     // 不等号数独模式专用候选数处理
     else if (mode === 'inequality') {
-        const container = (typeof document !== "undefined") ? document.querySelector('.sudoku-container') : null;
-        if (container) {
-            const marks = container.querySelectorAll('.vx-mark[data-key]');
-            for (const mark of marks) {
-                const key = mark.dataset.key;
-                if (!key) continue;
-
-                // 解析标记对应的两格
-                let cell_a, cell_b;
-                if (key.startsWith('v-')) {
-                    const [_, row_str, col_str] = key.split('-');
-                    const r = parseInt(row_str);
-                    const c = parseInt(col_str);
-                    cell_a = [r, c - 1]; // Left
-                    cell_b = [r, c];     // Right
-                } else if (key.startsWith('h-')) {
-                    const [_, row_str, col_str] = key.split('-');
-                    const r = parseInt(row_str);
-                    const c = parseInt(col_str);
-                    cell_a = [r - 1, c]; // Top
-                    cell_b = [r, c];     // Bottom
-                } else {
-                    continue;
-                }
-
-                // 判断当前格是否与标记关联
-                let other_cell;
-                if (i === cell_a[0] && j === cell_a[1]) {
-                    other_cell = cell_b;
-                } else if (i === cell_b[0] && j === cell_b[1]) {
-                    other_cell = cell_a;
-                } else {
-                    continue; // 当前格与此标记无关
-                }
-
-                // 只有另一个格子有候选数时才处理
-                if (!Array.isArray(board[other_cell[0]][other_cell[1]])) continue;
-
-                // 获取标记符号
-                const symbolDiv = mark.querySelector('div');
-                const symbol = symbolDiv ? symbolDiv.textContent : null;
-
-                if (symbol === '>') {
-                    // cell_a > cell_b，即当前格 > 另一格
-                    if (i === cell_a[0] && j === cell_a[1]) {
-                        // 当前格 > 另一格，所以另一格的候选必须 < num
-                        for (let k = board[other_cell[0]][other_cell[1]].length - 1; k >= 0; k--) {
-                            const candidate = board[other_cell[0]][other_cell[1]][k];
-                            if (candidate >= num) {
-                                if (calc_score) {
-                                    state.candidate_elimination_score[`${other_cell[0]},${other_cell[1]},${candidate}`] = 1;
-                                }
-                                eliminations.push({ row: other_cell[0], col: other_cell[1], val: candidate });
-                                board[other_cell[0]][other_cell[1]].splice(k, 1);
-                            }
-                        }
-                    } else {
-                        // 另一格 > 当前格，所以当前格的候选必须 < num，另一格的候选必须 > num
-                        for (let k = board[other_cell[0]][other_cell[1]].length - 1; k >= 0; k--) {
-                            const candidate = board[other_cell[0]][other_cell[1]][k];
-                            if (candidate <= num) {
-                                if (calc_score) {
-                                    state.candidate_elimination_score[`${other_cell[0]},${other_cell[1]},${candidate}`] = 1;
-                                }
-                                eliminations.push({ row: other_cell[0], col: other_cell[1], val: candidate });
-                                board[other_cell[0]][other_cell[1]].splice(k, 1);
-                            }
-                        }
-                    }
-                } else if (symbol === '<') {
-                    // cell_a < cell_b，即当前格 < 另一格
-                    if (i === cell_a[0] && j === cell_a[1]) {
-                        // 当前格 < 另一格，所以另一格的候选必须 > num
-                        for (let k = board[other_cell[0]][other_cell[1]].length - 1; k >= 0; k--) {
-                            const candidate = board[other_cell[0]][other_cell[1]][k];
-                            if (candidate <= num) {
-                                if (calc_score) {
-                                    state.candidate_elimination_score[`${other_cell[0]},${other_cell[1]},${candidate}`] = 1;
-                                }
-                                eliminations.push({ row: other_cell[0], col: other_cell[1], val: candidate });
-                                board[other_cell[0]][other_cell[1]].splice(k, 1);
-                            }
-                        }
-                    } else {
-                        // 另一格 < 当前格，所以当前格的候选必须 > num，另一格的候选必须 < num
-                        for (let k = board[other_cell[0]][other_cell[1]].length - 1; k >= 0; k--) {
-                            const candidate = board[other_cell[0]][other_cell[1]][k];
-                            if (candidate >= num) {
-                                if (calc_score) {
-                                    state.candidate_elimination_score[`${other_cell[0]},${other_cell[1]},${candidate}`] = 1;
-                                }
-                                eliminations.push({ row: other_cell[0], col: other_cell[1], val: candidate });
-                                board[other_cell[0]][other_cell[1]].splice(k, 1);
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        eliminations.push(...apply_inequality_candidate_elimination(board, size, i, j, num, calc_score));
     }
     return eliminations;
 }
@@ -1799,45 +1680,32 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
             break;
         }
         case 'inequality': {
-            const container = document.querySelector('.sudoku-container');
-            if (container) {
-                const marks = container.querySelectorAll('.vx-mark');
-                for (const mark of marks) {
-                    const key = mark.dataset.key;
-                    if (!key) continue;
+            const marks = Array.isArray(state.inequality_marks) ? state.inequality_marks : [];
+            for (const mark of marks) {
+                let cell_a;
+                let cell_b;
 
-                    let cell_a, cell_b;
-                    if (key.startsWith('v-')) {
-                        const [_, row_str, col_str] = key.split('-');
-                        const r = parseInt(row_str);
-                        const c = parseInt(col_str);
-                        cell_a = [r, c - 1];
-                        cell_b = [r, c];
-                    } else if (key.startsWith('h-')) {
-                        const [_, row_str, col_str] = key.split('-');
-                        const r = parseInt(row_str);
-                        const c = parseInt(col_str);
-                        cell_a = [r - 1, c];
-                        cell_b = [r, c];
-                    } else {
-                        continue;
-                    }
+                if (mark.kind === 'v') {
+                    cell_a = [mark.r, mark.c];
+                    cell_b = [mark.r, mark.c + 1];
+                } else if (mark.kind === 'h') {
+                    cell_a = [mark.r, mark.c];
+                    cell_b = [mark.r + 1, mark.c];
+                } else {
+                    continue;
+                }
 
-                    if (cell_a[0] >= 0 && cell_a[0] < size && cell_a[1] >= 0 && cell_a[1] < size &&
-                        cell_b[0] >= 0 && cell_b[0] < size && cell_b[1] >= 0 && cell_b[1] < size) {
-                        
-                        // const index = `${getRowLetter(cell_a[0] + 1)}${cell_a[1] + 1}-${getRowLetter(cell_b[0] + 1)}${cell_b[1] + 1}`;
-                        const index = [cell_a, cell_b]
-                            .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
-                            .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
-                            .join('-');
-                        regions.push({
-                            type: '特定组合',
-                            index,
-                            cells: [cell_a, cell_b],
-                            // clue_nums: Array.from({ length: size }, (_, n) => n + 1)
-                        });
-                    }
+                if (cell_a[0] >= 0 && cell_a[0] < size && cell_a[1] >= 0 && cell_a[1] < size &&
+                    cell_b[0] >= 0 && cell_b[0] < size && cell_b[1] >= 0 && cell_b[1] < size) {
+                    const index = [cell_a, cell_b]
+                        .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                        .join('-');
+                    regions.push({
+                        type: '特定组合',
+                        index,
+                        cells: [cell_a, cell_b],
+                    });
                 }
             }
             break;

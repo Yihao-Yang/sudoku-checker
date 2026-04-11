@@ -16,6 +16,8 @@ export const state = {
 
     clues_board: null,
     marks_board: null,
+    inequality_marks: null,
+    _inequality_constraint_cache: null,
 
     box_missing_subsets: {},
     row_missing_subsets: {},

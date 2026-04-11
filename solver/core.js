@@ -842,6 +842,15 @@ export function clear_marks() {
     const container = document.querySelector('.sudoku-container');
     if (!container) return;
     container.querySelectorAll('.vx-mark').forEach(mark => mark.remove());
+
+    if (state.current_mode === 'add') {
+        state.marks_board = [];
+    }
+
+    if (state.current_mode === 'inequality') {
+        state.inequality_marks = [];
+        state._inequality_constraint_cache = null;
+    }
 }
 
 export function import_sudoku_from_string() {
