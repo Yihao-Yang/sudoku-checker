@@ -458,7 +458,7 @@ export function create_inequality_sudoku(size) {
         // Multi_Special_Combination_Region_Elimination_1: true,
         // Multi_Special_Combination_Region_Elimination_2: true,
         // Multi_Special_Combination_Region_Elimination_3: true,
-        // Special_Combination_Region_Block_1: true,
+        Special_Combination_Region_Block_1: true,
         // Special_Combination_Region_Block_2: true,
         // Special_Combination_Region_Block_3: true,
         // Multi_Special_Combination_Region_Block_1: true,

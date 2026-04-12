@@ -1337,7 +1337,7 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
     const regions = [];
     switch (mode) {
         case 'fortress': {
-            const fortressCells = Array.from(state.fortress_cells).map(key => key.split(',').map(Number));
+            const fortress_cells = Array.from(state.fortress_cells).map(key => key.split(',').map(Number));
             const directions = [
                 [-1, 0], // 上
                 [1, 0],  // 下
@@ -1345,40 +1345,47 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
                 [0, 1],  // 右
             ];
 
-            for (const [row, col] of fortressCells) {
-                const region = [[row, col]]; // 包含灰格本身
-
-                for (const [dr, dc] of directions) {
-                    const neighborRow = row + dr;
-                    const neighborCol = col + dc;
-
-                    // 检查是否在边界内且是白格
-                    if (
-                        neighborRow >= 0 && neighborRow < size &&
-                        neighborCol >= 0 && neighborCol < size &&
-                        !state.fortress_cells.has(`${neighborRow},${neighborCol}`)
-                    ) {
-                        region.push([neighborRow, neighborCol]);
-                    }
-                }
-                // clue_nums 包含与格子数量相同的 1-size 数字集合
-                const clue_nums = [];
-                for (let i = 0; i < region.length; i++) {
-                    clue_nums.push(...Array.from({ length: size }, (_, idx) => idx + 1));
-                }
-                // 生成区域的 index
-                const index = region
+            const region_index_set = new Set();
+            const push_unique_fortress_region = (region_cells) => {
+                const region_index = region_cells
+                    .slice()
                     .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
                     .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
                     .join('-');
 
-                // 将灰格及其邻居作为一个特定组合区域
+                if (region_index_set.has(region_index)) return;
+                region_index_set.add(region_index);
+
                 regions.push({
                     type: '特定组合',
-                    index,
-                    cells: region,
-                    // clue_nums, // 可根据需求填充线索数字
+                    index: region_index,
+                    cells: region_cells,
                 });
+            };
+
+            for (const [row, col] of fortress_cells) {
+                const region = [[row, col]]; // 包含灰格本身
+
+                for (const [dr, dc] of directions) {
+                    const neighbor_row = row + dr;
+                    const neighbor_col = col + dc;
+
+                    // 检查是否在边界内且是白格
+                    if (
+                        neighbor_row >= 0 && neighbor_row < size &&
+                        neighbor_col >= 0 && neighbor_col < size &&
+                        !state.fortress_cells.has(`${neighbor_row},${neighbor_col}`)
+                    ) {
+                        region.push([neighbor_row, neighbor_col]);
+                    }
+                }
+
+                // 保留原有：灰格及其邻居作为一个特定组合区域
+                push_unique_fortress_region(region);
+                // 新增：受约束的每个单格也作为特定组合
+                for (const cell of region) {
+                    push_unique_fortress_region([cell]);
+                }
             }
             break;
         }
@@ -1680,33 +1687,54 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
             break;
         }
         case 'inequality': {
-            const marks = Array.isArray(state.inequality_marks) ? state.inequality_marks : [];
-            for (const mark of marks) {
+            const inequality_marks = Array.isArray(state.inequality_marks) ? state.inequality_marks : [];
+            const region_index_set = new Set();
+
+            const push_unique_inequality_region = (region_cells) => {
+                const region_index = region_cells
+                    .slice()
+                    .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                    .map(([row, col]) => `${getRowLetter(row + 1)}${col + 1}`)
+                    .join('-');
+
+                if (region_index_set.has(region_index)) return;
+                region_index_set.add(region_index);
+
+                regions.push({
+                    type: '特定组合',
+                    index: region_index,
+                    cells: region_cells,
+                });
+            };
+
+            for (const inequality_mark of inequality_marks) {
                 let cell_a;
                 let cell_b;
 
-                if (mark.kind === 'v') {
-                    cell_a = [mark.r, mark.c];
-                    cell_b = [mark.r, mark.c + 1];
-                } else if (mark.kind === 'h') {
-                    cell_a = [mark.r, mark.c];
-                    cell_b = [mark.r + 1, mark.c];
+                if (inequality_mark.kind === 'v') {
+                    cell_a = [inequality_mark.r, inequality_mark.c];
+                    cell_b = [inequality_mark.r, inequality_mark.c + 1];
+                } else if (inequality_mark.kind === 'h') {
+                    cell_a = [inequality_mark.r, inequality_mark.c];
+                    cell_b = [inequality_mark.r + 1, inequality_mark.c];
                 } else {
                     continue;
                 }
 
-                if (cell_a[0] >= 0 && cell_a[0] < size && cell_a[1] >= 0 && cell_a[1] < size &&
-                    cell_b[0] >= 0 && cell_b[0] < size && cell_b[1] >= 0 && cell_b[1] < size) {
-                    const index = [cell_a, cell_b]
-                        .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
-                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
-                        .join('-');
-                    regions.push({
-                        type: '特定组合',
-                        index,
-                        cells: [cell_a, cell_b],
-                    });
-                }
+                const is_cell_a_valid =
+                    cell_a[0] >= 0 && cell_a[0] < size &&
+                    cell_a[1] >= 0 && cell_a[1] < size;
+                const is_cell_b_valid =
+                    cell_b[0] >= 0 && cell_b[0] < size &&
+                    cell_b[1] >= 0 && cell_b[1] < size;
+
+                if (!is_cell_a_valid || !is_cell_b_valid) continue;
+
+                // 保留原有双格特定组合
+                push_unique_inequality_region([cell_a, cell_b]);
+                // 新增：每个受约束单格也作为特定组合
+                push_unique_inequality_region([cell_a]);
+                push_unique_inequality_region([cell_b]);
             }
             break;
         }
@@ -2727,74 +2755,123 @@ function merge_regions_with_common_cells(regions) {
         return [];
     }
     const merged = [];
-    const visited = new Set();
+    const visited_region_ids = new Set();
 
-    // 辅助函数：将格子坐标转换为字符串
-    const cellToString = ([r, c]) => `${r},${c}`;
+    const cell_to_string = ([r, c]) => `${r},${c}`;
+    const parse_cell_key = (key) => key.split(',').map(Number);
+    const is_single_cell_region = (region) => Array.isArray(region?.cells) && region.cells.length === 1;
+    const non_single_region_ids = [];
 
-    // 遍历所有区域
-    for (let i = 0; i < regions.length; i++) {
-        if (visited.has(i)) continue;
+    // 预计算：每个区域的格子 key 列表（跳过单格特定组合）
+    const region_cell_keys_map = new Map();
+    for (let region_id = 0; region_id < regions.length; region_id++) {
+        const region = regions[region_id];
+        if (is_single_cell_region(region)) continue;
 
-        const queue = [i];
-        const merged_cells = new Set();
-        const merged_clue_nums = [];
+        const cell_keys = Array.isArray(region.cells) ? region.cells.map(cell_to_string) : [];
+        if (cell_keys.length === 0) continue;
 
-        // BFS 合并所有与当前区域有交集的区域
-        while (queue.length > 0) {
-            const current = queue.pop();
-            if (visited.has(current)) continue;
+        non_single_region_ids.push(region_id);
+        region_cell_keys_map.set(region_id, cell_keys);
+    }
 
-            visited.add(current);
-            const region = regions[current];
-
-            // 添加当前区域的格子和提示数
-            region.cells.forEach(cell => merged_cells.add(cellToString(cell)));
-            if (Array.isArray(region.clue_nums)) {
-                merged_clue_nums.push(...region.clue_nums);
+    // 倒排索引：格子 -> 区域 id 列表
+    const cell_to_region_ids = new Map();
+    for (const region_id of non_single_region_ids) {
+        const cell_keys = region_cell_keys_map.get(region_id) || [];
+        for (const cell_key of cell_keys) {
+            if (!cell_to_region_ids.has(cell_key)) {
+                cell_to_region_ids.set(cell_key, []);
             }
+            cell_to_region_ids.get(cell_key).push(region_id);
+        }
+    }
 
-            // 查找与当前区域有交集的其他区域
-            for (let j = 0; j < regions.length; j++) {
-                if (visited.has(j)) continue;
-
-                const other = regions[j];
-                if (other.cells.some(cell => merged_cells.has(cellToString(cell)))) {
-                    queue.push(j);
-
-                    // 每次发现交集时，生成一个新的合并区域
-                    const temp_merged_cells = new Set(merged_cells);
-                    other.cells.forEach(cell => temp_merged_cells.add(cellToString(cell)));
-
-                    const temp_index = Array.from(temp_merged_cells)
-                        .map(str => str.split(',').map(Number))
-                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
-                        .join('-');
-
-                    const temp_clue_nums = [...merged_clue_nums, ...(other.clue_nums || [])];
-
-                    merged.push({
-                        type: '合并特定组合',
-                        index: temp_index,
-                        cells: Array.from(temp_merged_cells).map(str => str.split(',').map(Number)),
-                        clue_nums: temp_clue_nums
-                    });
-                }
+    // 邻接表：仅连接“共享格子”的区域
+    const adjacency_map = new Map();
+    for (const region_id of non_single_region_ids) {
+        adjacency_map.set(region_id, new Set());
+    }
+    for (const region_ids of cell_to_region_ids.values()) {
+        for (let a = 0; a < region_ids.length; a++) {
+            for (let b = a + 1; b < region_ids.length; b++) {
+                const ra = region_ids[a];
+                const rb = region_ids[b];
+                adjacency_map.get(ra).add(rb);
+                adjacency_map.get(rb).add(ra);
             }
         }
+    }
 
-        // 最终合并区域
-        const final_index = Array.from(merged_cells)
-            .map(str => str.split(',').map(Number))
+    const emitted_signatures = new Set();
+    const emit_merged_region = (cell_key_set, clue_nums) => {
+        if (!cell_key_set || cell_key_set.size === 0) return;
+
+        const sorted_cell_keys = [...cell_key_set].sort();
+        const signature = sorted_cell_keys.join('|');
+        if (emitted_signatures.has(signature)) return;
+        emitted_signatures.add(signature);
+
+        const cells = sorted_cell_keys.map(parse_cell_key);
+        const index = cells
             .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
             .join('-');
 
         merged.push({
             type: '合并特定组合',
-            index: final_index,
-            cells: Array.from(merged_cells).map(str => str.split(',').map(Number)),
-            clue_nums: merged_clue_nums
+            index,
+            cells,
+            clue_nums,
         });
+    };
+
+    // 连通分量 BFS；每个分量内部生成中间合并结果 + 最终合并结果
+    for (const start_region_id of non_single_region_ids) {
+        if (visited_region_ids.has(start_region_id)) continue;
+
+        const queue = [start_region_id];
+        const merged_cell_keys = new Set();
+        const merged_clue_nums = [];
+
+        while (queue.length > 0) {
+            const current_region_id = queue.pop();
+            if (visited_region_ids.has(current_region_id)) continue;
+
+            visited_region_ids.add(current_region_id);
+            const current_region = regions[current_region_id];
+            const current_cell_keys = region_cell_keys_map.get(current_region_id) || [];
+
+            for (const cell_key of current_cell_keys) {
+                merged_cell_keys.add(cell_key);
+            }
+            if (Array.isArray(current_region.clue_nums)) {
+                merged_clue_nums.push(...current_region.clue_nums);
+            }
+
+            const neighbor_ids = adjacency_map.get(current_region_id) || new Set();
+            for (const neighbor_region_id of neighbor_ids) {
+                if (visited_region_ids.has(neighbor_region_id)) continue;
+
+                queue.push(neighbor_region_id);
+
+                // 每次发现可并入邻居时，记录一次“中间合并结果”
+                const temp_merged_cell_keys = new Set(merged_cell_keys);
+                const neighbor_cell_keys = region_cell_keys_map.get(neighbor_region_id) || [];
+                for (const cell_key of neighbor_cell_keys) {
+                    temp_merged_cell_keys.add(cell_key);
+                }
+
+                const temp_clue_nums = [
+                    ...merged_clue_nums,
+                    ...(regions[neighbor_region_id]?.clue_nums || []),
+                ];
+
+                emit_merged_region(temp_merged_cell_keys, temp_clue_nums);
+            }
+        }
+
+        // 连通分量最终合并结果
+        emit_merged_region(merged_cell_keys, merged_clue_nums);
     }
 
     return merged;

@@ -652,6 +652,8 @@ export function solve_By_Elimination(board, size) {
         [() => state.techniqueSettings?.Extra_Region_Elimination_8 && check_Extra_Region_Elimination(board, size, 8)],
         // 额外区域排除_9
         [() => state.techniqueSettings?.Extra_Region_Elimination_9 && check_Extra_Region_Elimination(board, size, 9)],
+        // 特定组合区块_1
+        [() => state.techniqueSettings?.Special_Combination_Region_Block_1 && check_special_combination_region_block_elimination(board, size, 1)],
         // 特定组合必含_2
         [() => state.techniqueSettings?.Special_Combination_Region_Most_Contain_2 && check_special_combination_region_must_contain(board, size, 2)],
         // 特定组合必不含_2
@@ -704,8 +706,7 @@ export function solve_By_Elimination(board, size) {
         [() => (state.techniqueSettings?.Extra_Region_Block_2 ?? state.techniqueSettings?.Extra_Region_Block) && check_Extra_Region_Block_Elimination(board, size, 2, true)],
         // 变型额外区域区块_2
         [() => (state.techniqueSettings?.Variant_Extra_Region_Block_2 ?? state.techniqueSettings?.Variant_Extra_Region_Block) && check_Extra_Region_Block_Elimination(board, size, 2, false)],
-        // 特定组合区块_1-2
-        [() => state.techniqueSettings?.Special_Combination_Region_Block_1 && check_special_combination_region_block_elimination(board, size, 1)],
+        // 特定组合区块_2
         [() => state.techniqueSettings?.Special_Combination_Region_Block_2 && check_special_combination_region_block_elimination(board, size, 2)],
 
         // 变型宫区块_3
@@ -3767,11 +3768,21 @@ function special_combination_region_block_elimination(board, size, region_cells,
                 
                 // 模拟填入并获取排除结果
                 const eliminations = eliminate_candidates(board_copy, size, r, c, num, false);
+                // if (!state.silentMode) {
+                //     log_process(`[${region_type}区块排除_${nat}] 模拟填入${getRowLetter(r + 1)}${c + 1}=${num} eliminations=${JSON.stringify(eliminations)}`);
+                // }
                 for (const elim of eliminations) {
-                    if (!elim.eliminated || elim.eliminated.length === 0) continue;
+                    const deleted_nums = [];
+                    if (Array.isArray(elim.eliminated) && elim.eliminated.length > 0) {
+                        deleted_nums.push(...elim.eliminated);
+                    }
+                    if (typeof elim.val === 'number') {
+                        deleted_nums.push(elim.val);
+                    }
+                    if (deleted_nums.length === 0) continue;
                     const posKey = `${elim.row},${elim.col}`;
                     if (!eliminated_map.has(posKey)) eliminated_map.set(posKey, new Set());
-                    for (const n of elim.eliminated) {
+                    for (const n of deleted_nums) {
                         eliminated_map.get(posKey).add(n);
                     }
                 }
