@@ -208,6 +208,8 @@ function render_inequality_marks_from_state(size, container = document.querySele
 
         mark.addEventListener('click', function(e) {
             e.stopPropagation();
+            const g = document.querySelector('.sudoku-grid');
+            if (!g?._inequality_marking_active) return;
             if (relation === '>') {
                 set_inequality_mark_relation(r, c, kind, '<', size);
             } else {
@@ -215,12 +217,6 @@ function render_inequality_marks_from_state(size, container = document.querySele
             }
             render_inequality_marks_from_state(size, container);
         });
-
-        mark.ondblclick = function(e) {
-            e.stopPropagation();
-            remove_inequality_marks_from_state([key]);
-            render_inequality_marks_from_state(size, container);
-        };
 
         container.appendChild(mark);
     }
@@ -452,8 +448,8 @@ export function create_inequality_sudoku(size) {
         // Multi_Special_Combination_Region_Cell_Elimination_1: true,
         // Multi_Special_Combination_Region_Cell_Elimination_2: true,
         // Multi_Special_Combination_Region_Cell_Elimination_3: true,
-        Special_Combination_Region_Elimination_1: true,
-        Special_Combination_Region_Elimination_2: true,
+        // Special_Combination_Region_Elimination_1: true,
+        // Special_Combination_Region_Elimination_2: true,
         Special_Combination_Region_Elimination_3: true,
         // Multi_Special_Combination_Region_Elimination_1: true,
         // Multi_Special_Combination_Region_Elimination_2: true,
@@ -511,6 +507,15 @@ export function create_inequality_sudoku(size) {
     const extra_buttons = document.getElementById('extraButtons');
     extra_buttons.innerHTML = '';
     add_Extra_Button('不等号', () => {create_inequality_sudoku(size)}, '#2196F3');
+
+    // 添加标记 / 退出标记 切换按钮
+    const toggle_mark_btn = add_Extra_Button('添加标记', () => {
+        const g = document.querySelector('.sudoku-grid');
+        if (!g) return;
+        g._inequality_marking_active = !g._inequality_marking_active;
+        toggle_mark_btn.textContent = g._inequality_marking_active ? '退出标记' : '添加标记';
+    });
+
     add_Extra_Button('清除标记', clear_marks);
     add_Extra_Button('标记全部', () => {
         const count = mark_all_inequality_marks(size);
@@ -714,11 +719,13 @@ function add_inequality_mark(size) {
 
     if (grid._inequality_mark_mode) return;
     grid._inequality_mark_mode = true;
+    grid._inequality_marking_active = false;
 
     const container = grid.parentElement;
     container.style.position = 'relative';
 
     grid.addEventListener('click', function handler(e) {
+        if (!grid._inequality_marking_active) return;
         const rect = grid.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;

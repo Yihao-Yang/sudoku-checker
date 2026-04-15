@@ -30,6 +30,8 @@ import { generate_renban_puzzle } from './modules/renban.js';
 import { generate_exclusion_puzzle } from './modules/exclusion.js';
 import { generate_quadruple_puzzle } from './modules/quadruple.js';
 import { generate_ratio_puzzle } from './modules/ratio.js';
+import { generate_inequality_puzzle } from './modules/inequality.js';
+import { generate_thermo_puzzle } from './modules/thermo.js';
 import { generate_odd_puzzle } from './modules/odd.js';
 import { generate_odd_even_puzzle } from './modules/odd_even.js';
 import { create_ratio_sudoku } from './modules/ratio.js';
@@ -59,6 +61,7 @@ const MODE_EXPORT_META = {
     exclusion: { type: '排除', rule: '除标准数独规则外，带标记的周围四格内不包含标记中的数字' },
     quadruple: { type: '四格提示', rule: '除标准数独规则外，带标记的周围四格内包含标记中的数字' },
     ratio: { type: '比例', rule: '除标准数独规则外，带比例标记的相邻格满足比例关系' },
+    thermo: { type: '温度计', rule: '除标准数独规则外，温度计上的数字从圆泡处到尾部严格递增' },
     odd: { type: '奇数', rule: '除标准数独规则外，灰色圆圈内只能填奇数' },
     odd_even: { type: '奇偶', rule: '除标准数独规则外，灰色圆圈内只能填奇数，灰色方框内只能填偶数' },
     product: { type: '乘积', rule: '除标准数独规则外，带乘积标记的相邻格满足乘积约束' },
@@ -143,6 +146,26 @@ function extract_solution_string(size) {
     return extract_grid_string_from_dom(size, needsOffset);
 }
 
+function get_save_image_preferences() {
+    const watermarkCheckbox = document.getElementById('saveWithWatermark');
+    const axisCheckbox = document.getElementById('saveWithAxisLabels');
+
+    return {
+        withWatermark: watermarkCheckbox ? !!watermarkCheckbox.checked : false,
+        withAxisLabels: axisCheckbox ? !!axisCheckbox.checked : true
+    };
+}
+
+function get_batch_image_preferences() {
+    const watermarkCheckbox = document.getElementById('batchWithWatermark');
+    const axisCheckbox = document.getElementById('batchWithAxisLabels');
+
+    return {
+        withWatermark: watermarkCheckbox ? !!watermarkCheckbox.checked : true,
+        withAxisLabels: axisCheckbox ? !!axisCheckbox.checked : true
+    };
+}
+
 function download_json_file(payload, fileName) {
     const blob = new Blob([JSON.stringify(payload)], { type: 'application/json;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -199,9 +222,11 @@ function export_sudoku_as_text() {
 
     const fileName = `${exportBaseFileName}.json`;
     download_json_file(payload, fileName);
-    save_sudoku_as_image(true, true, './potato_sudoku.png', {
+    const { withWatermark, withAxisLabels } = get_save_image_preferences();
+    save_sudoku_as_image(true, withWatermark, './potato_sudoku.png', {
         fileName: `${exportBaseFileName}.png`,
-        exportSolution: false
+        exportSolution: false,
+        withAxisLabels
     });
 }
 
@@ -298,7 +323,10 @@ function initializeEventHandlers() {
     });
     document.getElementById('selectExportDate').addEventListener('click', open_export_date_picker);
     document.getElementById('selectExportTime').addEventListener('click', open_export_time_picker);
-    document.getElementById('saveAsImage').addEventListener('click', save_sudoku_as_image);
+    document.getElementById('saveAsImage').addEventListener('click', () => {
+        const { withWatermark, withAxisLabels } = get_save_image_preferences();
+        save_sudoku_as_image(true, withWatermark, './potato_sudoku.png', { withAxisLabels });
+    });
 
     const exportDatePicker = document.getElementById('exportDatePicker');
     if (exportDatePicker) {
@@ -317,11 +345,6 @@ function initializeEventHandlers() {
         exportTimePicker.addEventListener('change', sync_export_time_button_text);
         sync_export_time_button_text();
     }
-
-    // 新增：水印版保存
-    document.getElementById('saveAsImageWatermark').addEventListener('click', () => {
-        save_sudoku_as_image(true, true, './potato_sudoku.png');
-    });
 
     // ...existing code...
     document.getElementById('toggleCandidatesMode').addEventListener('click', function() {
@@ -442,15 +465,35 @@ function initializeEventHandlers() {
     generateRow1.appendChild(attemptsInput);
 
     // 新增：批量自动出题和保存图片
-    const batchBtnWatermark = document.createElement('button');
-    batchBtnWatermark.id = 'batchGenerateSave';
-    batchBtnWatermark.textContent = '自动批量水印版';
-    batchBtnWatermark.style.marginLeft = '0px';
+    const batchBtn = document.createElement('button');
+    batchBtn.id = 'batchGenerateSave';
+    batchBtn.textContent = '自动批量';
+    batchBtn.style.marginLeft = '0px';
 
-    const batchNoWMBtn = document.createElement('button');
-    batchNoWMBtn.id = 'batchGenerateSaveNoWM';
-    batchNoWMBtn.textContent = '自动批量';
-    batchNoWMBtn.style.marginLeft = '5px';
+    const batchOptions = document.createElement('div');
+    batchOptions.id = 'batchImageOptions';
+    batchOptions.className = 'save-image-options';
+
+    const batchWatermarkLabel = document.createElement('label');
+    batchWatermarkLabel.className = 'save-image-option';
+    const batchWatermarkCheckbox = document.createElement('input');
+    batchWatermarkCheckbox.type = 'checkbox';
+    batchWatermarkCheckbox.id = 'batchWithWatermark';
+    batchWatermarkCheckbox.checked = true;
+    batchWatermarkLabel.appendChild(batchWatermarkCheckbox);
+    batchWatermarkLabel.append('带水印');
+
+    const batchAxisLabel = document.createElement('label');
+    batchAxisLabel.className = 'save-image-option';
+    const batchAxisCheckbox = document.createElement('input');
+    batchAxisCheckbox.type = 'checkbox';
+    batchAxisCheckbox.id = 'batchWithAxisLabels';
+    batchAxisCheckbox.checked = false;
+    batchAxisLabel.appendChild(batchAxisCheckbox);
+    batchAxisLabel.append('带坐标轴');
+
+    batchOptions.appendChild(batchWatermarkLabel);
+    batchOptions.appendChild(batchAxisLabel);
 
     const batchInput = document.createElement('input');
     batchInput.type = 'number';
@@ -461,21 +504,20 @@ function initializeEventHandlers() {
     batchInput.style.width = '50px';
     batchInput.style.marginLeft = '10px';
 
-    generateRow2.appendChild(batchBtnWatermark);
-    generateRow2.appendChild(batchNoWMBtn);
+    generateRow2.appendChild(batchBtn);
+    generateRow2.appendChild(batchOptions);
     generateRow2.appendChild(batchInput);
-
-    const batchBtn = batchBtnWatermark; // 为后续 addEventListener 提供引用
 
     // 移动保存按钮。
     const saveAsImageBtn = document.getElementById('saveAsImage');
-    const saveAsImageWatermarkBtn = document.getElementById('saveAsImageWatermark');
-    
-    saveAsImageWatermarkBtn.style.marginLeft = '0px';
-    saveAsImageBtn.style.marginLeft = '5px';
-    
-    generateRow3.appendChild(saveAsImageWatermarkBtn);
+    const saveImageOptions = document.getElementById('saveImageOptions');
+
+    saveAsImageBtn.style.marginLeft = '0px';
+
     generateRow3.appendChild(saveAsImageBtn);
+    if (saveImageOptions) {
+        generateRow3.appendChild(saveImageOptions);
+    }
 
     // 添加跳转卡点按钮
     const jumpBtn = document.createElement('button');
@@ -519,6 +561,10 @@ function initializeEventHandlers() {
             return generate_quadruple_puzzle(state.current_grid_size, score_lower_limit, holes_count);
         } else if (state.current_mode === 'ratio') {
             return generate_ratio_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        } else if (state.current_mode === 'inequality') {
+            return generate_inequality_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        } else if (state.current_mode === 'thermo') {
+            return generate_thermo_puzzle(state.current_grid_size, score_lower_limit, holes_count);
         } else if (state.current_mode === 'odd') {
             return generate_odd_puzzle(state.current_grid_size, score_lower_limit, holes_count);
         } else if (state.current_mode === 'odd_even') {
@@ -741,7 +787,7 @@ function initializeEventHandlers() {
         }, 0);
     });
 
-    async function runBatchGenerateAndSave(count, options, withWatermark) {
+    async function runBatchGenerateAndSave(count, options, withWatermark, withAxisLabels) {
         if (isNaN(count) || count < 1) return;
 
         for (let i = 0; i < count; i++) {
@@ -749,16 +795,11 @@ function initializeEventHandlers() {
             if (!generated) continue;
 
             await new Promise(resolve => setTimeout(resolve, 800));
-            if (withWatermark) {
-                save_sudoku_as_image(true, true, './potato_sudoku.png');
-            } else {
-                save_sudoku_as_image(true);
-            }
+            save_sudoku_as_image(true, withWatermark, './potato_sudoku.png', { withAxisLabels });
             await new Promise(resolve => setTimeout(resolve, 1200));
         }
     }
 
-    // 原有带水印批量按钮调用
     batchBtn.addEventListener('click', async () => {
         const options = get_generation_options();
         if (!options) {
@@ -766,18 +807,8 @@ function initializeEventHandlers() {
         }
 
         const count = parseInt(batchInput.value, 10) || 1;
-        await runBatchGenerateAndSave(count, options, true);
-    });
-
-    // 新增：不带水印批量按钮调用
-    batchNoWMBtn.addEventListener('click', async () => {
-        const options = get_generation_options();
-        if (!options) {
-            return;
-        }
-
-        const count = parseInt(batchInput.value, 10) || 1;
-        await runBatchGenerateAndSave(count, options, false);
+        const { withWatermark, withAxisLabels } = get_batch_image_preferences();
+        await runBatchGenerateAndSave(count, options, withWatermark, withAxisLabels);
     });
 }
 

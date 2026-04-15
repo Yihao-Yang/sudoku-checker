@@ -124,6 +124,27 @@ button:focus,
     display: inline-block;
 }
 
+.save-image-options {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: 10px;
+    font-size: 14px;
+    color: #333;
+}
+
+.save-image-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    user-select: none;
+}
+
+.save-image-option input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+}
+
 .sudoku-grid {
     display: grid;
     gap: 0;

@@ -78,7 +78,16 @@
     </div>
     <div class="generate-row" id="generateRow3" style="margin: 10px 0;">
         <button id="saveAsImage">保存图片</button>
-        <button id="saveAsImageWatermark">保存图片(水印版)</button>
+        <div id="saveImageOptions" class="save-image-options">
+            <label class="save-image-option">
+                <input type="checkbox" id="saveWithWatermark" checked>
+                带水印
+            </label>
+            <label class="save-image-option">
+                <input type="checkbox" id="saveWithAxisLabels">
+                带坐标轴
+            </label>
+        </div>
     </div>
 
     <!-- <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script> -->

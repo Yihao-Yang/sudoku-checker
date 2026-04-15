@@ -81,8 +81,8 @@ export function create_fortress_sudoku(size) {
         Multi_Special_Combination_Region_Cell_Elimination_2: true,
         Multi_Special_Combination_Region_Cell_Elimination_3: true,
         Multi_Special_Combination_Region_Cell_Elimination_4: true,
-        Special_Combination_Region_Elimination_1: true,
-        Special_Combination_Region_Elimination_2: true,
+        // Special_Combination_Region_Elimination_1: true,
+        // Special_Combination_Region_Elimination_2: true,
         Special_Combination_Region_Elimination_3: true,
         Special_Combination_Region_Elimination_4: true,
         Multi_Special_Combination_Region_Elimination_1: true,
@@ -545,6 +545,44 @@ export function generate_fortress_puzzle(size, score_lower_limit = 0, holes_coun
     }, 0);
     // generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
 }
+
+export function apply_fortress_marks(board, size) {
+    const directions = [
+        [-1, 0],
+        [1, 0],
+        [0, -1],
+        [0, 1],
+    ];
+
+    for (const key of state.fortress_cells || []) {
+        const [row, col] = key.split(',').map(Number);
+        if (!Number.isInteger(row) || !Number.isInteger(col)) continue;
+
+        for (const [dr, dc] of directions) {
+            const neighbor_row = row + dr;
+            const neighbor_col = col + dc;
+
+            if (
+                neighbor_row < 0 || neighbor_row >= size ||
+                neighbor_col < 0 || neighbor_col >= size
+            ) {
+                continue;
+            }
+
+            if (state.fortress_cells.has(`${neighbor_row},${neighbor_col}`)) {
+                continue;
+            }
+
+            if (Array.isArray(board[row][col])) {
+                board[row][col] = board[row][col].filter(candidate => candidate !== 1);
+            }
+            if (Array.isArray(board[neighbor_row][neighbor_col])) {
+                board[neighbor_row][neighbor_col] = board[neighbor_row][neighbor_col].filter(candidate => candidate !== size);
+            }
+        }
+    }
+}
+
 
 // 获取所有合法的额外区域
 export function get_fortress_cells() {

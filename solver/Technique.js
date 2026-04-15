@@ -8,46 +8,10 @@ import { apply_odd_marks, is_valid_odd } from "../modules/odd.js";
 import { apply_odd_even_marks, is_valid_odd_even } from "../modules/odd_even.js";
 import { apply_exclusion_marks, is_valid_exclusion } from "../modules/exclusion.js";
 import { apply_inequality_marks } from "../modules/inequality.js";
+import { apply_thermo_marks } from "../modules/thermo.js";
+import { apply_fortress_marks } from "../modules/fortress.js";
 import { get_all_mark_lines, get_cells_on_line } from "../modules/multi_diagonal.js";
 // import { is_valid_quadruple } from '../modules/quadruple.js';
-
-
-function apply_fortress_marks(board, size) {
-    const directions = [
-        [-1, 0],
-        [1, 0],
-        [0, -1],
-        [0, 1],
-    ];
-
-    for (const key of state.fortress_cells || []) {
-        const [row, col] = key.split(',').map(Number);
-        if (!Number.isInteger(row) || !Number.isInteger(col)) continue;
-
-        for (const [dr, dc] of directions) {
-            const neighbor_row = row + dr;
-            const neighbor_col = col + dc;
-
-            if (
-                neighbor_row < 0 || neighbor_row >= size ||
-                neighbor_col < 0 || neighbor_col >= size
-            ) {
-                continue;
-            }
-
-            if (state.fortress_cells.has(`${neighbor_row},${neighbor_col}`)) {
-                continue;
-            }
-
-            if (Array.isArray(board[row][col])) {
-                board[row][col] = board[row][col].filter(candidate => candidate !== 1);
-            }
-            if (Array.isArray(board[neighbor_row][neighbor_col])) {
-                board[neighbor_row][neighbor_col] = board[neighbor_row][neighbor_col].filter(candidate => candidate !== size);
-            }
-        }
-    }
-}
 
 
 export function solve_By_Elimination(board, size) {
@@ -652,8 +616,6 @@ export function solve_By_Elimination(board, size) {
         [() => state.techniqueSettings?.Extra_Region_Elimination_8 && check_Extra_Region_Elimination(board, size, 8)],
         // 额外区域排除_9
         [() => state.techniqueSettings?.Extra_Region_Elimination_9 && check_Extra_Region_Elimination(board, size, 9)],
-        // 特定组合区块_1
-        [() => state.techniqueSettings?.Special_Combination_Region_Block_1 && check_special_combination_region_block_elimination(board, size, 1)],
         // 特定组合必含_2
         [() => state.techniqueSettings?.Special_Combination_Region_Most_Contain_2 && check_special_combination_region_must_contain(board, size, 2)],
         // 特定组合必不含_2
@@ -706,6 +668,8 @@ export function solve_By_Elimination(board, size) {
         [() => (state.techniqueSettings?.Extra_Region_Block_2 ?? state.techniqueSettings?.Extra_Region_Block) && check_Extra_Region_Block_Elimination(board, size, 2, true)],
         // 变型额外区域区块_2
         [() => (state.techniqueSettings?.Variant_Extra_Region_Block_2 ?? state.techniqueSettings?.Variant_Extra_Region_Block) && check_Extra_Region_Block_Elimination(board, size, 2, false)],
+        // 特定组合区块_1
+        [() => state.techniqueSettings?.Special_Combination_Region_Block_1 && check_special_combination_region_block_elimination(board, size, 1)],
         // 特定组合区块_2
         [() => state.techniqueSettings?.Special_Combination_Region_Block_2 && check_special_combination_region_block_elimination(board, size, 2)],
 
@@ -2278,6 +2242,8 @@ export function check_lookup_table(board, size) {
         apply_exclusion_marks(board, size);
     } else if (state.current_mode === 'inequality') {
         apply_inequality_marks(board, size);
+    } else if (state.current_mode === 'thermo') {
+        apply_thermo_marks(board, size);
     } else if (state.current_mode === 'fortress') {
         apply_fortress_marks(board, size);
     }
@@ -3840,7 +3806,7 @@ function special_combination_region_block_elimination(board, size, region_cells,
 
     // 执行排除
     const eliminated_cells = [];
-    const eliminated_nums = new Set();
+    const eliminated_num_to_cells = new Map();
     for (const [pos, nums] of intersection_map.entries()) {
         const [r, c] = pos.split(',').map(Number);
         if (!Array.isArray(board[r][c])) continue;
@@ -3851,13 +3817,31 @@ function special_combination_region_block_elimination(board, size, region_cells,
         const actually_deleted = before_arr.filter(n => !board[r][c].includes(n));
         if (board[r][c].length < before && actually_deleted.length > 0) {
             changed = true;
-            eliminated_cells.push(`${getRowLetter(r+1)}${c+1}`);
-            actually_deleted.forEach(n => eliminated_nums.add(n));
+            const cell = `${getRowLetter(r+1)}${c+1}`;
+            eliminated_cells.push(cell);
+            for (const n of actually_deleted) {
+                if (!eliminated_num_to_cells.has(n)) {
+                    eliminated_num_to_cells.set(n, new Set());
+                }
+                eliminated_num_to_cells.get(n).add(cell);
+            }
         }
     }
 
     if (changed && eliminated_cells.length > 0 && !state.silentMode) {
-        log_process(`[${region_type}区块排除_${nat}] ${region_index}${region_type}统一删去数字${[...eliminated_nums].join('、')}，位置${eliminated_cells.join('、')}`);
+        const elimination_clauses = [...eliminated_num_to_cells.keys()]
+            .sort((a, b) => a - b)
+            .map(num => {
+                const cells = [...eliminated_num_to_cells.get(num)];
+                const in_all_cells = cells.length === eliminated_cells.length && eliminated_cells.every(cell => eliminated_num_to_cells.get(num).has(cell));
+                if (in_all_cells) {
+                    return `删去${num}`;
+                }
+                return `${cells.join('、')}删去${num}`;
+            });
+        const has_global_clause = elimination_clauses.some(clause => clause.startsWith('删去'));
+        const position_prefix = has_global_clause ? `构成区块，${eliminated_cells.join('、')}` : '';
+        log_process(`[${region_type}区块_${nat}] ${region_index}${region_type}${position_prefix}${elimination_clauses.join('，')}`);
     }
 
     return changed;

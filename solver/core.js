@@ -641,6 +641,7 @@ export function add_Extra_Button(label, handler, color = '#2196F3') {
     btn.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
     btn.addEventListener('click', handler);
     extraButtons.appendChild(btn);
+    return btn;
 }
 
 // export function check_solution() {
@@ -851,6 +852,11 @@ export function clear_marks() {
         state.inequality_marks = [];
         state._inequality_constraint_cache = null;
     }
+
+    if (state.current_mode === 'thermo') {
+        state.thermo_marks = [];
+        state._thermo_constraint_cache = null;
+    }
 }
 
 export function import_sudoku_from_string() {
@@ -1021,6 +1027,96 @@ export function restore_original_board() {
         state.is_candidates_mode ? '退出候选数模式' : '切换候选数模式';
 }
 
+function to_row_label(index) {
+    let n = index;
+    let label = '';
+    while (n >= 0) {
+        label = String.fromCharCode(65 + (n % 26)) + label;
+        n = Math.floor(n / 26) - 1;
+    }
+    return label;
+}
+
+function decorate_export_clone_with_axis_labels(clone, size, cellSizePx = 60) {
+    if (!clone || ![4, 6, 9].includes(size)) {
+        return;
+    }
+
+    const grid = clone.querySelector('.sudoku-grid');
+    if (!grid) {
+        return;
+    }
+
+    const cellCount = grid.querySelectorAll('.sudoku-cell').length;
+    if (cellCount !== size * size) {
+        return;
+    }
+
+    const labelSize = Math.max(20, Math.round(cellSizePx * 0.5));
+    const boardPixelSize = cellSizePx * size;
+
+    // 将克隆盘面的所有现有子元素作为一个整体移动，确保网格与各种标记层始终同位。
+    const boardLayer = document.createElement('div');
+    boardLayer.style.position = 'relative';
+    boardLayer.style.display = 'inline-block';
+    boardLayer.style.marginLeft = `${labelSize}px`;
+    boardLayer.style.marginTop = `${labelSize}px`;
+
+    const existingChildren = Array.from(clone.childNodes);
+    existingChildren.forEach(node => boardLayer.appendChild(node));
+
+    clone.appendChild(boardLayer);
+    clone.style.position = 'relative';
+    clone.style.display = 'inline-block';
+
+    const topLabels = document.createElement('div');
+    topLabels.style.position = 'absolute';
+    topLabels.style.left = `${labelSize}px`;
+    topLabels.style.top = '0';
+    topLabels.style.width = `${boardPixelSize}px`;
+    topLabels.style.display = 'grid';
+    topLabels.style.gridTemplateColumns = `repeat(${size}, ${cellSizePx}px)`;
+    topLabels.style.height = `${labelSize}px`;
+
+    for (let col = 0; col < size; col++) {
+        const item = document.createElement('div');
+        item.textContent = String(col + 1);
+        item.style.display = 'flex';
+        item.style.alignItems = 'center';
+        item.style.justifyContent = 'center';
+        item.style.fontFamily = 'Arial, sans-serif';
+        item.style.fontSize = `${Math.round(labelSize * 0.78)}px`;
+        item.style.fontWeight = '600';
+        item.style.color = '#ff8c00';
+        topLabels.appendChild(item);
+    }
+
+    const leftLabels = document.createElement('div');
+    leftLabels.style.position = 'absolute';
+    leftLabels.style.left = '0';
+    leftLabels.style.top = `${labelSize}px`;
+    leftLabels.style.height = `${boardPixelSize}px`;
+    leftLabels.style.display = 'grid';
+    leftLabels.style.gridTemplateRows = `repeat(${size}, ${cellSizePx}px)`;
+    leftLabels.style.width = `${labelSize}px`;
+
+    for (let row = 0; row < size; row++) {
+        const item = document.createElement('div');
+        item.textContent = to_row_label(row);
+        item.style.display = 'flex';
+        item.style.alignItems = 'center';
+        item.style.justifyContent = 'center';
+        item.style.fontFamily = 'Arial, sans-serif';
+        item.style.fontSize = `${Math.round(labelSize * 0.78)}px`;
+        item.style.fontWeight = '600';
+        item.style.color = '#ff8c00';
+        leftLabels.appendChild(item);
+    }
+
+    clone.appendChild(topLabels);
+    clone.appendChild(leftLabels);
+}
+
 export function save_sudoku_as_image(is_puzzle = true, with_watermark = false, watermark_img_src = './potato_sudoku.png', options = {}) {
     const container = document.querySelector('.sudoku-container');
     if (!container) {
@@ -1028,7 +1124,7 @@ export function save_sudoku_as_image(is_puzzle = true, with_watermark = false, w
         return;
     }
 
-    const { fileName: customFileName, exportSolution = true } = options;
+    const { fileName: customFileName, exportSolution = true, withAxisLabels = true } = options;
 
     if (is_puzzle) {
         hide_solution();
@@ -1073,6 +1169,7 @@ export function save_sudoku_as_image(is_puzzle = true, with_watermark = false, w
         'product': '乘积',
         'ratio': '比例',
         'inequality': '不等号',
+        'thermo': '温度计',
         'odd': '奇数',
         'odd_even': '奇偶',
         'palindrome': '回文',
@@ -1174,6 +1271,12 @@ export function save_sudoku_as_image(is_puzzle = true, with_watermark = false, w
         input.replaceWith(span);
     });
 
+    if (withAxisLabels) {
+        const sampleCell = container.querySelector('.sudoku-cell');
+        const cellSizePx = sampleCell ? Math.round(sampleCell.getBoundingClientRect().width) || 60 : 60;
+        decorate_export_clone_with_axis_labels(clone, state.current_grid_size, cellSizePx);
+    }
+
     tempContainer.appendChild(clone);
     // tempContainer.appendChild(resultClone);
     document.body.appendChild(tempContainer);
@@ -1229,7 +1332,7 @@ if (with_watermark) {
                 check_uniqueness();
             }
             setTimeout(() => {
-                save_sudoku_as_image(false, with_watermark, watermark_img_src);
+                save_sudoku_as_image(false, with_watermark, watermark_img_src, { withAxisLabels });
             }, 500); // 延迟，确保解答已填充
         }
 

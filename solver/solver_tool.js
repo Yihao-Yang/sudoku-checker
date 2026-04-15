@@ -15,6 +15,7 @@ import { is_valid_VX } from "../modules/vx.js";
 import { is_valid_kropki } from "../modules/kropki.js";
 import { is_valid_consecutive } from "../modules/consecutive.js";
 import { is_valid_inequality, apply_inequality_candidate_elimination } from "../modules/inequality.js";
+import { is_valid_thermo, apply_thermo_candidate_elimination } from "../modules/thermo.js";
 import { apply_odd_marks, is_valid_odd, get_odd_cells } from "../modules/odd.js";
 import { apply_odd_even_marks, is_valid_odd_even, get_odd_even_cells } from "../modules/odd_even.js";
 import { is_valid_anti_king } from "../modules/anti_king.js";
@@ -510,9 +511,11 @@ export function eliminate_candidates(board, size, i, j, num, calc_score = true) 
     //         }
     //     }
     // }
-    // 不等号数独模式专用候选数处理
+    // 不等号/温度计模式专用候选数处理
     else if (mode === 'inequality') {
         eliminations.push(...apply_inequality_candidate_elimination(board, size, i, j, num, calc_score));
+    } else if (mode === 'thermo') {
+        eliminations.push(...apply_thermo_candidate_elimination(board, size, i, j, num, calc_score));
     }
     return eliminations;
 }
@@ -1686,11 +1689,14 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
             }
             break;
         }
-        case 'inequality': {
-            const inequality_marks = Array.isArray(state.inequality_marks) ? state.inequality_marks : [];
+        case 'inequality':
+        case 'thermo': {
+            const mode_marks = mode === 'thermo'
+                ? (Array.isArray(state.thermo_marks) ? state.thermo_marks : [])
+                : (Array.isArray(state.inequality_marks) ? state.inequality_marks : []);
             const region_index_set = new Set();
 
-            const push_unique_inequality_region = (region_cells) => {
+            const push_unique_compare_region = (region_cells) => {
                 const region_index = region_cells
                     .slice()
                     .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
@@ -1707,16 +1713,24 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
                 });
             };
 
-            for (const inequality_mark of inequality_marks) {
+            for (const mark of mode_marks) {
                 let cell_a;
                 let cell_b;
 
-                if (inequality_mark.kind === 'v') {
-                    cell_a = [inequality_mark.r, inequality_mark.c];
-                    cell_b = [inequality_mark.r, inequality_mark.c + 1];
-                } else if (inequality_mark.kind === 'h') {
-                    cell_a = [inequality_mark.r, inequality_mark.c];
-                    cell_b = [inequality_mark.r + 1, inequality_mark.c];
+                if (mark.kind === 'v') {
+                    cell_a = [mark.r, mark.c];
+                    cell_b = [mark.r, mark.c + 1];
+                } else if (mark.kind === 'h') {
+                    cell_a = [mark.r, mark.c];
+                    cell_b = [mark.r + 1, mark.c];
+                } else if (mark.kind === 'd') {
+                    // 温度计支持 \ 对角相邻
+                    cell_a = [mark.r, mark.c];
+                    cell_b = [mark.r + 1, mark.c + 1];
+                } else if (mark.kind === 'a') {
+                    // 温度计支持 / 对角相邻
+                    cell_a = [mark.r, mark.c + 1];
+                    cell_b = [mark.r + 1, mark.c];
                 } else {
                     continue;
                 }
@@ -1731,10 +1745,10 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
                 if (!is_cell_a_valid || !is_cell_b_valid) continue;
 
                 // 保留原有双格特定组合
-                push_unique_inequality_region([cell_a, cell_b]);
+                push_unique_compare_region([cell_a, cell_b]);
                 // 新增：每个受约束单格也作为特定组合
-                push_unique_inequality_region([cell_a]);
-                push_unique_inequality_region([cell_b]);
+                push_unique_compare_region([cell_a]);
+                push_unique_compare_region([cell_b]);
             }
             break;
         }
@@ -2698,6 +2712,8 @@ export function isValid(board, size, row, col, num) {
         return is_valid_clone(board, size, row, col, num);
     } else if (state.current_mode === 'inequality') {
         return is_valid_inequality(board, size, row, col, num);
+    } else if (state.current_mode === 'thermo') {
+        return is_valid_thermo(board, size, row, col, num);
     } else if (state.current_mode === 'odd') {
         return is_valid_odd(board, size, row, col, num);
     } else if (state.current_mode === 'odd_even') {

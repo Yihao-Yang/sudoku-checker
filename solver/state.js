@@ -18,6 +18,8 @@ export const state = {
     marks_board: null,
     inequality_marks: null,
     _inequality_constraint_cache: null,
+    thermo_marks: null,
+    _thermo_constraint_cache: null,
 
     box_missing_subsets: {},
     row_missing_subsets: {},
@@ -229,6 +231,7 @@ export function set_current_mode(mode) {
         'product',
         'ratio',
         'inequality',
+        'thermo',
         'odd',
         'odd_even',
         'isomorphic',

@@ -24,6 +24,7 @@ import { create_add_sudoku } from '../modules/add.js';
 import { create_product_sudoku } from '../modules/product.js';
 import { create_ratio_sudoku } from '../modules/ratio.js';
 import { create_inequality_sudoku } from '../modules/inequality.js';
+import { create_thermo_sudoku } from '../modules/thermo.js';
 import { create_odd_sudoku } from '../modules/odd.js';
 import { create_odd_even_sudoku, is_valid_odd_even } from '../modules/odd_even.js';
 import { create_palindrome_sudoku } from '../modules/palindrome.js';
@@ -311,6 +312,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('乘积', () => create_product_sudoku(4));
         add_Extra_Button('比例', () => create_ratio_sudoku(4));
         add_Extra_Button('不等号', () => create_inequality_sudoku(4));
+        add_Extra_Button('温度计', () => create_thermo_sudoku(4));
         add_Extra_Button('奇数', () => create_odd_sudoku(4));
         add_Extra_Button('奇偶', () => create_odd_even_sudoku(4));
         add_Extra_Button('回文', () => create_palindrome_sudoku(4));
@@ -341,6 +343,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('乘积', () => create_product_sudoku(6));
         add_Extra_Button('比例', () => create_ratio_sudoku(6));
         add_Extra_Button('不等号', () => create_inequality_sudoku(6));
+        add_Extra_Button('温度计', () => create_thermo_sudoku(6));
         add_Extra_Button('奇数', () => create_odd_sudoku(6));
         add_Extra_Button('奇偶', () => create_odd_even_sudoku(6));
         add_Extra_Button('回文', () => create_palindrome_sudoku(6));
@@ -374,6 +377,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('乘积', () => create_product_sudoku(9));
         add_Extra_Button('比例', () => create_ratio_sudoku(9));
         add_Extra_Button('不等号', () => create_inequality_sudoku(9));
+        add_Extra_Button('温度计', () => create_thermo_sudoku(9));
         add_Extra_Button('奇数', () => create_odd_sudoku(9));
         add_Extra_Button('奇偶', () => create_odd_even_sudoku(9));
         add_Extra_Button('回文', () => create_palindrome_sudoku(9));
