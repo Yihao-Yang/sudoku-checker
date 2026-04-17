@@ -521,7 +521,7 @@ export function create_inequality_sudoku(size) {
         const count = mark_all_inequality_marks(size);
         show_result(`已添加 ${count} 个不等号标记`);
     }, '#4CAF50');
-    add_Extra_Button('自动出题', () => generate_inequality_puzzle(size), '#2196F3');
+    add_Extra_Button('自动出题', state.create_mode_specific_generate_handler?.((score_lower_limit, holes_count) => generate_inequality_puzzle(size, score_lower_limit, holes_count)) || (() => generate_inequality_puzzle(size)), '#2196F3');
     // 可添加唯一性验证等按钮
 }
 

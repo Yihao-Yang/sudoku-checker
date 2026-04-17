@@ -583,7 +583,7 @@ export function create_thermo_sudoku(size) {
     });
 
     add_Extra_Button('清除标记', clear_marks);
-    add_Extra_Button('自动出题', () => generate_thermo_puzzle(size), '#2196F3');
+    add_Extra_Button('自动出题', state.create_mode_specific_generate_handler?.((score_lower_limit, holes_count) => generate_thermo_puzzle(size, score_lower_limit, holes_count)) || (() => generate_thermo_puzzle(size)), '#2196F3');
     // 可添加唯一性验证等按钮
 }
 
@@ -776,11 +776,22 @@ export function generate_thermo_puzzle(size, score_lower_limit = 0, holes_count 
             }
         }
 
-        // 随机化种子顺序，避免总是同一形状
-        for (let i = candidate_seeds.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [candidate_seeds[i], candidate_seeds[j]] = [candidate_seeds[j], candidate_seeds[i]];
-        }
+        // 优先从极值点（1,2 或 8,9）开始生成种子，这更有可能产生长温度计
+        candidate_seeds.sort((pair_a, pair_b) => {
+            const val_a = board_val(pair_a[0]);
+            const val_b = board_val(pair_b[0]);
+            
+            // 计算“极值程度”：越接近 1 或 size 越好
+            const get_extremeness = (v) => Math.min(Math.abs(v - 1), Math.abs(v - size));
+            
+            const extremeness_a = get_extremeness(val_a);
+            const extremeness_b = get_extremeness(val_b);
+
+            if (extremeness_a !== extremeness_b) {
+                return extremeness_a - extremeness_b; // 极值小的排前面
+            }
+            return Math.random() - 0.5; // 极值相同时随机
+        });
 
         for (const [seed_a, seed_b] of candidate_seeds) {
             if (thermo_count >= max_thermo_count) break;
