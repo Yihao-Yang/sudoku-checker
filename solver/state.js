@@ -1,6 +1,7 @@
 // state.js（使用对象包装以允许修改）
 export const state = {
     current_mode: null,
+    is_full_mark_mode: false,
     // is_skyscraper_mode: false,
     // is_vx_mode: false,
     current_grid_size: 0,
@@ -204,6 +205,8 @@ export const state = {
     },
 };
 
+const FULL_MARK_MODES = ['five_six', 'VX', 'consecutive', 'kropki'];
+
 // 设置当前模式(会自动取消其他模式)
 export function set_current_mode(mode) {
     if ([
@@ -245,7 +248,9 @@ export function set_current_mode(mode) {
         'new'
     ].includes(mode)) {
         state.current_mode = mode;
+        state.is_full_mark_mode = FULL_MARK_MODES.includes(mode);
     } else {
         state.current_mode = null;
+        state.is_full_mark_mode = false;
     }
 }

@@ -4,451 +4,6 @@ import { create_technique_panel } from '../solver/classic.js';
 import { get_all_regions, solve, invalidate_regions_cache } from '../solver/solver_tool.js';
 import { generate_solved_board_brute_force, generate_puzzle } from '../solver/generate.js';
 
-function invalidate_thermo_constraints() {
-    state._thermo_constraint_cache = null;
-}
-
-function ensure_thermo_marks() {
-    if (!Array.isArray(state.thermo_marks)) {
-        state.thermo_marks = [];
-    }
-    return state.thermo_marks;
-}
-
-function get_thermo_mark_key(row, col, type) {
-    if (type === 'v') return `v-${row}-${col + 1}`;
-    if (type === 'h') return `h-${row + 1}-${col}`;
-    if (type === 'd') return `d-${row}-${col}`;
-    if (type === 'a') return `a-${row}-${col}`;
-    return '';
-}
-
-function is_valid_thermo_mark_position(row, col, size, type) {
-    if (type === 'v') {
-        return row >= 0 && row < size && col >= 0 && col < size - 1;
-    }
-    if (type === 'h') {
-        return row >= 0 && row < size - 1 && col >= 0 && col < size;
-    }
-    if (type === 'd' || type === 'a') {
-        return row >= 0 && row < size - 1 && col >= 0 && col < size - 1;
-    }
-    return false;
-}
-
-function get_thermo_mark_signature(marks) {
-    return marks
-        .map(mark => `${mark.kind}:${mark.r}:${mark.c}:${mark.relation}`)
-        .sort()
-        .join('|');
-}
-
-function get_thermo_marks() {
-    return ensure_thermo_marks();
-}
-
-function is_thermo_mark_exists_state(row, col, type) {
-    const marks = ensure_thermo_marks();
-    return marks.some(mark => mark.kind === type && mark.r === row && mark.c === col);
-}
-
-function add_thermo_mark_to_state(row, col, type, relation, size) {
-    if (!is_valid_thermo_mark_position(row, col, size, type)) return false;
-    if (relation !== '>' && relation !== '<') return false;
-    if (is_thermo_mark_exists_state(row, col, type)) return false;
-
-    ensure_thermo_marks().push({ kind: type, r: row, c: col, relation });
-    invalidate_thermo_constraints();
-    return true;
-}
-
-function set_thermo_mark_relation(row, col, type, relation, size) {
-    if (!is_valid_thermo_mark_position(row, col, size, type)) return false;
-    if (relation !== '>' && relation !== '<') return false;
-
-    const marks = ensure_thermo_marks();
-    const existing = marks.find(mark => mark.kind === type && mark.r === row && mark.c === col);
-    if (existing) {
-        existing.relation = relation;
-    } else {
-        marks.push({ kind: type, r: row, c: col, relation });
-    }
-
-    invalidate_thermo_constraints();
-    return true;
-}
-
-function render_thermo_marks_from_state(size, container = document.querySelector('.sudoku-container')) {
-    if (!container) return;
-
-    Array.from(container.querySelectorAll('.vx-mark')).forEach(mark => mark.remove());
-
-    const grid = container.querySelector('.sudoku-grid');
-    if (!grid) return;
-
-    const marks = get_thermo_marks(size, container);
-    if (!Array.isArray(marks) || marks.length === 0) return;
-
-    const make_cell_key = (row, col) => `${row},${col}`;
-    const adjacency = new Map();
-
-    const ensure_node = (row, col) => {
-        const key = make_cell_key(row, col);
-        if (!adjacency.has(key)) {
-            adjacency.set(key, { row, col, next: new Set(), prev: new Set() });
-        }
-        return adjacency.get(key);
-    };
-
-    for (const mark of marks) {
-        const left_or_top = { row: mark.r, col: mark.c };
-        let right_or_bottom;
-
-        if (mark.kind === 'v') {
-            right_or_bottom = { row: mark.r, col: mark.c + 1 };
-        } else if (mark.kind === 'h') {
-            right_or_bottom = { row: mark.r + 1, col: mark.c };
-        } else if (mark.kind === 'd') {
-            right_or_bottom = { row: mark.r + 1, col: mark.c + 1 };
-        } else if (mark.kind === 'a') {
-            const top_right = { row: mark.r, col: mark.c + 1 };
-            const bottom_left = { row: mark.r + 1, col: mark.c };
-            const from = mark.relation === '<' ? top_right : bottom_left;
-            const to = mark.relation === '<' ? bottom_left : top_right;
-
-            const from_node = ensure_node(from.row, from.col);
-            const to_node = ensure_node(to.row, to.col);
-            from_node.next.add(make_cell_key(to.row, to.col));
-            to_node.prev.add(make_cell_key(from.row, from.col));
-            continue;
-        } else {
-            continue;
-        }
-
-        const from = mark.relation === '<' ? left_or_top : right_or_bottom;
-        const to = mark.relation === '<' ? right_or_bottom : left_or_top;
-
-        const from_node = ensure_node(from.row, from.col);
-        const to_node = ensure_node(to.row, to.col);
-        from_node.next.add(make_cell_key(to.row, to.col));
-        to_node.prev.add(make_cell_key(from.row, from.col));
-    }
-
-    const components = [];
-    const visited = new Set();
-    const nodes = Array.from(adjacency.values());
-
-    for (const node of nodes) {
-        const node_key = make_cell_key(node.row, node.col);
-        if (visited.has(node_key)) continue;
-
-        let start = node;
-        let back_guard = 0;
-        const back_seen = new Set([node_key]);
-
-        while (start.prev.size === 1 && back_guard < size * size + 5) {
-            back_guard++;
-            const prev_key = Array.from(start.prev)[0];
-            const prev_node = adjacency.get(prev_key);
-            if (!prev_node) break;
-            if (prev_node.next.size !== 1) break;
-            if (back_seen.has(prev_key)) break;
-
-            back_seen.add(prev_key);
-            start = prev_node;
-        }
-
-        const path = [];
-        let current = start;
-        let guard = 0;
-
-        while (current && guard < size * size + 5) {
-            guard++;
-            const current_key = make_cell_key(current.row, current.col);
-            if (visited.has(current_key)) break;
-
-            visited.add(current_key);
-            path.push({ row: current.row, col: current.col });
-
-            if (current.next.size !== 1) break;
-
-            const next_key = Array.from(current.next)[0];
-            const next = adjacency.get(next_key);
-            if (!next) break;
-            current = next;
-        }
-
-        if (path.length >= 2) {
-            components.push(path);
-        }
-    }
-
-    const cell_width = grid.offsetWidth / size;
-    const cell_height = grid.offsetHeight / size;
-    const grid_offset_left = grid.offsetLeft;
-    const grid_offset_top = grid.offsetTop;
-    const bulb_diameter = Math.max(12, Math.round(Math.min(cell_width, cell_height) * 0.62));
-    const line_thickness = Math.max(6, Math.round(Math.min(cell_width, cell_height) * 0.22));
-
-    const center_of = (cell) => ({
-        x: grid_offset_left + (cell.col + 0.5) * cell_width,
-        y: grid_offset_top + (cell.row + 0.5) * cell_height
-    });
-
-    const create_bulb_mark = (x, y, diameter) => {
-        const bulb = document.createElement('div');
-        bulb.className = 'vx-mark';
-        bulb.style.position = 'absolute';
-        bulb.style.left = `${x}px`;
-        bulb.style.top = `${y}px`;
-        bulb.style.width = `${diameter}px`;
-        bulb.style.height = `${diameter}px`;
-        bulb.style.borderRadius = '50%';
-        bulb.style.background = '#bdbdbd';
-        bulb.style.zIndex = '0';
-        bulb.style.pointerEvents = 'none';
-        return bulb;
-    };
-
-    const create_line_mark = (x, y, width, height, angle = 0) => {
-        const line = document.createElement('div');
-        line.className = 'vx-mark';
-        line.style.position = 'absolute';
-        line.style.left = `${x}px`;
-        line.style.top = `${y}px`;
-        line.style.width = `${width}px`;
-        line.style.height = `${height}px`;
-        line.style.transform = `rotate(${angle}deg)`;
-        line.style.transformOrigin = 'center';
-        line.style.background = 'transparent';
-        line.style.borderRadius = '0';
-        line.style.zIndex = '0';
-        line.style.pointerEvents = 'none';
-
-        const body_length = Math.max(0, width - height);
-        if (body_length > 0) {
-            const body = document.createElement('div');
-            body.style.position = 'absolute';
-            body.style.left = `${height / 2}px`;
-            body.style.top = '0';
-            body.style.width = `${body_length}px`;
-            body.style.height = `${height}px`;
-            body.style.background = '#bdbdbd';
-            line.appendChild(body);
-        }
-
-        const cap_start = document.createElement('div');
-        cap_start.style.position = 'absolute';
-        cap_start.style.left = '0';
-        cap_start.style.top = '0';
-        cap_start.style.width = `${height}px`;
-        cap_start.style.height = `${height}px`;
-        cap_start.style.borderRadius = '50%';
-        cap_start.style.background = '#bdbdbd';
-        line.appendChild(cap_start);
-
-        const cap_end = document.createElement('div');
-        cap_end.style.position = 'absolute';
-        cap_end.style.left = `${Math.max(0, width - height)}px`;
-        cap_end.style.top = '0';
-        cap_end.style.width = `${height}px`;
-        cap_end.style.height = `${height}px`;
-        cap_end.style.borderRadius = '50%';
-        cap_end.style.background = '#bdbdbd';
-        line.appendChild(cap_end);
-
-        return line;
-    };
-
-    for (const path of components) {
-        const start_center = center_of(path[0]);
-        container.appendChild(
-            create_bulb_mark(
-                start_center.x - bulb_diameter / 2,
-                start_center.y - bulb_diameter / 2,
-                bulb_diameter
-            )
-        );
-
-        for (let i = 1; i < path.length; i++) {
-            const a = center_of(path[i - 1]);
-            const b = center_of(path[i]);
-            const dx = b.x - a.x;
-            const dy = b.y - a.y;
-            const center_distance = Math.sqrt(dx * dx + dy * dy);
-            const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-            const draw_length = center_distance + line_thickness;
-
-            container.appendChild(
-                create_line_mark(
-                    (a.x + b.x) / 2 - draw_length / 2,
-                    (a.y + b.y) / 2 - line_thickness / 2,
-                    draw_length,
-                    line_thickness,
-                    angle
-                )
-            );
-        }
-    }
-}
-
-export function get_thermo_constraint_map(size) {
-    const marks = get_thermo_marks(size);
-    const signature = get_thermo_mark_signature(marks);
-    const cached = state._thermo_constraint_cache;
-
-    if (cached && cached.size === size && cached.signature === signature) {
-        return cached.map;
-    }
-
-    const map = new Map();
-    const addConstraint = (row, col, constraint) => {
-        const key = `${row},${col}`;
-        if (!map.has(key)) map.set(key, []);
-        map.get(key).push(constraint);
-    };
-
-    for (const mark of marks) {
-        let a_row;
-        let a_col;
-        let b_row;
-        let b_col;
-
-        if (mark.kind === 'v') {
-            a_row = mark.r;
-            a_col = mark.c;
-            b_row = mark.r;
-            b_col = mark.c + 1;
-        } else if (mark.kind === 'h') {
-            a_row = mark.r;
-            a_col = mark.c;
-            b_row = mark.r + 1;
-            b_col = mark.c;
-        } else if (mark.kind === 'd') {
-            a_row = mark.r;
-            a_col = mark.c;
-            b_row = mark.r + 1;
-            b_col = mark.c + 1;
-        } else if (mark.kind === 'a') {
-            a_row = mark.r;
-            a_col = mark.c + 1;
-            b_row = mark.r + 1;
-            b_col = mark.c;
-        } else {
-            continue;
-        }
-
-        const relation = mark.relation;
-
-        addConstraint(a_row, a_col, { type: 'compare', otherRow: b_row, otherCol: b_col, relation });
-        addConstraint(b_row, b_col, { type: 'compare', otherRow: a_row, otherCol: a_col, relation: relation === '>' ? '<' : '>' });
-    }
-
-    state._thermo_constraint_cache = { size, signature, map };
-    return map;
-}
-
-export function apply_thermo_candidate_elimination(board, size, row, col, num, calc_score = true) {
-    const eliminations = [];
-    const constraint_map = get_thermo_constraint_map(size);
-    const constraints = constraint_map.get(`${row},${col}`);
-
-    if (!constraints) {
-        return eliminations;
-    }
-
-    for (const constraint of constraints) {
-        const other_row = constraint.otherRow;
-        const other_col = constraint.otherCol;
-        const other_cell = board[other_row]?.[other_col];
-
-        if (!Array.isArray(other_cell) || constraint.type !== 'compare') {
-            continue;
-        }
-
-        for (let k = other_cell.length - 1; k >= 0; k--) {
-            const candidate = other_cell[k];
-            const should_remove = constraint.relation === '>'
-                ? candidate >= num
-                : candidate <= num;
-
-            if (!should_remove) {
-                continue;
-            }
-
-            if (calc_score) {
-                state.candidate_elimination_score[`${other_row},${other_col},${candidate}`] = 1;
-            }
-
-            eliminations.push({ row: other_row, col: other_col, val: candidate });
-            other_cell.splice(k, 1);
-        }
-    }
-
-    return eliminations;
-}
-
-export function apply_thermo_marks(board, size) {
-    const marks = get_thermo_marks();
-
-    for (const mark of marks) {
-        let first_row;
-        let first_col;
-        let second_row;
-        let second_col;
-
-        if (mark.kind === 'v') {
-            first_row = mark.r;
-            first_col = mark.c;
-            second_row = mark.r;
-            second_col = mark.c + 1;
-        } else if (mark.kind === 'h') {
-            first_row = mark.r;
-            first_col = mark.c;
-            second_row = mark.r + 1;
-            second_col = mark.c;
-        } else if (mark.kind === 'd') {
-            first_row = mark.r;
-            first_col = mark.c;
-            second_row = mark.r + 1;
-            second_col = mark.c + 1;
-        } else if (mark.kind === 'a') {
-            first_row = mark.r;
-            first_col = mark.c + 1;
-            second_row = mark.r + 1;
-            second_col = mark.c;
-        } else {
-            continue;
-        }
-
-        if (
-            first_row < 0 || first_row >= size || first_col < 0 || first_col >= size ||
-            second_row < 0 || second_row >= size || second_col < 0 || second_col >= size
-        ) {
-            continue;
-        }
-
-        const first_cell = board[first_row]?.[first_col];
-        const second_cell = board[second_row]?.[second_col];
-
-        if (mark.relation === '>') {
-            if (Array.isArray(first_cell)) {
-                board[first_row][first_col] = first_cell.filter(candidate => candidate !== 1);
-            }
-            if (Array.isArray(second_cell)) {
-                board[second_row][second_col] = second_cell.filter(candidate => candidate !== size);
-            }
-        } else if (mark.relation === '<') {
-            if (Array.isArray(first_cell)) {
-                board[first_row][first_col] = first_cell.filter(candidate => candidate !== size);
-            }
-            if (Array.isArray(second_cell)) {
-                board[second_row][second_col] = second_cell.filter(candidate => candidate !== 1);
-            }
-        }
-    }
-}
-
 // 新数独主入口
 export function create_thermo_sudoku(size) {
     set_current_mode('thermo');
@@ -887,6 +442,402 @@ export function generate_thermo_puzzle(size, score_lower_limit = 0, holes_count 
 
 }
 
+function invalidate_thermo_constraints() {
+    state._thermo_constraint_cache = null;
+}
+
+function ensure_thermo_marks() {
+    if (!Array.isArray(state.thermo_marks)) {
+        state.thermo_marks = [];
+    }
+    return state.thermo_marks;
+}
+
+function set_thermo_mark_relation(row, col, type, relation, size) {
+    const is_valid_thermo_mark_position = () => {
+        if (type === 'v') {
+            return row >= 0 && row < size && col >= 0 && col < size - 1;
+        }
+        if (type === 'h') {
+            return row >= 0 && row < size - 1 && col >= 0 && col < size;
+        }
+        if (type === 'd' || type === 'a') {
+            return row >= 0 && row < size - 1 && col >= 0 && col < size - 1;
+        }
+        return false;
+    };
+
+    if (!is_valid_thermo_mark_position()) return false;
+    if (relation !== '>' && relation !== '<') return false;
+
+    const marks = ensure_thermo_marks();
+    const existing = marks.find(mark => mark.kind === type && mark.r === row && mark.c === col);
+    if (existing) {
+        existing.relation = relation;
+    } else {
+        marks.push({ kind: type, r: row, c: col, relation });
+    }
+
+    invalidate_thermo_constraints();
+    return true;
+}
+
+function render_thermo_marks_from_state(size, container = document.querySelector('.sudoku-container')) {
+    if (!container) return;
+
+    Array.from(container.querySelectorAll('.vx-mark')).forEach(mark => mark.remove());
+
+    const grid = container.querySelector('.sudoku-grid');
+    if (!grid) return;
+
+    const marks = ensure_thermo_marks();
+    if (!Array.isArray(marks) || marks.length === 0) return;
+
+    const make_cell_key = (row, col) => `${row},${col}`;
+    const build_thermo_adjacency = (source_marks) => {
+        const adjacency = new Map();
+
+        const ensure_node = (row, col) => {
+            const key = make_cell_key(row, col);
+            if (!adjacency.has(key)) {
+                adjacency.set(key, { row, col, next: new Set(), prev: new Set() });
+            }
+            return adjacency.get(key);
+        };
+
+        const connect = (from_row, from_col, to_row, to_col) => {
+            const from_key = make_cell_key(from_row, from_col);
+            const to_key = make_cell_key(to_row, to_col);
+            const from_node = ensure_node(from_row, from_col);
+            const to_node = ensure_node(to_row, to_col);
+            from_node.next.add(to_key);
+            to_node.prev.add(from_key);
+        };
+
+        for (const mark of source_marks) {
+            if (mark.kind === 'v') {
+                const left = { row: mark.r, col: mark.c };
+                const right = { row: mark.r, col: mark.c + 1 };
+                const from = mark.relation === '<' ? left : right;
+                const to = mark.relation === '<' ? right : left;
+                connect(from.row, from.col, to.row, to.col);
+            } else if (mark.kind === 'h') {
+                const top = { row: mark.r, col: mark.c };
+                const bottom = { row: mark.r + 1, col: mark.c };
+                const from = mark.relation === '<' ? top : bottom;
+                const to = mark.relation === '<' ? bottom : top;
+                connect(from.row, from.col, to.row, to.col);
+            } else if (mark.kind === 'd') {
+                const top_left = { row: mark.r, col: mark.c };
+                const bottom_right = { row: mark.r + 1, col: mark.c + 1 };
+                const from = mark.relation === '<' ? top_left : bottom_right;
+                const to = mark.relation === '<' ? bottom_right : top_left;
+                connect(from.row, from.col, to.row, to.col);
+            } else if (mark.kind === 'a') {
+                const top_right = { row: mark.r, col: mark.c + 1 };
+                const bottom_left = { row: mark.r + 1, col: mark.c };
+                const from = mark.relation === '<' ? top_right : bottom_left;
+                const to = mark.relation === '<' ? bottom_left : top_right;
+                connect(from.row, from.col, to.row, to.col);
+            }
+        }
+
+        return adjacency;
+    };
+
+    const adjacency = build_thermo_adjacency(marks);
+    const nodes = Array.from(adjacency.values());
+    const roots = nodes.filter(node => node.prev.size === 0);
+
+    const cell_width = grid.offsetWidth / size;
+    const cell_height = grid.offsetHeight / size;
+    const grid_offset_left = grid.offsetLeft;
+    const grid_offset_top = grid.offsetTop;
+    const bulb_diameter = Math.max(14, Math.round(Math.min(cell_width, cell_height) * 0.76));
+    const line_thickness = Math.max(8, Math.round(Math.min(cell_width, cell_height) * 0.28));
+
+    const center_of = (cell) => ({
+        x: grid_offset_left + (cell.col + 0.5) * cell_width,
+        y: grid_offset_top + (cell.row + 0.5) * cell_height
+    });
+
+    const create_bulb_mark = (x, y, diameter) => {
+        const bulb = document.createElement('div');
+        bulb.className = 'vx-mark';
+        bulb.style.position = 'absolute';
+        bulb.style.left = `${x}px`;
+        bulb.style.top = `${y}px`;
+        bulb.style.width = `${diameter}px`;
+        bulb.style.height = `${diameter}px`;
+        bulb.style.borderRadius = '50%';
+        bulb.style.background = '#bdbdbd';
+        bulb.style.zIndex = '0';
+        bulb.style.pointerEvents = 'none';
+        return bulb;
+    };
+
+    const create_line_mark = (x, y, width, height, angle = 0) => {
+        const line = document.createElement('div');
+        line.className = 'vx-mark';
+        line.style.position = 'absolute';
+        line.style.left = `${x}px`;
+        line.style.top = `${y}px`;
+        line.style.width = `${width}px`;
+        line.style.height = `${height}px`;
+        line.style.transform = `rotate(${angle}deg)`;
+        line.style.transformOrigin = 'center';
+        line.style.background = 'transparent';
+        line.style.borderRadius = '0';
+        line.style.zIndex = '0';
+        line.style.pointerEvents = 'none';
+
+        const body_length = Math.max(0, width - height);
+        if (body_length > 0) {
+            const body = document.createElement('div');
+            body.style.position = 'absolute';
+            body.style.left = `${height / 2}px`;
+            body.style.top = '0';
+            body.style.width = `${body_length}px`;
+            body.style.height = `${height}px`;
+            body.style.background = '#bdbdbd';
+            line.appendChild(body);
+        }
+
+        const cap_start = document.createElement('div');
+        cap_start.style.position = 'absolute';
+        cap_start.style.left = '0';
+        cap_start.style.top = '0';
+        cap_start.style.width = `${height}px`;
+        cap_start.style.height = `${height}px`;
+        cap_start.style.borderRadius = '50%';
+        cap_start.style.background = '#bdbdbd';
+        line.appendChild(cap_start);
+
+        const cap_end = document.createElement('div');
+        cap_end.style.position = 'absolute';
+        cap_end.style.left = `${Math.max(0, width - height)}px`;
+        cap_end.style.top = '0';
+        cap_end.style.width = `${height}px`;
+        cap_end.style.height = `${height}px`;
+        cap_end.style.borderRadius = '50%';
+        cap_end.style.background = '#bdbdbd';
+        line.appendChild(cap_end);
+
+        return line;
+    };
+
+    const bulb_nodes = roots.length > 0 ? roots : nodes;
+    for (const node of bulb_nodes) {
+        const start_center = center_of(node);
+        container.appendChild(
+            create_bulb_mark(
+                start_center.x - bulb_diameter / 2,
+                start_center.y - bulb_diameter / 2,
+                bulb_diameter
+            )
+        );
+    }
+
+    for (const mark of marks) {
+        let first_cell;
+        let second_cell;
+
+        if (mark.kind === 'v') {
+            first_cell = { row: mark.r, col: mark.c };
+            second_cell = { row: mark.r, col: mark.c + 1 };
+        } else if (mark.kind === 'h') {
+            first_cell = { row: mark.r, col: mark.c };
+            second_cell = { row: mark.r + 1, col: mark.c };
+        } else if (mark.kind === 'd') {
+            first_cell = { row: mark.r, col: mark.c };
+            second_cell = { row: mark.r + 1, col: mark.c + 1 };
+        } else if (mark.kind === 'a') {
+            first_cell = { row: mark.r, col: mark.c + 1 };
+            second_cell = { row: mark.r + 1, col: mark.c };
+        } else {
+            continue;
+        }
+
+        const a = center_of(first_cell);
+        const b = center_of(second_cell);
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const center_distance = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        const draw_length = center_distance + line_thickness;
+
+        container.appendChild(
+            create_line_mark(
+                (a.x + b.x) / 2 - draw_length / 2,
+                (a.y + b.y) / 2 - line_thickness / 2,
+                draw_length,
+                line_thickness,
+                angle
+            )
+        );
+    }
+}
+
+export function get_thermo_constraint_map(size) {
+    const marks = ensure_thermo_marks();
+    const signature = marks
+        .map(mark => `${mark.kind}:${mark.r}:${mark.c}:${mark.relation}`)
+        .sort()
+        .join('|');
+    const cached = state._thermo_constraint_cache;
+
+    if (cached && cached.size === size && cached.signature === signature) {
+        return cached.map;
+    }
+
+    const map = new Map();
+    const addConstraint = (row, col, constraint) => {
+        const key = `${row},${col}`;
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push(constraint);
+    };
+
+    for (const mark of marks) {
+        let a_row;
+        let a_col;
+        let b_row;
+        let b_col;
+
+        if (mark.kind === 'v') {
+            a_row = mark.r;
+            a_col = mark.c;
+            b_row = mark.r;
+            b_col = mark.c + 1;
+        } else if (mark.kind === 'h') {
+            a_row = mark.r;
+            a_col = mark.c;
+            b_row = mark.r + 1;
+            b_col = mark.c;
+        } else if (mark.kind === 'd') {
+            a_row = mark.r;
+            a_col = mark.c;
+            b_row = mark.r + 1;
+            b_col = mark.c + 1;
+        } else if (mark.kind === 'a') {
+            a_row = mark.r;
+            a_col = mark.c + 1;
+            b_row = mark.r + 1;
+            b_col = mark.c;
+        } else {
+            continue;
+        }
+
+        const relation = mark.relation;
+
+        addConstraint(a_row, a_col, { type: 'compare', otherRow: b_row, otherCol: b_col, relation });
+        addConstraint(b_row, b_col, { type: 'compare', otherRow: a_row, otherCol: a_col, relation: relation === '>' ? '<' : '>' });
+    }
+
+    state._thermo_constraint_cache = { size, signature, map };
+    return map;
+}
+
+export function apply_thermo_candidate_elimination(board, size, row, col, num, calc_score = true) {
+    const eliminations = [];
+    const constraint_map = get_thermo_constraint_map(size);
+    const constraints = constraint_map.get(`${row},${col}`);
+
+    if (!constraints) {
+        return eliminations;
+    }
+
+    for (const constraint of constraints) {
+        const other_row = constraint.otherRow;
+        const other_col = constraint.otherCol;
+        const other_cell = board[other_row]?.[other_col];
+
+        if (!Array.isArray(other_cell) || constraint.type !== 'compare') {
+            continue;
+        }
+
+        for (let k = other_cell.length - 1; k >= 0; k--) {
+            const candidate = other_cell[k];
+            const should_remove = constraint.relation === '>'
+                ? candidate >= num
+                : candidate <= num;
+
+            if (!should_remove) {
+                continue;
+            }
+
+            if (calc_score) {
+                state.candidate_elimination_score[`${other_row},${other_col},${candidate}`] = 1;
+            }
+
+            eliminations.push({ row: other_row, col: other_col, val: candidate });
+            other_cell.splice(k, 1);
+        }
+    }
+
+    return eliminations;
+}
+
+export function apply_thermo_marks(board, size) {
+    const marks = ensure_thermo_marks();
+
+    for (const mark of marks) {
+        let first_row;
+        let first_col;
+        let second_row;
+        let second_col;
+
+        if (mark.kind === 'v') {
+            first_row = mark.r;
+            first_col = mark.c;
+            second_row = mark.r;
+            second_col = mark.c + 1;
+        } else if (mark.kind === 'h') {
+            first_row = mark.r;
+            first_col = mark.c;
+            second_row = mark.r + 1;
+            second_col = mark.c;
+        } else if (mark.kind === 'd') {
+            first_row = mark.r;
+            first_col = mark.c;
+            second_row = mark.r + 1;
+            second_col = mark.c + 1;
+        } else if (mark.kind === 'a') {
+            first_row = mark.r;
+            first_col = mark.c + 1;
+            second_row = mark.r + 1;
+            second_col = mark.c;
+        } else {
+            continue;
+        }
+
+        if (
+            first_row < 0 || first_row >= size || first_col < 0 || first_col >= size ||
+            second_row < 0 || second_row >= size || second_col < 0 || second_col >= size
+        ) {
+            continue;
+        }
+
+        const first_cell = board[first_row]?.[first_col];
+        const second_cell = board[second_row]?.[second_col];
+
+        if (mark.relation === '>') {
+            if (Array.isArray(first_cell)) {
+                board[first_row][first_col] = first_cell.filter(candidate => candidate !== 1);
+            }
+            if (Array.isArray(second_cell)) {
+                board[second_row][second_col] = second_cell.filter(candidate => candidate !== size);
+            }
+        } else if (mark.relation === '<') {
+            if (Array.isArray(first_cell)) {
+                board[first_row][first_col] = first_cell.filter(candidate => candidate !== size);
+            }
+            if (Array.isArray(second_cell)) {
+                board[second_row][second_col] = second_cell.filter(candidate => candidate !== 1);
+            }
+        }
+    }
+}
+
 function add_thermo_mark(size) {
     const grid = document.querySelector('.sudoku-grid');
     if (!grid) return;
@@ -917,10 +868,6 @@ function add_thermo_mark(size) {
 
     const clear_preview_marks = () => {
         container.querySelectorAll('.thermo-preview-mark').forEach(el => el.remove());
-    };
-
-    const remove_rendered_thermo_marks = () => {
-        container.querySelectorAll('.vx-mark').forEach(el => el.remove());
     };
 
     const make_cell_key = (row, col) => `${row},${col}`;
@@ -1053,7 +1000,7 @@ function add_thermo_mark(size) {
             y: offset_top + (cell.row + 0.5) * cell_height
         });
 
-        const bulb_diameter = Math.max(12, Math.round(Math.min(cell_width, cell_height) * 0.62));
+        const bulb_diameter = Math.max(14, Math.round(Math.min(cell_width, cell_height) * 0.76));
         const start_center = center_of(path_cells[0]);
 
         const bulb = create_bulb_mark(
@@ -1064,7 +1011,7 @@ function add_thermo_mark(size) {
         );
         container.appendChild(bulb);
 
-        const line_thickness = Math.max(6, Math.round(Math.min(cell_width, cell_height) * 0.22));
+        const line_thickness = Math.max(8, Math.round(Math.min(cell_width, cell_height) * 0.28));
 
         for (let i = 1; i < path_cells.length; i++) {
             const a = center_of(path_cells[i - 1]);
@@ -1088,105 +1035,8 @@ function add_thermo_mark(size) {
         }
     };
 
-    const build_components_from_state = () => {
-        const marks = ensure_thermo_marks();
-        const adjacency = new Map();
-
-        const ensure_node = (row, col) => {
-            const key = make_cell_key(row, col);
-            if (!adjacency.has(key)) {
-                adjacency.set(key, { row, col, next: new Set(), prev: new Set() });
-            }
-            return adjacency.get(key);
-        };
-
-        for (const mark of marks) {
-            const left_or_top = { row: mark.r, col: mark.c };
-            let right_or_bottom;
-
-            if (mark.kind === 'v') {
-                right_or_bottom = { row: mark.r, col: mark.c + 1 };
-            } else if (mark.kind === 'h') {
-                right_or_bottom = { row: mark.r + 1, col: mark.c };
-            } else if (mark.kind === 'd') {
-                right_or_bottom = { row: mark.r + 1, col: mark.c + 1 };
-            } else if (mark.kind === 'a') {
-                // a: top-right 与 bottom-left
-                const top_right = { row: mark.r, col: mark.c + 1 };
-                const bottom_left = { row: mark.r + 1, col: mark.c };
-                const from = mark.relation === '<' ? top_right : bottom_left;
-                const to = mark.relation === '<' ? bottom_left : top_right;
-
-                const from_node = ensure_node(from.row, from.col);
-                const to_node = ensure_node(to.row, to.col);
-                from_node.next.add(make_cell_key(to.row, to.col));
-                to_node.prev.add(make_cell_key(from.row, from.col));
-                continue;
-            } else {
-                continue;
-            }
-
-            const from = mark.relation === '<' ? left_or_top : right_or_bottom;
-            const to = mark.relation === '<' ? right_or_bottom : left_or_top;
-
-            const from_node = ensure_node(from.row, from.col);
-            const to_node = ensure_node(to.row, to.col);
-            from_node.next.add(make_cell_key(to.row, to.col));
-            to_node.prev.add(make_cell_key(from.row, from.col));
-        }
-
-        const visited = new Set();
-        const components = [];
-        const nodes = Array.from(adjacency.values());
-
-        for (const node of nodes) {
-            const start_key = make_cell_key(node.row, node.col);
-            if (visited.has(start_key)) continue;
-
-            let start = node;
-            if (node.prev.size > 0) {
-                for (const candidate of nodes) {
-                    if (candidate.prev.size === 0 && !visited.has(make_cell_key(candidate.row, candidate.col))) {
-                        start = candidate;
-                        break;
-                    }
-                }
-            }
-
-            const path = [];
-            let current = start;
-            let guard = 0;
-
-            while (current && guard < size * size + 5) {
-                guard++;
-                const current_key = make_cell_key(current.row, current.col);
-                if (visited.has(current_key)) break;
-                visited.add(current_key);
-                path.push({ row: current.row, col: current.col });
-
-                const next_keys = Array.from(current.next);
-                if (next_keys.length !== 1) break;
-
-                const next_key = next_keys[0];
-                const next = adjacency.get(next_key);
-                if (!next) break;
-                current = next;
-            }
-
-            if (path.length >= 2) {
-                components.push(path);
-            }
-        }
-
-        return components;
-    };
-
     const render_saved_thermo_marks = () => {
-        remove_rendered_thermo_marks();
-        const components = build_components_from_state();
-        for (const path of components) {
-            draw_thermo_visual(path, false);
-        }
+        render_thermo_marks_from_state(size, container);
     };
 
     const commit_drag_path_to_state = (path_cells) => {
@@ -1253,8 +1103,143 @@ function add_thermo_mark(size) {
 
     const path_overlaps_existing_thermo = (path_cells) => {
         if (!Array.isArray(path_cells) || path_cells.length === 0) return false;
+
+        const get_thermo_paths_from_marks = (marks) => {
+            if (!Array.isArray(marks) || marks.length === 0) {
+                return [];
+            }
+
+            const adjacency = new Map();
+
+            const ensure_node = (row, col) => {
+                const key = make_cell_key(row, col);
+                if (!adjacency.has(key)) {
+                    adjacency.set(key, { row, col, next: new Set(), prev: new Set() });
+                }
+                return adjacency.get(key);
+            };
+
+            const connect = (from_row, from_col, to_row, to_col) => {
+                const from_key = make_cell_key(from_row, from_col);
+                const to_key = make_cell_key(to_row, to_col);
+                const from_node = ensure_node(from_row, from_col);
+                const to_node = ensure_node(to_row, to_col);
+                from_node.next.add(to_key);
+                to_node.prev.add(from_key);
+            };
+
+            for (const mark of marks) {
+                if (mark.kind === 'v') {
+                    const left = { row: mark.r, col: mark.c };
+                    const right = { row: mark.r, col: mark.c + 1 };
+                    const from = mark.relation === '<' ? left : right;
+                    const to = mark.relation === '<' ? right : left;
+                    connect(from.row, from.col, to.row, to.col);
+                } else if (mark.kind === 'h') {
+                    const top = { row: mark.r, col: mark.c };
+                    const bottom = { row: mark.r + 1, col: mark.c };
+                    const from = mark.relation === '<' ? top : bottom;
+                    const to = mark.relation === '<' ? bottom : top;
+                    connect(from.row, from.col, to.row, to.col);
+                } else if (mark.kind === 'd') {
+                    const top_left = { row: mark.r, col: mark.c };
+                    const bottom_right = { row: mark.r + 1, col: mark.c + 1 };
+                    const from = mark.relation === '<' ? top_left : bottom_right;
+                    const to = mark.relation === '<' ? bottom_right : top_left;
+                    connect(from.row, from.col, to.row, to.col);
+                } else if (mark.kind === 'a') {
+                    const top_right = { row: mark.r, col: mark.c + 1 };
+                    const bottom_left = { row: mark.r + 1, col: mark.c };
+                    const from = mark.relation === '<' ? top_right : bottom_left;
+                    const to = mark.relation === '<' ? bottom_left : top_right;
+                    connect(from.row, from.col, to.row, to.col);
+                }
+            }
+
+            const nodes = Array.from(adjacency.values());
+            if (nodes.length === 0) {
+                return [];
+            }
+
+            const start_nodes = nodes.filter(node => node.prev.size === 0);
+            const roots = start_nodes.length > 0 ? start_nodes : nodes;
+            const max_depth = size * size + 5;
+            const signatures = new Set();
+            const paths = [];
+
+            const dfs = (node, path, visited) => {
+                const key = make_cell_key(node.row, node.col);
+                if (visited.has(key)) {
+                    return;
+                }
+
+                const next_path = path.concat({ row: node.row, col: node.col });
+                if (next_path.length > max_depth) {
+                    return;
+                }
+
+                const next_visited = new Set(visited);
+                next_visited.add(key);
+
+                const next_keys = Array.from(node.next).filter(next_key => !next_visited.has(next_key));
+                if (next_keys.length === 0) {
+                    if (next_path.length >= 2) {
+                        const signature = next_path
+                            .map(cell => make_cell_key(cell.row, cell.col))
+                            .join('|');
+                        if (!signatures.has(signature)) {
+                            signatures.add(signature);
+                            paths.push(next_path);
+                        }
+                    }
+                    return;
+                }
+
+                for (const next_key of next_keys) {
+                    const next_node = adjacency.get(next_key);
+                    if (!next_node) {
+                        continue;
+                    }
+                    dfs(next_node, next_path, next_visited);
+                }
+            };
+
+            for (const root of roots) {
+                dfs(root, [], new Set());
+            }
+
+            return paths;
+        };
+
+        const existing_paths = get_thermo_paths_from_marks(ensure_thermo_marks());
+        if (existing_paths.length === 0) return false;
+
         const occupied_cells = collect_occupied_cells_from_state();
-        return path_cells.some(cell => occupied_cells.has(make_cell_key(cell.row, cell.col)));
+        let max_shared_prefix = 0;
+
+        for (const existing_path of existing_paths) {
+            let shared_prefix = 0;
+            while (
+                shared_prefix < path_cells.length &&
+                shared_prefix < existing_path.length &&
+                path_cells[shared_prefix].row === existing_path[shared_prefix].row &&
+                path_cells[shared_prefix].col === existing_path[shared_prefix].col
+            ) {
+                shared_prefix++;
+            }
+            if (shared_prefix > max_shared_prefix) {
+                max_shared_prefix = shared_prefix;
+            }
+        }
+
+        for (let i = max_shared_prefix; i < path_cells.length; i++) {
+            const cell = path_cells[i];
+            if (occupied_cells.has(make_cell_key(cell.row, cell.col))) {
+                return true;
+            }
+        }
+
+        return false;
     };
 
     const finish_drag = () => {
@@ -1351,45 +1336,39 @@ let _peers_cache = null;
 let _peers_cache_size = 0;
 let _peers_cache_mode = '';
 
-function get_peers(size, mode) {
-    if (_peers_cache && _peers_cache_size === size && _peers_cache_mode === mode) {
-        return _peers_cache;
-    }
-
-    const peers = Array.from({ length: size }, () => Array.from({ length: size }, () => []));
-    const regions = get_all_regions(size, mode);
-
-    for (let r = 0; r < size; r++) {
-        for (let c = 0; c < size; c++) {
-            const cell_peers = new Set();
-            for (const region of regions) {
-                // 检查当前格是否在该区域
-                if (region.cells.some(([row, col]) => row === r && col === c)) {
-                    for (const [row, col] of region.cells) {
-                        if (row !== r || col !== c) {
-                            // 将坐标编码为整数以存入 Set: r * size + c
-                            cell_peers.add(row * size + col);
-                        }
-                    }
-                }
-            }
-            // 解码回坐标数组
-            peers[r][c] = Array.from(cell_peers).map(val => [Math.floor(val / size), val % size]);
-        }
-    }
-
-    _peers_cache = peers;
-    _peers_cache_size = size;
-    _peers_cache_mode = mode;
-    return peers;
-}
-
 // modules/thermo.js (update is_valid_thermo)
 export function is_valid_thermo(board, size, row, col, num) {
     const mode = state.current_mode || 'thermo';
+    const peers = (() => {
+        if (!_peers_cache || _peers_cache_size !== size || _peers_cache_mode !== mode) {
+            const next_peers = Array.from({ length: size }, () => Array.from({ length: size }, () => []));
+            const regions = get_all_regions(size, mode);
+
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    const cell_peers = new Set();
+                    for (const region of regions) {
+                        if (region.cells.some(([peer_row, peer_col]) => peer_row === r && peer_col === c)) {
+                            for (const [peer_row, peer_col] of region.cells) {
+                                if (peer_row !== r || peer_col !== c) {
+                                    cell_peers.add(peer_row * size + peer_col);
+                                }
+                            }
+                        }
+                    }
+                    next_peers[r][c] = Array.from(cell_peers).map(val => [Math.floor(val / size), val % size]);
+                }
+            }
+
+            _peers_cache = next_peers;
+            _peers_cache_size = size;
+            _peers_cache_mode = mode;
+        }
+
+        return _peers_cache[row][col];
+    })();
     
     // 1. 快速常规区域判断（使用预计算 Peers）
-    const peers = get_peers(size, mode)[row][col];
     // 使用 for 循环比 for...of 稍快
     for (let i = 0; i < peers.length; i++) {
         const [r, c] = peers[i];

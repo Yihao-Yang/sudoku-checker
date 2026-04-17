@@ -3909,8 +3909,8 @@ function special_combination_region_block_elimination(board, size, region_cells,
                 return `${cells.join('、')}删去${num}`;
             });
         const has_global_clause = elimination_clauses.some(clause => clause.startsWith('删去'));
-        const position_prefix = has_global_clause ? `构成区块，${eliminated_cells.join('、')}` : '';
-        log_process(`[${region_type}区块_${nat}] ${region_index}${region_type}${position_prefix}${elimination_clauses.join('，')}`);
+        const position_prefix = has_global_clause ? `${eliminated_cells.join('、')}` : '';
+        log_process(`[${region_type}区块_${nat}] ${region_index}${region_type}构成区块，${position_prefix}${elimination_clauses.join('，')}`);
     }
 
     return changed;

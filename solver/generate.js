@@ -970,6 +970,27 @@ export function generate_solution_old(size) {
     const max_attempts = max_attempts_dom && max_attempts_dom.value ? parseInt(max_attempts_dom.value) : 10000; // 最大尝试次数
     // const max_attempts = 100; // 最大尝试次数
 
+    // 非全标类题型先静默检查一次当前盘面，刷新各格候选数后再进入原有终盘生成逻辑
+    if (!state.is_full_mark_mode) {
+        try {
+            const precheck_board = Array.from({ length: size }, () =>
+                Array.from({ length: size }, () => 0)
+            );
+            solve(precheck_board, size, isValid, true);
+
+            if (state.logical_solution) {
+                for (let r = 0; r < size; r++) {
+                    for (let c = 0; c < size; c++) {
+                        const cell = state.logical_solution[r][c];
+                        board[r][c] = Array.isArray(cell) ? [...cell] : cell;
+                    }
+                }
+            }
+        } catch (error) {
+            log_process(`预检查候选失败，继续使用原始生成逻辑：${error.message}`);
+        }
+    }
+
     // 检查某区域是否存在某个候选数只剩一格可填
     function check_unique_candidate_in_regions() {
         for (const region of regions) {
@@ -1188,7 +1209,9 @@ export function generate_solved_board_brute_force(size) {
             [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
         }
         const prev_mode = state.current_mode;
+        const prev_is_full_mark_mode = state.is_full_mark_mode;
         state.current_mode = 'classic';
+        state.is_full_mark_mode = false;
         try {
             for (const num of numbers) {
                 if (isValid(board, size, row, col, num)) {
@@ -1201,6 +1224,7 @@ export function generate_solved_board_brute_force(size) {
             }
         } finally {
             state.current_mode = prev_mode;
+            state.is_full_mark_mode = prev_is_full_mark_mode;
         }
         return false;
     }
