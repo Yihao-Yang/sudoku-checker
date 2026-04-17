@@ -9,6 +9,7 @@ import { is_valid_clone, get_clone_cells, are_regions_same_shape } from "../modu
 import { apply_exclusion_marks, is_valid_exclusion } from "../modules/exclusion.js";
 import { apply_quadruple_marks, is_valid_quadruple } from "../modules/quadruple.js";
 import { is_valid_add } from "../modules/add.js";
+import { is_valid_five_six } from "../modules/five_six.js";
 import { is_valid_product } from "../modules/product.js";
 import { is_valid_ratio } from "../modules/ratio.js";
 import { is_valid_VX } from "../modules/vx.js";
@@ -326,7 +327,61 @@ export function eliminate_candidates(board, size, i, j, num, calc_score = true) 
             // 容错：在无 DOM 环境或查询失败时不阻塞主流程
             // console.warn && console.warn('VX elimination error', e);
         }
-    } // Kropki（黑白点）模式专用候选数处理
+    }
+    // 五六数独模式专用候选数处理：
+    // - 若相邻两格之间没有五六标记，则删除会与已放数字 num 构成和为 5 或 6 的候选
+    else if (mode === 'five_six') {
+        try {
+            const marks = Array.isArray(state.marks_board) ? state.marks_board : [];
+            const neighbors = [
+                [0, 1], [0, -1], [1, 0], [-1, 0]
+            ];
+
+            const has_five_six_pair_mark = (row1, col1, row2, col2) => {
+                if (row1 === row2 && Math.abs(col1 - col2) === 1) {
+                    const left_col = Math.min(col1, col2);
+                    return marks.some(mark => mark.kind === 'v' && mark.r === row1 && mark.c === left_col);
+                }
+                if (col1 === col2 && Math.abs(row1 - row2) === 1) {
+                    const top_row = Math.min(row1, row2);
+                    return marks.some(mark => mark.kind === 'h' && mark.r === top_row && mark.c === col1);
+                }
+                return false;
+            };
+
+            for (const [dr, dc] of neighbors) {
+                const nr = i + dr;
+                const nc = j + dc;
+                if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
+                if (has_five_six_pair_mark(i, j, nr, nc)) continue;
+                if (!Array.isArray(board[nr][nc])) continue;
+
+                const before = board[nr][nc].slice();
+                const after = before.filter(candidate => (candidate + num) !== 5 && (candidate + num) !== 6);
+
+                if (calc_score) {
+                    for (const removed of before) {
+                        if (!after.includes(removed)) {
+                            const scoreKey = `${nr},${nc},${removed}`;
+                            if (!state.candidate_elimination_score[scoreKey]) {
+                                state.candidate_elimination_score[scoreKey] = 0;
+                            }
+                            state.candidate_elimination_score[scoreKey] += 1;
+                        }
+                    }
+                }
+
+                board[nr][nc] = after;
+                const eliminated = before.filter(candidate => !after.includes(candidate));
+                if (eliminated.length > 0) {
+                    eliminations.push({ row: nr, col: nc, eliminated });
+                }
+            }
+        } catch (e) {
+            // 容错：避免在状态未同步时阻塞主流程
+        }
+    }
+    // Kropki（黑白点）模式专用候选数处理
     else if (mode === 'kropki') {
         const container = (typeof document !== "undefined") ? document.querySelector('.sudoku-container') : null;
         // 收集所有黑白点标记
@@ -1497,7 +1552,8 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
             }
             break;
         }
-        case 'add': {
+        case 'add':
+        case 'five_six': {
             // 优先使用缓存；没有缓存时只同步一次（仍比反复扫 DOM 好很多）
             let marks;
             if (Array.isArray(state.marks_board) && state.marks_board.length > 0) {
@@ -1554,6 +1610,19 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
 
                     regions.push({ type: '特定组合', index, cells, sum });
                     continue;
+                }
+            }
+
+            if (mode === 'five_six') {
+                for (let row = 0; row < size; row++) {
+                    for (let col = 0; col < size; col++) {
+                        const index = `${getRowLetter(row + 1)}${col + 1}`;
+                        regions.push({
+                            type: '单格特定组合',
+                            index,
+                            cells: [[row, col]],
+                        });
+                    }
                 }
             }
             break;
@@ -1897,6 +1966,17 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
                     cells: [cell_a, cell_b],
                     // clue_nums
                 });
+            }
+
+            for (let row = 0; row < size; row++) {
+                for (let col = 0; col < size; col++) {
+                    const index = `${getRowLetter(row + 1)}${col + 1}`;
+                    regions.push({
+                        type: '单格特定组合',
+                        index,
+                        cells: [[row, col]],
+                    });
+                }
             }
             break;
         }
@@ -2429,7 +2509,13 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
             // 默认情况下，不添加任何区域
             break;
     }
-    // return regions;
+    // 统一：单格区域命名为“单格特定组合”
+    for (const region of regions) {
+        if (region.type === '特定组合' && Array.isArray(region.cells) && region.cells.length === 1) {
+            region.type = '单格特定组合';
+        }
+    }
+
     // 合并有共同格子的特定组合
     const merged_regions = merge_regions_with_common_cells(regions);
 
@@ -2694,6 +2780,8 @@ export function isValid(board, size, row, col, num) {
         return is_valid_quadruple(board, size, row, col, num);
     } else if (state.current_mode === 'add') {
         return is_valid_add(board, size, row, col, num);
+    } else if (state.current_mode === 'five_six') {
+        return is_valid_five_six(board, size, row, col, num);
     } else if (state.current_mode === 'product') {
         return is_valid_product(board, size, row, col, num);
     } else if (state.current_mode === 'ratio') {
@@ -2775,7 +2863,7 @@ function merge_regions_with_common_cells(regions) {
 
     const cell_to_string = ([r, c]) => `${r},${c}`;
     const parse_cell_key = (key) => key.split(',').map(Number);
-    const is_single_cell_region = (region) => Array.isArray(region?.cells) && region.cells.length === 1;
+    const is_single_cell_region = (region) => region?.type === '单格特定组合';
     const non_single_region_ids = [];
 
     // 预计算：每个区域的格子 key 列表（跳过单格特定组合）

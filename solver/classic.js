@@ -21,6 +21,7 @@ import { create_anti_elephant_sudoku } from '../modules/anti_elephant.js';
 import { create_exclusion_sudoku, apply_exclusion_marks, is_valid_exclusion } from '../modules/exclusion.js';
 import { create_quadruple_sudoku, is_valid_quadruple } from '../modules/quadruple.js';
 import { create_add_sudoku } from '../modules/add.js';
+import { create_five_six_sudoku } from '../modules/five_six.js';
 import { create_product_sudoku } from '../modules/product.js';
 import { create_ratio_sudoku } from '../modules/ratio.js';
 import { create_inequality_sudoku } from '../modules/inequality.js';
@@ -309,6 +310,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('排除', () => create_exclusion_sudoku(4));
         add_Extra_Button('四格提示', () => create_quadruple_sudoku(4));
         add_Extra_Button('加法', () => create_add_sudoku(4));
+        add_Extra_Button('五六', () => create_five_six_sudoku(4));
         add_Extra_Button('乘积', () => create_product_sudoku(4));
         add_Extra_Button('比例', () => create_ratio_sudoku(4));
         add_Extra_Button('不等号', () => create_inequality_sudoku(4));
@@ -340,6 +342,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('排除', () => create_exclusion_sudoku(6));
         add_Extra_Button('四格提示', () => create_quadruple_sudoku(6));
         add_Extra_Button('加法', () => create_add_sudoku(6));
+        add_Extra_Button('五六', () => create_five_six_sudoku(6));
         add_Extra_Button('乘积', () => create_product_sudoku(6));
         add_Extra_Button('比例', () => create_ratio_sudoku(6));
         add_Extra_Button('不等号', () => create_inequality_sudoku(6));
@@ -374,6 +377,7 @@ export function create_sudoku_grid(size) {
         add_Extra_Button('排除', () => create_exclusion_sudoku(9));
         add_Extra_Button('四格提示', () => create_quadruple_sudoku(9));
         add_Extra_Button('加法', () => create_add_sudoku(9));
+        add_Extra_Button('五六', () => create_five_six_sudoku(9));
         add_Extra_Button('乘积', () => create_product_sudoku(9));
         add_Extra_Button('比例', () => create_ratio_sudoku(9));
         add_Extra_Button('不等号', () => create_inequality_sudoku(9));
@@ -1384,7 +1388,7 @@ export function check_uniqueness(check_next = false) {
     //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
     //         .join('\n')
     // );
-    if (state.current_mode === 'add') {
+    if (state.current_mode === 'add' || state.current_mode === 'five_six') {
         sync_marks_board_from_dom(size, container);
     }
 

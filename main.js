@@ -37,6 +37,7 @@ import { generate_odd_even_puzzle } from './modules/odd_even.js';
 import { create_ratio_sudoku } from './modules/ratio.js';
 import { generate_fortress_puzzle } from './modules/fortress.js';
 import { generate_product_puzzle } from './modules/product.js';
+import { generate_five_six_puzzle } from './modules/five_six.js';
 
 
 const MODE_EXPORT_META = {
@@ -56,8 +57,9 @@ const MODE_EXPORT_META = {
     clone: { type: '克隆', rule: '除标准数独规则外，形状相同的灰色区域中相同位置的数字必须一致' },
     renban: { type: '灰格连续', rule: '除标准数独规则外，每个灰色额外区域内的数字连续' },
     palindrome: { type: '回文', rule: '除标准数独规则外，每条灰线关于中心对称位置上的数字必须相同' },
-    fortress: { type: '堡垒', rule: '除标准数独规则外，灰格数字大于白格数字' },
-    VX: { type: 'VX', rule: '除标准数独规则外，V(X)表示两侧格内数字和为5(10)，满足条件的V(X)均已标出' },
+    fortress: { type: '堡垒', rule: '除标准数独规则外，灰格数字大于相邻的白格数字' },
+    VX: { type: 'VX', rule: '除标准数独规则外，V(X)标记表示两侧格内数字和为5(10)，满足条件的V(X)标记均已标出' },
+    five_six: { type: '五六', rule: '除标准数独规则外，5(6)标记表示两侧格内数字和为5(6)，满足条件的5(6)标记均已标出' },
     exclusion: { type: '排除', rule: '除标准数独规则外，带标记的周围四格内不包含标记中的数字' },
     quadruple: { type: '四格提示', rule: '除标准数独规则外，带标记的周围四格内包含标记中的数字' },
     ratio: { type: '比例', rule: '除标准数独规则外，带比例标记的相邻格满足比例关系' },
@@ -565,6 +567,8 @@ function initializeEventHandlers() {
             return generate_inequality_puzzle(state.current_grid_size, score_lower_limit, holes_count);
         } else if (state.current_mode === 'thermo') {
             return generate_thermo_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        } else if (state.current_mode === 'five_six') {
+            return generate_five_six_puzzle(state.current_grid_size, score_lower_limit, holes_count);
         } else if (state.current_mode === 'odd') {
             return generate_odd_puzzle(state.current_grid_size, score_lower_limit, holes_count);
         } else if (state.current_mode === 'odd_even') {

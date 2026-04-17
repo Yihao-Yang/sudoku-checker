@@ -844,7 +844,7 @@ export function clear_marks() {
     if (!container) return;
     container.querySelectorAll('.vx-mark').forEach(mark => mark.remove());
 
-    if (state.current_mode === 'add') {
+    if (state.current_mode === 'add' || state.current_mode === 'five_six') {
         state.marks_board = [];
     }
 
@@ -1150,6 +1150,7 @@ export function save_sudoku_as_image(is_puzzle = true, with_watermark = false, w
         'hashtag': '斜井',
         'multi_diagonal': '斜线',
         'VX': 'VX',
+        'five_six': '五六',
         'kropki': '黑白点',
         'consecutive': '连续',
         'missing': '缺一门',

@@ -228,6 +228,7 @@ export function set_current_mode(mode) {
         'exclusion',
         'quadruple',
         'add',
+        'five_six',
         'product',
         'ratio',
         'inequality',

@@ -2248,6 +2248,14 @@ export function check_lookup_table(board, size) {
         apply_fortress_marks(board, size);
     }
 }
+function is_special_combination_region_type(region_type) {
+    return region_type === '特定组合' || region_type === '合并特定组合';
+}
+
+function is_block_special_combination_region_type(region_type) {
+    return is_special_combination_region_type(region_type) || region_type === '单格特定组合';
+}
+
 // 特定组合必含核心函数
 function special_combination_region_must_contain(board, size, region_cells, region_type, region_index, nat) {
     let changed = false;
@@ -2455,7 +2463,7 @@ function check_special_combination_region_must_contain(board, size, nat = 1) {
     const regions = get_special_combination_regions(board, size, state.current_mode);
 
     for (const region of regions) {
-        if (region.type === '特定组合' || region.type === '合并特定组合') {
+        if (is_special_combination_region_type(region.type)) {
             const uncertain_cells = region.cells.filter(([r, c]) => Array.isArray(board[r][c]));
             if (uncertain_cells.length !== nat) continue;
 
@@ -2467,7 +2475,8 @@ function check_special_combination_region_must_contain(board, size, nat = 1) {
 
 // 多特定组合必含排除
 function check_multi_special_combination_region_must_contain(board, size, nat = 1) {
-    const regions = get_special_combination_regions(board, size, state.current_mode);
+    const regions = get_special_combination_regions(board, size, state.current_mode)
+        .filter(region => region.type !== '单格特定组合');
     if (regions.length < 2) return false;
 
     const all_regions = get_all_regions(size, state.current_mode)
@@ -2670,7 +2679,7 @@ function check_special_combination_region_must_not_contain(board, size, nat = 1)
     const regions = get_special_combination_regions(board, size, state.current_mode);
 
     for (const region of regions) {
-        if (region.type === '特定组合' || region.type === '合并特定组合') {
+        if (is_special_combination_region_type(region.type)) {
             // 统计区域内未确定的格子数量
             const uncertain_cells = region.cells.filter(([r, c]) => Array.isArray(board[r][c]));
             // log_process(`[特定组合必不含] 检查第${region.index}特定组合，数字${region.clue_nums.join('、')}，未定格子数=${uncertain_cells.length}`);
@@ -2685,8 +2694,9 @@ function check_special_combination_region_must_not_contain(board, size, nat = 1)
 
 // 对应的检查函数2：多特定组合联合检查
 function check_multi_special_combination_region_must_not_contain(board, size, nat = 1) {
-    // 1. 获取所有特定组合
-    const regions = get_special_combination_regions(board, size, state.current_mode);
+    // 1. 获取所有可参与合并的特定组合
+    const regions = get_special_combination_regions(board, size, state.current_mode)
+        .filter(region => region.type !== '单格特定组合');
     if (regions.length < 2) return false;
 
     // 2. 获取所有宫/行/列区域
@@ -2871,7 +2881,7 @@ function check_special_combination_region_cell_elimination(board, size, nat = 1)
     const regions = get_special_combination_regions(board, size, state.current_mode);
 
     for (const region of regions) {
-        if (region.type === '特定组合' || region.type === '合并特定组合') {
+        if (is_special_combination_region_type(region.type)) {
             // 统计区域内未确定的格子数量
             const uncertain_cells = region.cells.filter(([r, c]) => Array.isArray(board[r][c]));
             if (uncertain_cells.length !== nat) continue; // 仅处理符合 nat 的区域
@@ -2885,8 +2895,9 @@ function check_special_combination_region_cell_elimination(board, size, nat = 1)
 
 // 多特定组合唯余
 function check_multi_special_combination_region_cell_elimination(board, size, nat = 1) {
-    // 1. 获取所有特定组合
-    const regions = get_special_combination_regions(board, size, state.current_mode);
+    // 1. 获取所有可参与合并的特定组合
+    const regions = get_special_combination_regions(board, size, state.current_mode)
+        .filter(region => region.type !== '单格特定组合');
     if (regions.length < 2) return false;
 
     // 2. 获取所有宫/行/列区域
@@ -3065,7 +3076,7 @@ function check_special_combination_region_elimination(board, size, nat = 1) {
     const regions = get_special_combination_regions(board, size, state.current_mode);
 
     for (const region of regions) {
-        if (region.type === '特定组合' || region.type === '合并特定组合') {
+        if (is_special_combination_region_type(region.type)) {
             // 统计区域内未确定的格子数量
             const uncertain_cells = region.cells.filter(([r, c]) => Array.isArray(board[r][c]));
             // log_process(`[特定组合遍历] 检查第${region.index}特定组合，数字${region.clue_nums.join('、')}，未定格子数=${uncertain_cells.length}`);
@@ -3085,8 +3096,9 @@ function check_special_combination_region_elimination(board, size, nat = 1) {
  * 3. 找出有共同宫/行/列的两个区域，合并格子和数字，作为一个新的特定组合进行检测
  */
 function check_multi_special_combination_region_elimination(board, size, nat = 1) {
-    // 1. 获取所有特定组合
-    const regions = get_special_combination_regions(board, size, state.current_mode);
+    // 1. 获取所有可参与合并的特定组合
+    const regions = get_special_combination_regions(board, size, state.current_mode)
+        .filter(region => region.type !== '单格特定组合');
     if (regions.length < 2) return false;
 
     // 2. 获取所有宫/行/列区域
@@ -3181,8 +3193,8 @@ function region_block_elimination(board, size, region_cells, region_type, region
         // 如果指定了 target_nat，只处理符合条件的区块
         if (nat !== null && candidate_positions.length !== nat) continue;
 
-        // 对每个候选格，模拟eliminate_candidates，收集所有能删到的位置
-        const elimination_sets = [];
+        // 对每个候选格，模拟eliminate_candidates，收集所有能删到的位置和数字
+        const elimination_maps = [];
         for (const [r, c] of candidate_positions) {
             // // 备份分值状态
             // const backup_score = JSON.parse(JSON.stringify(state.candidate_elimination_score));
@@ -3196,27 +3208,60 @@ function region_block_elimination(board, size, region_cells, region_type, region
             const eliminations = classic 
                 ? eliminate_candidates_classic(board_copy, size, r, c, num, false)
                 : eliminate_candidates(board_copy, size, r, c, num, false);
-            const eliminated_positions = eliminations
-                // .filter(e => e.eliminated.includes(num))
-                .filter(e => Array.isArray(e.eliminated) && e.eliminated.includes(num))
-                .map(e => `${e.row},${e.col}`);
-            elimination_sets.push(new Set(eliminated_positions));
+
+            const eliminated_map = new Map();
+            for (const elim of eliminations) {
+                const deleted_nums = [];
+                if (Array.isArray(elim.eliminated) && elim.eliminated.length > 0) {
+                    deleted_nums.push(...elim.eliminated);
+                }
+                if (typeof elim.val === 'number') {
+                    deleted_nums.push(elim.val);
+                }
+                if (deleted_nums.length === 0) continue;
+
+                const posKey = `${elim.row},${elim.col}`;
+                if (!eliminated_map.has(posKey)) eliminated_map.set(posKey, new Set());
+                for (const n of deleted_nums) {
+                    eliminated_map.get(posKey).add(n);
+                }
+            }
+            elimination_maps.push(eliminated_map);
 
             // // 恢复分值状态
             // state.candidate_elimination_score = JSON.parse(JSON.stringify(backup_score));
             // state.total_score_sum = backup_total;
         }
 
-        // 求交集
-        let intersection = elimination_sets[0];
-        for (let i = 1; i < elimination_sets.length; i++) {
-            intersection = new Set([...intersection].filter(x => elimination_sets[i].has(x)));
+        // 计算所有模拟结果的交集
+        const intersection_map = new Map();
+        const all_keys = new Set();
+        for (const eliminated_map of elimination_maps) {
+            for (const key of eliminated_map.keys()) {
+                all_keys.add(key);
+            }
         }
+
+        for (const key of all_keys) {
+            let intersection = null;
+            for (const eliminated_map of elimination_maps) {
+                const nums = eliminated_map.has(key) ? Array.from(eliminated_map.get(key)) : [];
+                if (intersection === null) {
+                    intersection = new Set(nums);
+                } else {
+                    intersection = new Set([...intersection].filter(x => nums.includes(x)));
+                }
+            }
+            if (intersection && intersection.size > 0) {
+                intersection_map.set(key, [...intersection]);
+            }
+        }
+
         // 排除本身候选格
         for (const [r, c] of candidate_positions) {
-            intersection.delete(`${r},${c}`);
+            intersection_map.delete(`${r},${c}`);
         }
-        if (intersection.size === 0) continue;
+        if (intersection_map.size === 0) continue;
 
         let score_sum = 1;
         if (!state.silentMode) {
@@ -3237,30 +3282,54 @@ function region_block_elimination(board, size, region_cells, region_type, region
         }
 
         // 真正执行删除
-        for (const pos of intersection) {
+        const eliminated_cells = [];
+        const eliminated_num_to_cells = new Map();
+        for (const [pos, nums] of intersection_map.entries()) {
             const [r, c] = pos.split(',').map(Number);
-            if (Array.isArray(board[r][c]) && board[r][c].includes(num)) {
-                board[r][c] = board[r][c].filter(n => n !== num);
-                changed = true;
+            if (!Array.isArray(board[r][c])) continue;
 
-                if (!state.silentMode) {    
-                    // 分值累加到该候选数
-                    const key = `${r},${c},${num}`;
-                    if (!state.candidate_elimination_score[key]) state.candidate_elimination_score[key] = 0;
-                    state.candidate_elimination_score[key] += 1 / score_sum;
-                    // log_process(`候选数分值: [${getRowLetter(r+1)}${c+1}] 候选${num} -> 分值=${1 / state.candidate_elimination_score[key]}`);
+            const before_arr = board[r][c];
+            const before = before_arr.length;
+            board[r][c] = board[r][c].filter(n => !nums.includes(n));
+            const actually_deleted = before_arr.filter(n => !board[r][c].includes(n));
+            if (board[r][c].length < before && actually_deleted.length > 0) {
+                changed = true;
+                const cell = `${getRowLetter(r+1)}${c+1}`;
+                eliminated_cells.push(cell);
+
+                if (!state.silentMode) {
+                    for (const deleted_num of actually_deleted) {
+                        const key = `${r},${c},${deleted_num}`;
+                        if (!state.candidate_elimination_score[key]) state.candidate_elimination_score[key] = 0;
+                        state.candidate_elimination_score[key] += 1 / score_sum;
+                    }
+                }
+
+                for (const deleted_num of actually_deleted) {
+                    if (!eliminated_num_to_cells.has(deleted_num)) {
+                        eliminated_num_to_cells.set(deleted_num, new Set());
+                    }
+                    eliminated_num_to_cells.get(deleted_num).add(cell);
                 }
             }
         }
         if (changed) {
             const block_cells = candidate_positions.map(([r, c]) => `${getRowLetter(r+1)}${c+1}`).join('、');
-            const eliminated_cells = [...intersection].map(pos => {
-                const [r, c] = pos.split(',').map(Number);
-                return `${getRowLetter(r+1)}${c+1}`;
-            }).join('、');
             const prefix = classic ? '' : '变型';
+            const elimination_clauses = [...eliminated_num_to_cells.keys()]
+                .sort((a, b) => a - b)
+                .map(deleted_num => {
+                    const cells = [...eliminated_num_to_cells.get(deleted_num)];
+                    const in_all_cells = cells.length === eliminated_cells.length && eliminated_cells.every(cell => eliminated_num_to_cells.get(deleted_num).has(cell));
+                    if (in_all_cells) {
+                        return `删去${deleted_num}`;
+                    }
+                    return `${cells.join('、')}删去${deleted_num}`;
+                });
+            const has_global_clause = elimination_clauses.some(clause => clause.startsWith('删去'));
+            const position_prefix = has_global_clause ? `，${eliminated_cells.join('、')}` : '';
             // const nat = candidate_positions.length; // 组成区块的数字占用的格子数
-            if (!state.silentMode) log_process(`[${prefix}${region_type}区块_${nat}] 第${region_index}${region_type}  ${block_cells}构成${num}区块，删除${eliminated_cells}的${num}，分值=${score_sum}`);
+            if (!state.silentMode) log_process(`[${prefix}${region_type}区块_${nat}] 第${region_index}${region_type} ${block_cells}构成${num}区块${position_prefix}${elimination_clauses.join('，')}，分值=${score_sum}`);
             return true;
         }
     }
@@ -3851,7 +3920,7 @@ function check_special_combination_region_block_elimination(board, size, nat = 1
     let has_conflict = false;
     const regions = get_special_combination_regions(board, size, state.current_mode);
     for (const region of regions) {
-        if (region.type === '特定组合' || region.type === '合并特定组合') {
+        if (is_block_special_combination_region_type(region.type)) {
             // 统计区域内未确定的格子数量
             const uncertain_cells = region.cells.filter(([r, c]) => Array.isArray(board[r][c]));
             if (uncertain_cells.length !== nat) continue; // 仅处理符合 nat 的区域
@@ -3871,8 +3940,9 @@ function check_special_combination_region_block_elimination(board, size, nat = 1
  * 3. 找出有共同宫/行/列的两个区域，合并格子和数字，作为一个新的特定组合进行区块排除
  */
 function check_multi_special_combination_region_block_elimination(board, size, nat = 1) {
-    // 1. 获取所有特定组合
-    const regions = get_special_combination_regions(board, size, state.current_mode);
+    // 1. 获取所有可参与合并的特定组合
+    const regions = get_special_combination_regions(board, size, state.current_mode)
+        .filter(region => region.type !== '单格特定组合');
     if (regions.length < 2) return false;
 
     // 2. 获取所有宫/行/列区域

@@ -11,10 +11,10 @@ export function create_five_six_sudoku(size) {
     show_result(`当前模式为五六数独`);
     log_process('', true);
     log_process('规则：');
-    log_process('标记：覆盖格内数字之和');
+    log_process('5(6)表示两侧格内数字和为5(6)，满足条件的5(6)标记均已标出');
     log_process('');
     log_process('技巧：');
-    // log_process('"变型"：用到变型条件删数的技巧');
+    log_process('"变型"：用到变型条件删数的技巧');
     log_process('"_n"后缀：区域内剩余空格数/区块用到的空格数');
     // log_process('"额外区域"：附加的不可重复区域');
     log_process('"特定组合"：受附加条件影响的区域');
