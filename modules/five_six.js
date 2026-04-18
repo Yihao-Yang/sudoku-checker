@@ -2,7 +2,7 @@ import { state, set_current_mode } from '../solver/state.js';
 import { show_result, log_process, bold_border, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, add_Extra_Button, clear_all_inputs, clear_marks, show_generating_timer, hide_generating_timer } from '../solver/core.js';
 import { create_technique_panel } from '../solver/classic.js';
 import { get_all_regions, solve, invalidate_regions_cache, sync_marks_board_from_dom } from '../solver/solver_tool.js';
-import { generate_puzzle, generate_solution, generate_solution_old, generate_solved_board_brute_force } from '../solver/generate.js';
+import { generate_puzzle, generate_solved_board_brute_force } from '../solver/generate.js';
 
 
 // 新数独主入口
@@ -11,7 +11,7 @@ export function create_five_six_sudoku(size) {
     show_result(`当前模式为五六数独`);
     log_process('', true);
     log_process('规则：');
-    log_process('5(6)表示两侧格内数字和为5(6)，满足条件的5(6)标记均已标出');
+    log_process('5(6)标记表示两侧格内数字和为5(6)，满足条件的5(6)标记均已标出');
     log_process('');
     log_process('技巧：');
     log_process('"变型"：用到变型条件删数的技巧');
@@ -157,8 +157,7 @@ export function generate_five_six_puzzle(size, score_lower_limit = 0, holes_coun
 
     // 第一步：生成终盘
     log_process("第一步：生成五六数独终盘...");
-    const solvedBoard = generate_solution_old(size);
-    // const solvedBoard = generate_solved_board_brute_force(size);
+    const solvedBoard = generate_solved_board_brute_force(size);
     if (!solvedBoard) {
         log_process("生成终盘失败！");
         return;
@@ -543,69 +542,123 @@ export function is_valid_five_six(board, size, row, col, num) {
             }
         }
     }
-    let marks;
-    if (Array.isArray(state.marks_board) && state.marks_board.length > 0) {
-        marks = state.marks_board;
-    } else {
-        const container = document.querySelector('.sudoku-container');
-        marks = sync_marks_board_from_dom(size, container);
-    }
-    // 2. 加法标记判断
-    // const marks = state.marks_board;
-    if (Array.isArray(marks)) {
-        for (const m of marks) {
-            const add = m.sum;
+    const fiveSixMarks = Array.isArray(state.marks_board)
+        ? state.marks_board.filter((mark) =>
+            (mark.kind === 'v' || mark.kind === 'h' || mark.kind === 'x') &&
+            Number.isInteger(mark.r) &&
+            Number.isInteger(mark.c) &&
+            Number.isFinite(mark.sum) &&
+            mark.sum > 0
+        )
+        : (() => {
+            const container = document.querySelector('.sudoku-container');
+            return sync_marks_board_from_dom(size, container).filter((mark) =>
+                (mark.kind === 'v' || mark.kind === 'h' || mark.kind === 'x') &&
+                Number.isInteger(mark.r) &&
+                Number.isInteger(mark.c) &&
+                Number.isFinite(mark.sum) &&
+                mark.sum > 0
+            );
+        })();
 
-            if (m.kind === 'v') {
-                const r = m.r, c = m.c;
-                if (!((row === r && col === c) || (row === r && col === c + 1))) continue;
+    const pairConstraints = [];
+    const pairConstraintKeySet = new Set();
+    const squareConstraints = [];
 
-                const other = (row === r && col === c) ? [r, c + 1] : [r, c];
-                const other_value = board[other[0]] && board[other[0]][other[1]];
-                if (typeof other_value !== 'number' || other_value <= 0 || Array.isArray(other_value)) continue;
+    for (const mark of fiveSixMarks) {
+        if (mark.kind === 'v' || mark.kind === 'h') {
+            const row1 = mark.r;
+            const col1 = mark.c;
+            const row2 = mark.kind === 'v' ? mark.r : mark.r + 1;
+            const col2 = mark.kind === 'v' ? mark.c + 1 : mark.c;
+            const normalizedKey = row1 > row2 || (row1 === row2 && col1 > col2)
+                ? `${row2}-${col2}-${row1}-${col1}`
+                : `${row1}-${col1}-${row2}-${col2}`;
 
-                if (num + other_value !== add) return false;
-                continue;
-            }
-
-            if (m.kind === 'h') {
-                const r = m.r, c = m.c;
-                if (!((row === r && col === c) || (row === r + 1 && col === c))) continue;
-
-                const other = (row === r && col === c) ? [r + 1, c] : [r, c];
-                const other_value = board[other[0]] && board[other[0]][other[1]];
-                if (typeof other_value !== 'number' || other_value <= 0 || Array.isArray(other_value)) continue;
-
-                if (num + other_value !== add) return false;
-                continue;
-            }
-
-            if (m.kind === 'x') {
-                const r = m.r, c = m.c;
-                const cells = [[r, c], [r, c + 1], [r + 1, c], [r + 1, c + 1]];
-
-                if (!cells.some(([rr, cc]) => rr === row && cc === col)) continue;
-
-                const values = [];
-                let allNumbers = true;
-                for (const [rr, cc] of cells) {
-                    const v = (rr === row && cc === col) ? num : board[rr][cc];
-                    if (typeof v !== 'number' || v <= 0 || Array.isArray(v)) {
-                        allNumbers = false;
-                        break;
-                    }
-                    values.push(v);
-                }
-                if (!allNumbers) continue;
-
-                const sumVal = values.reduce((s, x) => s + x, 0);
-                if (sumVal !== add) return false;
-                continue;
-            }
+            pairConstraints.push({
+                cell1: { row: row1, col: col1 },
+                cell2: { row: row2, col: col2 },
+                requiredSum: mark.sum,
+                key: normalizedKey,
+            });
+            pairConstraintKeySet.add(normalizedKey);
+            continue;
         }
 
-        return true;
+        if (mark.kind === 'x') {
+            squareConstraints.push({
+                cells: [
+                    [mark.r, mark.c],
+                    [mark.r, mark.c + 1],
+                    [mark.r + 1, mark.c],
+                    [mark.r + 1, mark.c + 1],
+                ],
+                requiredSum: mark.sum,
+            });
+        }
     }
+
+    for (const constraint of pairConstraints) {
+        const involvesCell1 = constraint.cell1.row === row && constraint.cell1.col === col;
+        const involvesCell2 = constraint.cell2.row === row && constraint.cell2.col === col;
+        if (involvesCell1 || involvesCell2) {
+            const otherCell = involvesCell1 ? constraint.cell2 : constraint.cell1;
+            const otherValue = board[otherCell.row][otherCell.col];
+            if (otherValue !== 0 && typeof otherValue === 'number' && !Array.isArray(otherValue)) {
+                if (num + otherValue !== constraint.requiredSum) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    for (const constraint of squareConstraints) {
+        if (!constraint.cells.some(([r, c]) => r === row && c === col)) continue;
+
+        const values = [];
+        let allNumbers = true;
+        for (const [r, c] of constraint.cells) {
+            const value = r === row && c === col ? num : board[r]?.[c];
+            if (typeof value !== 'number' || value <= 0 || Array.isArray(value)) {
+                allNumbers = false;
+                break;
+            }
+            values.push(value);
+        }
+
+        if (!allNumbers) continue;
+        if (values.reduce((sum, value) => sum + value, 0) !== constraint.requiredSum) {
+            return false;
+        }
+    }
+
+    const neighbors = [
+        [0, 1],
+        [0, -1],
+        [1, 0],
+        [-1, 0],
+    ];
+    for (const [dr, dc] of neighbors) {
+        const otherRow = row + dr;
+        const otherCol = col + dc;
+        if (otherRow < 0 || otherRow >= size || otherCol < 0 || otherCol >= size) continue;
+
+        const otherValue = board[otherRow][otherCol];
+        if (otherValue === 0 || Array.isArray(otherValue) || typeof otherValue !== 'number') continue;
+
+        const key = row > otherRow || (row === otherRow && col > otherCol)
+            ? `${otherRow}-${otherCol}-${row}-${col}`
+            : `${row}-${col}-${otherRow}-${otherCol}`;
+        if (!pairConstraintKeySet.has(key)) {
+            const sum = num + otherValue;
+            if (sum === 5 || sum === 6) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+
     // const container = document.querySelector('.sudoku-container');
     // const marks = container ? container.querySelectorAll('.vx-mark') : [];
     //     const container = document.querySelector('.sudoku-container');

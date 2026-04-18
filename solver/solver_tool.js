@@ -40,7 +40,6 @@ export function eliminate_candidates_classic(board, size, i, j, num, calc_score 
         if (region.type !== '宫' && region.type !== '行' && region.type !== '列') {
             continue;
         }
-
         for (const [r, c] of region.cells) {
             if (Array.isArray(board[r][c])) {
                 if (calc_score) {
@@ -62,6 +61,7 @@ export function eliminate_candidates_classic(board, size, i, j, num, calc_score 
             }
         }
     }
+
     return eliminations;
 }
 
@@ -264,6 +264,11 @@ export function eliminate_candidates(board, size, i, j, num, calc_score = true) 
     else if (mode === 'VX') {
         try {
             const container = typeof document !== 'undefined' ? document.querySelector('.sudoku-container') : null;
+            const marks = get_vx_marks_from_state(size, container);
+            const markLookup = new Map();
+            for (const mark of marks) {
+                markLookup.set(`${mark.kind}-${mark.r}-${mark.c}`, mark.type);
+            }
             const neighbors = [
                 [0, 1], [0, -1], [1, 0], [-1, 0]
             ];
@@ -272,18 +277,10 @@ export function eliminate_candidates(board, size, i, j, num, calc_score = true) 
                 const nc = j + dc;
                 if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
 
-                // 构造标记 key（与 vx.js 的约定一致）
-                let key = null;
-                if (nr === i && Math.abs(nc - j) === 1) {
-                    const minCol = Math.min(nc, j);
-                    key = `v-${i}-${minCol + 1}`;
-                } else if (nc === j && Math.abs(nr - i) === 1) {
-                    const minRow = Math.min(nr, i);
-                    key = `h-${minRow + 1}-${j}`;
-                }
-
-                const mark = container && key ? container.querySelector(`.vx-mark[data-key="${key}"]`) : null;
-                const rawType = mark ? (mark.dataset.vxType || mark.querySelector('input')?.value || '').toUpperCase() : null;
+                const key = nr === i
+                    ? `v-${i}-${Math.min(j, nc)}`
+                    : `h-${Math.min(i, nr)}-${j}`;
+                const rawType = key ? markLookup.get(key) : null;
                 const isMarkedV = rawType === 'V';
                 const isMarkedX = rawType === 'X';
 
@@ -1908,38 +1905,14 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
         }
         case 'VX':
         case 'vx': {
-            const container = document.querySelector('.sudoku-container');
-            if (!container) return regions;
-            const marks = container.querySelectorAll('.vx-mark[data-key]');
-            let region_index = 1;
+            const container = typeof document !== 'undefined' ? document.querySelector('.sudoku-container') : null;
+            const marks = get_vx_marks_from_state(size, container);
             for (const mark of marks) {
-                const key = mark.dataset.key;
-                if (!key) continue;
-
-                // 解析两格坐标（与 product/ratio 保持一致的 key 规则）
-                let cell_a, cell_b;
-                if (key.startsWith('v-')) {
-                    const [, row_str, col_str] = key.split('-');
-                    const r = parseInt(row_str, 10);
-                    const c = parseInt(col_str, 10);
-                    if (Number.isNaN(r) || Number.isNaN(c)) continue;
-                    cell_a = [r, c - 1];
-                    cell_b = [r, c];
-                } else if (key.startsWith('h-')) {
-                    const [, row_str, col_str] = key.split('-');
-                    const r = parseInt(row_str, 10);
-                    const c = parseInt(col_str, 10);
-                    if (Number.isNaN(r) || Number.isNaN(c)) continue;
-                    cell_a = [r - 1, c];
-                    cell_b = [r, c];
-                } else {
-                    continue;
-                }
-
-                // 读取标记类型 V / X（优先 dataset，回退到输入框文本）
-                const rawType = (mark.dataset.vxType || mark.querySelector('input')?.value || '').toUpperCase();
-                const type = (rawType === 'V' || rawType === 'X') ? rawType : null;
-                if (!type) continue;
+                const cell_a = [mark.r, mark.c];
+                const cell_b = mark.kind === 'v'
+                    ? [mark.r, mark.c + 1]
+                    : [mark.r + 1, mark.c];
+                const type = mark.type;
                 const requiredSum = type === 'V' ? 5 : 10;
 
                 // 计算所有可能出现在这两个格子中的数字（1..size 中与另一数能和为 requiredSum 的数）
@@ -3007,6 +2980,24 @@ export function getCombinations(array, size) {
     return result;
 }
 
+function get_vx_marks_from_state(size, container = (typeof document !== 'undefined' ? document.querySelector('.sudoku-container') : null)) {
+    if (Array.isArray(state.marks_board)) {
+        return state.marks_board.filter((mark) =>
+            (mark.kind === 'v' || mark.kind === 'h') &&
+            Number.isInteger(mark.r) &&
+            Number.isInteger(mark.c) &&
+            (mark.type === 'V' || mark.type === 'X')
+        );
+    }
+
+    return sync_marks_board_from_dom(size, container).filter((mark) =>
+        (mark.kind === 'v' || mark.kind === 'h') &&
+        Number.isInteger(mark.r) &&
+        Number.isInteger(mark.c) &&
+        (mark.type === 'V' || mark.type === 'X')
+    );
+}
+
 export function sync_marks_board_from_dom(size, container = document.querySelector('.sudoku-container')) {
     const marks = [];
 
@@ -3022,6 +3013,36 @@ export function sync_marks_board_from_dom(size, container = document.querySelect
     const cell_height = grid ? grid.offsetHeight / size : 0;
 
     const domMarks = Array.from(container.querySelectorAll('.vx-mark'));
+    if (state.current_mode === 'VX' || state.current_mode === 'vx') {
+        for (const markEl of domMarks) {
+            const key = markEl.dataset.key;
+            const type = (markEl.dataset.vxType || markEl.querySelector('input')?.value || '').trim().toUpperCase();
+            if (type !== 'V' && type !== 'X') continue;
+
+            if (key?.startsWith('v-')) {
+                const [, rStr, cStr] = key.split('-');
+                const r = parseInt(rStr, 10);
+                const c = parseInt(cStr, 10) - 1;
+                if (Number.isInteger(r) && Number.isInteger(c) && r >= 0 && r < size && c >= 0 && c < size - 1) {
+                    marks.push({ kind: 'v', r, c, type });
+                }
+                continue;
+            }
+
+            if (key?.startsWith('h-')) {
+                const [, rStr, cStr] = key.split('-');
+                const r = parseInt(rStr, 10) - 1;
+                const c = parseInt(cStr, 10);
+                if (Number.isInteger(r) && Number.isInteger(c) && r >= 0 && r < size - 1 && c >= 0 && c < size) {
+                    marks.push({ kind: 'h', r, c, type });
+                }
+            }
+        }
+
+        state.marks_board = marks;
+        return state.marks_board;
+    }
+
     for (const markEl of domMarks) {
         const add = parseInt(markEl.querySelector('input')?.value?.trim() ?? '', 10);
         if (!Number.isFinite(add)) continue;

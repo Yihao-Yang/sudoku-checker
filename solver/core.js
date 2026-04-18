@@ -844,7 +844,7 @@ export function clear_marks() {
     if (!container) return;
     container.querySelectorAll('.vx-mark').forEach(mark => mark.remove());
 
-    if (state.current_mode === 'add' || state.current_mode === 'five_six') {
+    if (state.current_mode === 'add' || state.current_mode === 'five_six' || state.current_mode === 'VX') {
         state.marks_board = [];
     }
 

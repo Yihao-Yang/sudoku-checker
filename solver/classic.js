@@ -51,6 +51,146 @@ import {
 } from './core.js';
 import { solve, isValid, eliminate_candidates, invalidate_regions_cache, sync_marks_board_from_dom } from './solver_tool.js';
 
+const CLASSIC_CATEGORY_ORDER = ['无标记类', '线类', '相邻格/四格标记类', '灰格/黑格类', '外提示类', '其他'];
+
+const visible_in_4 = [
+    '对角线', '斜线', '同位', '额外区域', '克隆', '回文',
+    '灰格连续', '堡垒', '排除', '四格提示', '加法', '五六',
+    '乘积', '比例', '不等号', '温度计', '奇数', '奇偶',
+    'X和', '摩天楼', '三明治', '黑白点', '连续',
+    '无马', '无象', '缺一门', '候选数', '新'
+];
+
+const visible_in_6 = [
+    '对角线', '反对角', '斜井', '斜线', '同位', '额外区域', '克隆', '回文',
+    '灰格连续', '堡垒', '排除', '四格提示', '加法', '五六',
+    '乘积', '比例', '不等号', '温度计', '奇数', '奇偶',
+    'X和', '摩天楼', '三明治', '黑白点', '连续',
+    '无缘', '无马', '无象', '缺一门', '候选数', '新'
+];
+
+const visible_in_9 = [
+    '对角线', '反对角', '斜井', '斜线', '同位', '额外区域', '克隆', '回文', '窗口', '金字塔',
+    '灰格连续', '堡垒', '排除', '四格提示', '加法', '五六',
+    '乘积', '比例', '不等号', '温度计', '奇数', '奇偶',
+    'X和', '摩天楼', '三明治', 'VX', '黑白点', '连续',
+    '无缘', '无马', '无象', '缺一门', '候选数', '新'
+];
+
+const visible_modes_by_size = {
+    4: new Set(visible_in_4),
+    6: new Set(visible_in_6),
+    9: new Set(visible_in_9)
+};
+
+function create_home_category_button(container, label, handler, isActive = false) {
+    const btn = document.createElement('button');
+    btn.textContent = label;
+    btn.style.backgroundColor = isActive ? '#1976D2' : '#2196F3';
+    btn.style.borderRadius = '8px';
+    btn.style.color = 'white';
+    btn.style.padding = '10px 16px';
+    btn.style.cursor = 'pointer';
+    btn.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+    btn.addEventListener('click', handler);
+    container.appendChild(btn);
+    return btn;
+}
+
+function get_classic_mode_categories(size) {
+    const visible_modes = visible_modes_by_size[size] || new Set();
+
+    const actions = {
+        '对角线': () => create_diagonal_sudoku(size),
+        '反对角': () => create_anti_diagonal_sudoku(size),
+        '斜井': () => create_hashtag_sudoku(size),
+        '斜线': () => create_multi_diagonal_sudoku(size),
+        '同位': () => create_isomorphic_sudoku(size),
+        '额外区域': () => create_extra_region_sudoku(size),
+        '克隆': () => create_clone_sudoku(size),
+        '回文': () => create_palindrome_sudoku(size),
+        '窗口': () => create_window_sudoku(size),
+        '金字塔': () => create_pyramid_sudoku(size),
+        '黑白点': () => create_kropki_sudoku(size),
+        '连续': () => create_consecutive_sudoku(size),
+        '候选数': () => create_candidates_sudoku(size),
+        '新': () => create_new_sudoku(size),
+        '灰格连续': () => create_renban_sudoku(size),
+        '堡垒': () => create_fortress_sudoku(size),
+        '排除': () => create_exclusion_sudoku(size),
+        '四格提示': () => create_quadruple_sudoku(size),
+        '加法': () => create_add_sudoku(size),
+        '五六': () => create_five_six_sudoku(size),
+        '乘积': () => create_product_sudoku(size),
+        '比例': () => create_ratio_sudoku(size),
+        '不等号': () => create_inequality_sudoku(size),
+        '温度计': () => create_thermo_sudoku(size),
+        '奇数': () => create_odd_sudoku(size),
+        '奇偶': () => create_odd_even_sudoku(size),
+        '摩天楼': () => create_skyscraper_sudoku(size),
+        'X和': () => create_X_sums_sudoku(size),
+        '三明治': () => create_sandwich_sudoku(size),
+        'VX': () => create_vx_sudoku(size),
+        '无缘': () => create_anti_king_sudoku(size),
+        '无马': () => create_anti_knight_sudoku(size),
+        '无象': () => create_anti_elephant_sudoku(size),
+        '缺一门': () => create_missing_sudoku(size)
+    };
+
+    const categories = {
+        '无标记类': ['无缘', '无马', '无象', '同位'],
+        '线类': ['对角线', '反对角', '斜线', '斜井', '回文'],
+        '相邻格/四格标记类': ['四格提示', '加法', '乘积', '比例', '不等号', '连续', '黑白点', '五六', '排除', 'VX'],
+        '灰格/黑格类': ['额外区域', '窗口', '金字塔', '灰格连续', '克隆', '堡垒', '奇数', '奇偶', '缺一门', '温度计'],
+        '外提示类': ['X和', '摩天楼', '三明治'],
+        '其他': ['候选数', '新']
+    };
+
+    return Object.fromEntries(
+        Object.entries(categories).map(([category, labels]) => [
+            category,
+            labels
+                .filter(label => visible_modes.has(label) && typeof actions[label] === 'function')
+                .map(label => ({ label, handler: actions[label] }))
+        ])
+    );
+}
+
+function render_classic_mode_buttons(size, selectedCategory = '无标记类') {
+    const variantButtons = document.getElementById('extraButtons');
+    if (!variantButtons) {
+        return;
+    }
+
+    let categoryButtons = document.getElementById('variantCategoryButtons');
+    if (!categoryButtons) {
+        categoryButtons = document.createElement('div');
+        categoryButtons.id = 'variantCategoryButtons';
+        categoryButtons.className = 'button-container';
+        variantButtons.parentNode.insertBefore(categoryButtons, variantButtons);
+    }
+
+    const categoryMap = get_classic_mode_categories(size);
+    const availableCategories = CLASSIC_CATEGORY_ORDER.filter(category => (categoryMap[category] || []).length > 0);
+    const activeCategory = availableCategories.includes(selectedCategory) ? selectedCategory : availableCategories[0];
+
+    categoryButtons.innerHTML = '';
+    variantButtons.innerHTML = '';
+
+    availableCategories.forEach(category => {
+        create_home_category_button(
+            categoryButtons,
+            category,
+            () => render_classic_mode_buttons(size, category),
+            category === activeCategory
+        );
+    });
+
+    (categoryMap[activeCategory] || []).forEach(({ label, handler }) => {
+        add_Extra_Button(label, handler);
+    });
+}
+
 // 最关键的创建数独函数
 export function create_sudoku_grid(size) {
     set_current_mode('classic');
@@ -289,107 +429,7 @@ export function create_sudoku_grid(size) {
     gridDisplay.appendChild(container);
 
     // 添加额外功能按钮
-    const extraButtons = document.getElementById('extraButtons');
-    extraButtons.innerHTML = '';
-
-    if (size === 4) {
-        // add_Extra_Button('候选数', () => create_candidates_sudoku(4));
-        add_Extra_Button('对角线', () => create_diagonal_sudoku(4));
-        // add_Extra_Button('斜井', () => create_hashtag_sudoku(4));
-        add_Extra_Button('斜线', () => create_multi_diagonal_sudoku(4));
-        add_Extra_Button('黑白点', () => create_kropki_sudoku(4));
-        // add_Extra_Button('连续', () => create_consecutive_sudoku(4));
-        add_Extra_Button('缺一门', () => create_missing_sudoku(4));
-        add_Extra_Button('同位', () => create_isomorphic_sudoku(4));
-        add_Extra_Button('额外区域', () => create_extra_region_sudoku(4));
-        add_Extra_Button('灰格连续', () => create_renban_sudoku(4));
-        add_Extra_Button('堡垒', () => create_fortress_sudoku(4));
-        add_Extra_Button('克隆', () => create_clone_sudoku(4));
-        add_Extra_Button('无马', () => create_anti_knight_sudoku(4));
-        add_Extra_Button('无象', () => create_anti_elephant_sudoku(4));
-        add_Extra_Button('排除', () => create_exclusion_sudoku(4));
-        add_Extra_Button('四格提示', () => create_quadruple_sudoku(4));
-        add_Extra_Button('加法', () => create_add_sudoku(4));
-        add_Extra_Button('五六', () => create_five_six_sudoku(4));
-        add_Extra_Button('乘积', () => create_product_sudoku(4));
-        add_Extra_Button('比例', () => create_ratio_sudoku(4));
-        add_Extra_Button('不等号', () => create_inequality_sudoku(4));
-        add_Extra_Button('温度计', () => create_thermo_sudoku(4));
-        add_Extra_Button('奇数', () => create_odd_sudoku(4));
-        add_Extra_Button('奇偶', () => create_odd_even_sudoku(4));
-        add_Extra_Button('回文', () => create_palindrome_sudoku(4));
-        add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(4));
-        add_Extra_Button('X和', () => create_X_sums_sudoku(4));
-        add_Extra_Button('三明治', () => create_sandwich_sudoku(4));
-        add_Extra_Button('新', () => create_new_sudoku(4));
-    } else if (size === 6) {
-        // add_Extra_Button('候选数', () => create_candidates_sudoku(6));
-        add_Extra_Button('对角线', () => create_diagonal_sudoku(6));
-        add_Extra_Button('反对角', () => create_anti_diagonal_sudoku(6));
-        add_Extra_Button('斜井', () => create_hashtag_sudoku(6));
-        add_Extra_Button('斜线', () => create_multi_diagonal_sudoku(6));
-        add_Extra_Button('黑白点', () => create_kropki_sudoku(6));
-        // add_Extra_Button('连续', () => create_consecutive_sudoku(6));
-        add_Extra_Button('缺一门', () => create_missing_sudoku(6));
-        add_Extra_Button('同位', () => create_isomorphic_sudoku(6));
-        add_Extra_Button('额外区域', () => create_extra_region_sudoku(6));
-        add_Extra_Button('灰格连续', () => create_renban_sudoku(6));
-        add_Extra_Button('堡垒', () => create_fortress_sudoku(6));
-        add_Extra_Button('克隆', () => create_clone_sudoku(6));
-        add_Extra_Button('无缘', () => create_anti_king_sudoku(6));
-        add_Extra_Button('无马', () => create_anti_knight_sudoku(6));
-        add_Extra_Button('无象', () => create_anti_elephant_sudoku(6));
-        add_Extra_Button('排除', () => create_exclusion_sudoku(6));
-        add_Extra_Button('四格提示', () => create_quadruple_sudoku(6));
-        add_Extra_Button('加法', () => create_add_sudoku(6));
-        add_Extra_Button('五六', () => create_five_six_sudoku(6));
-        add_Extra_Button('乘积', () => create_product_sudoku(6));
-        add_Extra_Button('比例', () => create_ratio_sudoku(6));
-        add_Extra_Button('不等号', () => create_inequality_sudoku(6));
-        add_Extra_Button('温度计', () => create_thermo_sudoku(6));
-        add_Extra_Button('奇数', () => create_odd_sudoku(6));
-        add_Extra_Button('奇偶', () => create_odd_even_sudoku(6));
-        add_Extra_Button('回文', () => create_palindrome_sudoku(6));
-        add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(6));
-        add_Extra_Button('X和', () => create_X_sums_sudoku(6));
-        add_Extra_Button('三明治', () => create_sandwich_sudoku(6));
-        add_Extra_Button('新', () => create_new_sudoku(6));
-    } else if (size === 9) {
-        // add_Extra_Button('候选数', () => create_candidates_sudoku(9));
-        add_Extra_Button('对角线', () => create_diagonal_sudoku(9));
-        add_Extra_Button('反对角', () => create_anti_diagonal_sudoku(9));
-        add_Extra_Button('斜井', () => create_hashtag_sudoku(9));
-        add_Extra_Button('斜线', () => create_multi_diagonal_sudoku(9));
-        add_Extra_Button('VX', () => create_vx_sudoku(9));
-        // add_Extra_Button('黑白点', () => create_kropki_sudoku(9));
-        // add_Extra_Button('连续', () => create_consecutive_sudoku(9));
-        add_Extra_Button('缺一门', () => create_missing_sudoku(9));
-        add_Extra_Button('窗口', () => create_window_sudoku(9));
-        add_Extra_Button('金字塔', () => create_pyramid_sudoku(9));
-        add_Extra_Button('同位', () => create_isomorphic_sudoku(9));
-        add_Extra_Button('额外区域', () => create_extra_region_sudoku(9));
-        add_Extra_Button('灰格连续', () => create_renban_sudoku(9));
-        add_Extra_Button('堡垒', () => create_fortress_sudoku(9));
-        add_Extra_Button('克隆', () => create_clone_sudoku(9));
-        add_Extra_Button('无缘', () => create_anti_king_sudoku(9));
-        add_Extra_Button('无马', () => create_anti_knight_sudoku(9));
-        add_Extra_Button('无象', () => create_anti_elephant_sudoku(9));
-        add_Extra_Button('排除', () => create_exclusion_sudoku(9));
-        add_Extra_Button('四格提示', () => create_quadruple_sudoku(9));
-        add_Extra_Button('加法', () => create_add_sudoku(9));
-        add_Extra_Button('五六', () => create_five_six_sudoku(9));
-        add_Extra_Button('乘积', () => create_product_sudoku(9));
-        add_Extra_Button('比例', () => create_ratio_sudoku(9));
-        add_Extra_Button('不等号', () => create_inequality_sudoku(9));
-        add_Extra_Button('温度计', () => create_thermo_sudoku(9));
-        add_Extra_Button('奇数', () => create_odd_sudoku(9));
-        add_Extra_Button('奇偶', () => create_odd_even_sudoku(9));
-        add_Extra_Button('回文', () => create_palindrome_sudoku(9));
-        add_Extra_Button('摩天楼', () => create_skyscraper_sudoku(9));
-        add_Extra_Button('X和', () => create_X_sums_sudoku(9));
-        add_Extra_Button('三明治', () => create_sandwich_sudoku(9));
-        add_Extra_Button('新', () => create_new_sudoku(9));
-    }
+    render_classic_mode_buttons(size);
 }
 
 // 创建技巧开关面板
@@ -1388,7 +1428,7 @@ export function check_uniqueness(check_next = false) {
     //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
     //         .join('\n')
     // );
-    if (state.current_mode === 'add' || state.current_mode === 'five_six') {
+    if (state.current_mode === 'add' || state.current_mode === 'five_six' || state.current_mode === 'VX') {
         sync_marks_board_from_dom(size, container);
     }
 

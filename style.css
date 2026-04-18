@@ -100,6 +100,7 @@ button:focus,
     flex-wrap: wrap;
 }
 
+#variantCategoryButtons,
 #extraButtons {
     display: flex;
     flex-wrap: wrap;

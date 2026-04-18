@@ -43,9 +43,9 @@ import { generate_five_six_puzzle } from './modules/five_six.js';
 const MODE_EXPORT_META = {
     add: { type: '加法', rule: '除标准数独规则外，带标记区域内数字之和等于标记数字' },
     classic: { type: '标准', rule: '每行、每列、每宫数字均不重复' },
-    anti_king: { type: '无缘', rule: '除标准数独规则外，对角相邻位置的数字也均不重复' },
-    anti_knight: { type: '无马', rule: '除标准数独规则外，象棋马步位置的数字也均不重复' },
-    anti_elephant: { type: '无象', rule: '除标准数独规则外，中国象棋象步位置的数字也均不重复' },
+    anti_king: { type: '无缘', rule: '除标准数独规则外，对角相邻（进一拐一）位置的数字也均不重复' },
+    anti_knight: { type: '无马', rule: '除标准数独规则外，象棋马步（进二拐一）位置的数字也均不重复' },
+    anti_elephant: { type: '无象', rule: '除标准数独规则外，中国象棋象步（进二拐二）位置的数字也均不重复' },
     diagonal: { type: '对角线', rule: '除标准数独规则外，每条对角线上的数字也均不重复' },
     anti_diagonal: { type: '反对角', rule: (size) => `除标准数独规则外，每条对角线上只能出现${size / 3}个数字` },
     multi_diagonal: { type: '斜线', rule: '除标准数独规则外，每条斜线上的数字也均不重复' },
