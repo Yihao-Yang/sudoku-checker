@@ -2482,10 +2482,15 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
             // 默认情况下，不添加任何区域
             break;
     }
-    // 统一：单格区域命名为“单格特定组合”
+    // 统一：保留原“特定组合”，并额外补充一份“单格特定组合”副本
+    const single_cell_regions = [];
     for (const region of regions) {
         if (region.type === '特定组合' && Array.isArray(region.cells) && region.cells.length === 1) {
-            region.type = '单格特定组合';
+            single_cell_regions.push({
+                ...region,
+                cells: region.cells.map(([r, c]) => [r, c]),
+                type: '单格特定组合',
+            });
         }
     }
 
@@ -2493,9 +2498,9 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
     const merged_regions = merge_regions_with_common_cells(regions);
 
     // // 返回原始区域和合并后的区域
-    // return [...regions, ...merged_regions];
+    // return [...regions, ...single_cell_regions, ...merged_regions];
     // 缓存结果
-    const result = [...regions, ...merged_regions];
+    const result = [...regions, ...single_cell_regions, ...merged_regions];
     _special_regions_cache = result;
     _special_regions_cache_size = size;
     _special_regions_cache_mode = mode;
@@ -2836,10 +2841,10 @@ function merge_regions_with_common_cells(regions) {
 
     const cell_to_string = ([r, c]) => `${r},${c}`;
     const parse_cell_key = (key) => key.split(',').map(Number);
-    const is_single_cell_region = (region) => region?.type === '单格特定组合';
+    const is_single_cell_region = (region) => Array.isArray(region?.cells) && region.cells.length === 1;
     const non_single_region_ids = [];
 
-    // 预计算：每个区域的格子 key 列表（跳过单格特定组合）
+    // 预计算：每个区域的格子 key 列表（跳过所有只含一个格子的特定组合）
     const region_cell_keys_map = new Map();
     for (let region_id = 0; region_id < regions.length; region_id++) {
         const region = regions[region_id];
