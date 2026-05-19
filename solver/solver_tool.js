@@ -8,6 +8,7 @@ import { is_valid_fortress } from "../modules/fortress.js";
 import { is_valid_clone, get_clone_cells, are_regions_same_shape } from "../modules/clone.js";
 import { apply_exclusion_marks, is_valid_exclusion } from "../modules/exclusion.js";
 import { apply_quadruple_marks, is_valid_quadruple } from "../modules/quadruple.js";
+import { is_valid_inclusion } from "../modules/inclusion.js";
 import { is_valid_add } from "../modules/add.js";
 import { is_valid_five_six } from "../modules/five_six.js";
 import { is_valid_product } from "../modules/product.js";
@@ -16,7 +17,7 @@ import { is_valid_VX } from "../modules/vx.js";
 import { is_valid_kropki } from "../modules/kropki.js";
 import { is_valid_consecutive } from "../modules/consecutive.js";
 import { is_valid_inequality, apply_inequality_candidate_elimination } from "../modules/inequality.js";
-import { is_valid_thermo, apply_thermo_candidate_elimination } from "../modules/thermo.js";
+import { is_valid_thermo, apply_thermo_candidate_elimination, get_thermo_constraint_map } from "../modules/thermo.js";
 import { apply_odd_marks, is_valid_odd, get_odd_cells } from "../modules/odd.js";
 import { apply_odd_even_marks, is_valid_odd_even, get_odd_even_cells } from "../modules/odd_even.js";
 import { is_valid_anti_king } from "../modules/anti_king.js";
@@ -990,6 +991,110 @@ export function get_all_regions(size, mode = 'classic') {
             regions.push({ type: '斜线', index, cells });
         }
     }
+    // 温度计：按“起点到终点路径”划分区域；若后端分叉则拆成多条温度计区域
+    else if (mode === 'thermo') {
+        const constraint_map = get_thermo_constraint_map(size);
+        const forward_graph = new Map();
+        const in_degree = new Map();
+
+        const ensure_node = (key) => {
+            if (!forward_graph.has(key)) {
+                forward_graph.set(key, new Set());
+            }
+            if (!in_degree.has(key)) {
+                in_degree.set(key, 0);
+            }
+        };
+
+        // 仅按 relation === '<' 建立有向边（从温度计前端流向后端）
+        for (const [cell_key, constraints] of constraint_map.entries()) {
+            ensure_node(cell_key);
+            for (const constraint of constraints) {
+                if (!constraint || constraint.type !== 'compare') {
+                    continue;
+                }
+
+                const other_key = `${constraint.otherRow},${constraint.otherCol}`;
+                ensure_node(other_key);
+
+                if (constraint.relation === '<' && !forward_graph.get(cell_key).has(other_key)) {
+                    forward_graph.get(cell_key).add(other_key);
+                    in_degree.set(other_key, (in_degree.get(other_key) || 0) + 1);
+                }
+            }
+        }
+
+        const node_keys = Array.from(forward_graph.keys());
+        if (node_keys.length > 0) {
+            let roots = node_keys.filter((key) => (in_degree.get(key) || 0) === 0 && (forward_graph.get(key)?.size || 0) > 0);
+            if (roots.length === 0) {
+                roots = node_keys.filter((key) => (forward_graph.get(key)?.size || 0) > 0);
+            }
+            if (roots.length === 0) {
+                roots = node_keys;
+            }
+
+            const emitted_signatures = new Set();
+            const max_depth = size * size + 5;
+
+            const emit_path_region = (path_keys) => {
+                if (!Array.isArray(path_keys) || path_keys.length < 2) {
+                    return;
+                }
+
+                const region_cells = path_keys
+                    .map((key) => key.split(',').map(Number))
+                    .filter(([r, c]) => Number.isInteger(r) && Number.isInteger(c));
+                if (region_cells.length < 2) {
+                    return;
+                }
+
+                const sorted_cell_keys = region_cells
+                    .map(([r, c]) => `${r},${c}`)
+                    .sort();
+                const signature = sorted_cell_keys.join('|');
+                if (emitted_signatures.has(signature)) {
+                    return;
+                }
+                emitted_signatures.add(signature);
+
+                const cells = sorted_cell_keys.map((key) => key.split(',').map(Number));
+                const index = cells
+                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                    .join('-');
+
+                regions.push({ type: '温度计', index, cells });
+            };
+
+            const dfs = (current_key, path_keys, visited_keys) => {
+                if (visited_keys.has(current_key)) {
+                    return;
+                }
+
+                const next_path = path_keys.concat(current_key);
+                if (next_path.length > max_depth) {
+                    return;
+                }
+
+                const next_visited = new Set(visited_keys);
+                next_visited.add(current_key);
+
+                const next_keys = Array.from(forward_graph.get(current_key) || []).filter((key) => !next_visited.has(key));
+                if (next_keys.length === 0) {
+                    emit_path_region(next_path);
+                    return;
+                }
+
+                for (const next_key of next_keys) {
+                    dfs(next_key, next_path, next_visited);
+                }
+            };
+
+            for (const root_key of roots) {
+                dfs(root_key, [], new Set());
+            }
+        }
+    }
     // 窗口数独四个窗口区域
     else if (mode === 'window' && size === 9) {
         // 左上窗口
@@ -1128,6 +1233,7 @@ export function get_all_regions(size, mode = 'classic') {
         pyramid4.push([6, 3]);
         regions.push({ type: '金字塔', index: 4, cells: pyramid4 });
     }
+    // 同位数独：将每个宫格内相同位置的格子作为一个同位区域
     else if (mode === 'isomorphic') {
         // 获取所有宫格
         const box_size = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
@@ -1492,59 +1598,54 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
             }
             break;
         }
-        case 'quadruple': {
-            const container = document.querySelector('.sudoku-container');
-            if (container) {
-                const marks = container.querySelectorAll('.vx-mark');
-                let region_index = 1;
-                for (const mark of marks) {
-                    const left = parseInt(mark.style.left);
-                    const top = parseInt(mark.style.top);
+        case 'quadruple':
+        case 'inclusion': {
+            let marks;
+            if (Array.isArray(state.marks_board)) {
+                marks = state.marks_board.filter((m) =>
+                    m && m.kind === 'x' && Number.isInteger(m.r) && Number.isInteger(m.c)
+                );
+            } else {
+                const container = document.querySelector('.sudoku-container');
+                marks = sync_marks_board_from_dom(size, container).filter((m) =>
+                    m && m.kind === 'x' && Number.isInteger(m.r) && Number.isInteger(m.c)
+                );
+            }
 
-                    const grid = container.querySelector('.sudoku-grid');
-                    const grid_offset_left = grid.offsetLeft;
-                    const grid_offset_top = grid.offsetTop;
-                    const cell_width = grid.offsetWidth / size;
-                    const cell_height = grid.offsetHeight / size;
+            for (const mark of marks) {
+                const positions = [
+                    [mark.r, mark.c],
+                    [mark.r, mark.c + 1],
+                    [mark.r + 1, mark.c],
+                    [mark.r + 1, mark.c + 1],
+                ];
 
-                    const col_mark = Math.round((left - grid_offset_left + 15) / cell_width);
-                    const row_mark = Math.round((top - grid_offset_top + 15) / cell_height);
+                const valid_positions = positions.filter(([r, c]) =>
+                    r >= 0 && r < size && c >= 0 && c < size
+                );
+                if (valid_positions.length !== 4) continue;
 
-                    // 四个相邻格子的坐标
-                    const positions = [
-                        [row_mark - 1, col_mark - 1],
-                        [row_mark - 1, col_mark],
-                        [row_mark, col_mark - 1],
-                        [row_mark, col_mark]
-                    ];
+                const mark_value = typeof mark.clue === 'string' ? mark.clue.trim() : '';
+                let nums = [];
+                if (/^\d+$/.test(mark_value)) {
+                    nums = mark_value.split('').map(Number).filter((n) => !isNaN(n));
+                }
 
-                    // 只加入有效区域
-                    const valid_positions = positions.filter(([r, c]) =>
-                        r >= 0 && r < size && c >= 0 && c < size
-                    );
-                    if (valid_positions.length === 4) {
-                        // 获取圆圈内的数字
-                        const input = mark.querySelector('input');
-                        let nums = [];
-                        if (input && input.value) {
-                            nums = input.value.split('').map(Number).filter(n => !isNaN(n));
-                        }
-                        // 判断是否有重复
-                        const has_duplicate = nums.length !== new Set(nums).size;
-                        // 生成区域的 index
-                        const index = valid_positions
-                            .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
-                            .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
-                            .join('-');
-                        if (has_duplicate) {
-                            regions.push({
-                                type: '特定组合',
-                                index,
-                                cells: valid_positions,
-                                // clue_nums: nums
-                            });
-                        }
-                    }
+                const has_duplicate = nums.length !== new Set(nums).size;
+                const index = valid_positions
+                    .slice()
+                    .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                    .join('-');
+                const has_hint = nums.length > 0;
+                const should_add_special_region = (mode === 'inclusion' && has_hint) || has_duplicate;
+                if (should_add_special_region) {
+                    regions.push({
+                        type: '特定组合',
+                        index,
+                        cells: valid_positions,
+                        // clue_nums: nums
+                    });
                 }
             }
             break;
@@ -2526,6 +2627,18 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
     // );
     // state.clues_board = currentBoard;
     invalidate_regions_cache();
+    if (
+        state.current_mode === 'add' ||
+        state.current_mode === 'five_six' ||
+        state.current_mode === 'VX' ||
+        state.current_mode === 'quadruple' ||
+        state.current_mode === 'inclusion'
+    ) {
+        const has_cached_marks = Array.isArray(state.marks_board) && state.marks_board.length > 0;
+        if (!has_cached_marks) {
+            sync_marks_board_from_dom(currentSize);
+        }
+    }
     // if (state.current_mode === 'X_sums') {
     //     apply_X_sums_marks(currentBoard, currentSize);
     // }
@@ -2756,6 +2869,8 @@ export function isValid(board, size, row, col, num) {
         return is_valid_exclusion(board, size, row, col, num);
     } else if (state.current_mode === 'quadruple') {
         return is_valid_quadruple(board, size, row, col, num);
+    } else if (state.current_mode === 'inclusion') {
+        return is_valid_inclusion(board, size, row, col, num);
     } else if (state.current_mode === 'add') {
         return is_valid_add(board, size, row, col, num);
     } else if (state.current_mode === 'five_six') {
@@ -2828,11 +2943,12 @@ export function isValid(board, size, row, col, num) {
  * 多次合并有共同格子的区域，并生成所有可能的合并区域
  */
 function merge_regions_with_common_cells(regions) {
-    // 新增：摩天楼、X和、三明治模式下不合并
+    // 新增：摩天楼、X和、三明治、包含模式下不合并
     if (
         state.current_mode === 'skyscraper' ||
         state.current_mode === 'X_sums' ||
-        state.current_mode === 'sandwich'
+        state.current_mode === 'sandwich' ||
+        state.current_mode === 'inclusion'
     ) {
         return [];
     }
@@ -3040,6 +3156,44 @@ export function sync_marks_board_from_dom(size, container = document.querySelect
                 const c = parseInt(cStr, 10);
                 if (Number.isInteger(r) && Number.isInteger(c) && r >= 0 && r < size - 1 && c >= 0 && c < size) {
                     marks.push({ kind: 'h', r, c, type });
+                }
+            }
+        }
+
+        state.marks_board = marks;
+        return state.marks_board;
+    }
+
+    if (state.current_mode === 'quadruple' || state.current_mode === 'inclusion') {
+        for (const markEl of domMarks) {
+            const inputValue = (markEl.querySelector('input')?.value || '').trim();
+            const key = markEl.dataset.key;
+
+            if (key?.startsWith('x-')) {
+                const [, rStr, cStr] = key.split('-');
+                const rMark = parseInt(rStr, 10);
+                const cMark = parseInt(cStr, 10);
+                const r = rMark - 1;
+                const c = cMark - 1;
+                if (Number.isInteger(r) && Number.isInteger(c) && r >= 0 && r < size - 1 && c >= 0 && c < size - 1) {
+                    marks.push({ kind: 'x', r, c, clue: inputValue });
+                }
+                continue;
+            }
+
+            // 兜底：没有 key 时按像素反推交点
+            if (!key && grid && cell_width > 0 && cell_height > 0) {
+                const left = parseInt(markEl.style.left, 10);
+                const top = parseInt(markEl.style.top, 10);
+                if (!Number.isFinite(left) || !Number.isFinite(top)) continue;
+
+                const col_mark = Math.round((left - grid_offset_left + 15) / cell_width);
+                const row_mark = Math.round((top - grid_offset_top + 15) / cell_height);
+
+                const r = row_mark - 1;
+                const c = col_mark - 1;
+                if (Number.isInteger(r) && Number.isInteger(c) && r >= 0 && r < size - 1 && c >= 0 && c < size - 1) {
+                    marks.push({ kind: 'x', r, c, clue: inputValue });
                 }
             }
         }

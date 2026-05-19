@@ -20,6 +20,7 @@ import { create_anti_knight_sudoku } from '../modules/anti_knight.js';
 import { create_anti_elephant_sudoku } from '../modules/anti_elephant.js';
 import { create_exclusion_sudoku, apply_exclusion_marks, is_valid_exclusion } from '../modules/exclusion.js';
 import { create_quadruple_sudoku, is_valid_quadruple } from '../modules/quadruple.js';
+import { create_inclusion_sudoku } from '../modules/inclusion.js';
 import { create_add_sudoku } from '../modules/add.js';
 import { create_five_six_sudoku } from '../modules/five_six.js';
 import { create_product_sudoku } from '../modules/product.js';
@@ -49,13 +50,13 @@ import {
     change_candidates_mode,
     show_logical_solution
 } from './core.js';
-import { solve, isValid, eliminate_candidates, invalidate_regions_cache, sync_marks_board_from_dom } from './solver_tool.js';
+import { solve, isValid, eliminate_candidates, invalidate_regions_cache, sync_marks_board_from_dom, get_special_combination_regions } from './solver_tool.js';
 
 const CLASSIC_CATEGORY_ORDER = ['无标记类', '线类', '相邻格/四格标记类', '灰格/黑格类', '外提示类', '其他'];
 
 const visible_in_4 = [
     '对角线', '斜线', '同位', '额外区域', '克隆', '回文',
-    '灰格连续', '堡垒', '排除', '四格提示', '加法', '五六',
+    '灰格连续', '堡垒', '排除', '四格提示', '包含', '加法', '五六',
     '乘积', '比例', '不等号', '温度计', '奇数', '奇偶',
     'X和', '摩天楼', '三明治', '黑白点', '连续',
     '无马', '无象', '缺一门', '候选数', '新'
@@ -63,7 +64,7 @@ const visible_in_4 = [
 
 const visible_in_6 = [
     '对角线', '反对角', '斜井', '斜线', '同位', '额外区域', '克隆', '回文',
-    '灰格连续', '堡垒', '排除', '四格提示', '加法', '五六',
+    '灰格连续', '堡垒', '排除', '四格提示', '包含', '加法', '五六',
     '乘积', '比例', '不等号', '温度计', '奇数', '奇偶',
     'X和', '摩天楼', '三明治', '黑白点', '连续',
     '无缘', '无马', '无象', '缺一门', '候选数', '新'
@@ -71,7 +72,7 @@ const visible_in_6 = [
 
 const visible_in_9 = [
     '对角线', '反对角', '斜井', '斜线', '同位', '额外区域', '克隆', '回文', '窗口', '金字塔',
-    '灰格连续', '堡垒', '排除', '四格提示', '加法', '五六',
+    '灰格连续', '堡垒', '排除', '四格提示', '包含', '加法', '五六',
     '乘积', '比例', '不等号', '温度计', '奇数', '奇偶',
     'X和', '摩天楼', '三明治', 'VX', '黑白点', '连续',
     '无缘', '无马', '无象', '缺一门', '候选数', '新'
@@ -119,6 +120,7 @@ function get_classic_mode_categories(size) {
         '堡垒': () => create_fortress_sudoku(size),
         '排除': () => create_exclusion_sudoku(size),
         '四格提示': () => create_quadruple_sudoku(size),
+        '包含': () => create_inclusion_sudoku(size),
         '加法': () => create_add_sudoku(size),
         '五六': () => create_five_six_sudoku(size),
         '乘积': () => create_product_sudoku(size),
@@ -140,7 +142,7 @@ function get_classic_mode_categories(size) {
     const categories = {
         '无标记类': ['无缘', '无马', '无象', '同位'],
         '线类': ['对角线', '反对角', '斜线', '斜井', '回文'],
-        '相邻格/四格标记类': ['四格提示', '加法', '乘积', '比例', '不等号', '连续', '黑白点', '五六', '排除', 'VX'],
+        '相邻格/四格标记类': ['四格提示', '包含', '加法', '乘积', '比例', '不等号', '连续', '黑白点', '五六', '排除', 'VX'],
         '灰格/黑格类': ['额外区域', '窗口', '金字塔', '灰格连续', '克隆', '堡垒', '奇数', '奇偶', '缺一门', '温度计'],
         '外提示类': ['X和', '摩天楼', '三明治'],
         '其他': ['候选数', '新']
@@ -1428,9 +1430,41 @@ export function check_uniqueness(check_next = false) {
     //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
     //         .join('\n')
     // );
-    if (state.current_mode === 'add' || state.current_mode === 'five_six' || state.current_mode === 'VX') {
+    if (
+        state.current_mode === 'add' ||
+        state.current_mode === 'five_six' ||
+        state.current_mode === 'VX' ||
+        state.current_mode === 'quadruple' ||
+        state.current_mode === 'inclusion'
+    ) {
         sync_marks_board_from_dom(size, container);
     }
+
+    // ==============================================================================
+    // // 输出当前模式下的特定组合区域，便于检查唯一性时核对约束是否生效
+    // const special_regions = get_special_combination_regions(board, size, state.current_mode);
+    // const unique_region_lines = [];
+    // const unique_region_keys = new Set();
+
+    // for (const region of special_regions) {
+    //     const region_type = region?.type || '特定组合';
+    //     const region_index = region?.index || '';
+    //     const region_key = `${region_type}|${region_index}`;
+    //     if (unique_region_keys.has(region_key)) continue;
+    //     unique_region_keys.add(region_key);
+    //     unique_region_lines.push(region_index ? `${region_type}(${region_index})` : region_type);
+    // }
+
+    // if (unique_region_lines.length > 0) {
+    //     log_process(`特定组合区域（共${unique_region_lines.length}个）：`);
+    //     unique_region_lines.forEach((line, idx) => {
+    //         log_process(`${idx + 1}. ${line}`);
+    //     });
+    // } else {
+    //     log_process('特定组合区域（共0个）');
+    // }
+    // log_process('');
+    // ==================================================================================
 
     // 判断当前模式，选择不同的有效性检测函数
     let valid_func = isValid;

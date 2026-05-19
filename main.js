@@ -29,6 +29,7 @@ import { generate_extra_region_puzzle } from './modules/extra_region.js';
 import { generate_renban_puzzle } from './modules/renban.js';
 import { generate_exclusion_puzzle } from './modules/exclusion.js';
 import { generate_quadruple_puzzle } from './modules/quadruple.js';
+import { generate_inclusion_puzzle } from './modules/inclusion.js';
 import { generate_ratio_puzzle } from './modules/ratio.js';
 import { generate_inequality_puzzle } from './modules/inequality.js';
 import { generate_thermo_puzzle } from './modules/thermo.js';
@@ -38,39 +39,45 @@ import { create_ratio_sudoku } from './modules/ratio.js';
 import { generate_fortress_puzzle } from './modules/fortress.js';
 import { generate_product_puzzle } from './modules/product.js';
 import { generate_five_six_puzzle } from './modules/five_six.js';
+import { generate_add_puzzle } from './modules/add.js';
+import { generate_kropki_puzzle } from './modules/kropki.js';
 
 
 const MODE_EXPORT_META = {
-    add: { type: '加法', rule: '除标准数独规则外，带标记区域内数字之和等于标记数字' },
     classic: { type: '标准', rule: '每行、每列、每宫数字均不重复' },
     anti_king: { type: '无缘', rule: '除标准数独规则外，对角相邻（进一拐一）位置的数字也均不重复' },
     anti_knight: { type: '无马', rule: '除标准数独规则外，象棋马步（进二拐一）位置的数字也均不重复' },
     anti_elephant: { type: '无象', rule: '除标准数独规则外，中国象棋象步（进二拐二）位置的数字也均不重复' },
+    isomorphic: { type: '同位', rule: '除标准数独规则外，各宫相同位置上的数字也均不重复' },
     diagonal: { type: '对角线', rule: '除标准数独规则外，每条对角线上的数字也均不重复' },
     anti_diagonal: { type: '反对角', rule: (size) => `除标准数独规则外，每条对角线上只能出现${size / 3}个数字` },
     multi_diagonal: { type: '斜线', rule: '除标准数独规则外，每条斜线上的数字也均不重复' },
     hashtag: { type: '斜井', rule: '除标准数独规则外，每条井字线上的数字也均不重复' },
+    palindrome: { type: '回文', rule: '除标准数独规则外，每条灰线关于中心对称位置上的数字必须相同' },
+    quadruple: { type: '四格提示', rule: '除标准数独规则外，盘面内标记表示周围四格内包含的数字' },
+    inclusion: { type: '包含', rule: '除标准数独规则外，盘面内标记表示周围四格内至少包含的数字（提示可少于4个）' },
+    add: { type: '加法', rule: '除标准数独规则外，盘面内标记表示标记区域内数字之和' },
+    product: { type: '乘积', rule: '除标准数独规则外，盘面内标记表示两侧格内数字的乘积' },
+    ratio: { type: '比例', rule: '除标准数独规则外，盘面内标记表示两侧格内数字的比例关系' },
+    inequality: { type: '不等号', rule: '除标准数独规则外，盘面内标记表示两侧格内数字的大小关系' },
+    consecutive: { type: '连续', rule: '除标准数独规则外，盘面内标记表示两侧格内数字连续（差为1），满足条件的连续标记均已标出' },
+    kropki: { type: '黑白点', rule: '除标准数独规则外，盘面内黑点表示两侧格内数字为2倍关系，白点表示两侧格内数字差为1，没有标记表示两侧格内数字既不是2倍关系，也不是差为1' },
+    five_six: { type: '五六', rule: '除标准数独规则外，盘面内标记表示两侧格内数字和为5(6)，满足条件的5(6)标记均已标出' },
+    exclusion: { type: '排除', rule: '除标准数独规则外，盘面内标记表示周围四格内不包含标记中的数字' },
+    VX: { type: 'VX', rule: '除标准数独规则外，盘面内标记表示两侧格内数字和为5(10)，满足条件的V(X)标记均已标出' },
     extra_region: { type: '额外区域', rule: '除标准数独规则外，每个额外区域内的数字也均不重复' },
     window: { type: '窗口', rule: '除标准数独规则外，每个灰色窗口区域内的数字也均不重复' },
     pyramid: { type: '金字塔', rule: '除标准数独规则外，每个灰色金字塔区域内的数字也均不重复' },
-    isomorphic: { type: '同位', rule: '除标准数独规则外，各宫相同位置上的数字也均不重复' },
-    clone: { type: '克隆', rule: '除标准数独规则外，形状相同的灰色区域中相同位置的数字必须一致' },
-    renban: { type: '灰格连续', rule: '除标准数独规则外，每个灰色额外区域内的数字连续' },
-    palindrome: { type: '回文', rule: '除标准数独规则外，每条灰线关于中心对称位置上的数字必须相同' },
+    renban: { type: '灰格连续', rule: '除标准数独规则外，每个灰色区域内的数字由一组差值为 1 的（即连续数）数组组成' },
+    clone: { type: '克隆', rule: '除标准数独规则外，两个形状相同的灰色区域中相同位置的数字必须一致' },
     fortress: { type: '堡垒', rule: '除标准数独规则外，灰格数字大于相邻的白格数字' },
-    VX: { type: 'VX', rule: '除标准数独规则外，V(X)标记表示两侧格内数字和为5(10)，满足条件的V(X)标记均已标出' },
-    five_six: { type: '五六', rule: '除标准数独规则外，5(6)标记表示两侧格内数字和为5(6)，满足条件的5(6)标记均已标出' },
-    exclusion: { type: '排除', rule: '除标准数独规则外，带标记的周围四格内不包含标记中的数字' },
-    quadruple: { type: '四格提示', rule: '除标准数独规则外，带标记的周围四格内包含标记中的数字' },
-    ratio: { type: '比例', rule: '除标准数独规则外，带比例标记的相邻格满足比例关系' },
-    thermo: { type: '温度计', rule: '除标准数独规则外，温度计上的数字从圆泡处到尾部严格递增' },
     odd: { type: '奇数', rule: '除标准数独规则外，灰色圆圈内只能填奇数' },
     odd_even: { type: '奇偶', rule: '除标准数独规则外，灰色圆圈内只能填奇数，灰色方框内只能填偶数' },
-    product: { type: '乘积', rule: '除标准数独规则外，带乘积标记的相邻格满足乘积约束' },
     missing: { type: '缺一门', rule: '除标准数独规则外，黑格不填数字' },
-    X_sums: { type: 'X和', rule: '除标准数独规则外，外提示数等于该方向前X格数字之和，其中X为该方向第一格数字' },
-    sandwich: { type: '三明治', rule: (size) => `除标准数独规则外，外提示数等于该行或列中数字1和${size}之间所有数字之和` },
-    skyscraper: { type: '摩天楼', rule: '除标准数独规则外，外提示数表示从该方向能看到的楼房数，数字越大代表楼越高' }
+    thermo: { type: '温度计', rule: '除标准数独规则外，温度计上的数字从圆泡处到尾部严格递增（不能相等）' },
+    X_sums: { type: 'X和', rule: '除标准数独规则外，外提示数表示该方向前X格数字之和，X为该方向第一格数字' },
+    skyscraper: { type: '摩天楼', rule: '除标准数独规则外，外提示数表示从该方向能看到的楼房数，数字越大代表楼越高，高楼会挡住矮楼' },
+    sandwich: { type: '三明治', rule: (size) => `除标准数独规则外，外提示数表示该行或列中数字1和${size}所在位置之间的所有数字之和` }
 };
 
 function format_export_date(date = new Date()) {
@@ -84,15 +91,44 @@ function format_export_hour(date = new Date()) {
     return String(date.getHours()).padStart(2, '0');
 }
 
-function normalize_export_time_value(value) {
+function parse_export_date_value(value) {
+    if (!value) {
+        return null;
+    }
+
+    const [yearStr, monthStr, dayStr] = String(value).split('-');
+    const year = parseInt(yearStr, 10);
+    const month = parseInt(monthStr, 10);
+    const day = parseInt(dayStr, 10);
+
+    if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+        return null;
+    }
+
+    const parsed = new Date(year, month - 1, day);
+    if (
+        parsed.getFullYear() !== year ||
+        parsed.getMonth() !== month - 1 ||
+        parsed.getDate() !== day
+    ) {
+        return null;
+    }
+
+    parsed.setHours(0, 0, 0, 0);
+    return parsed;
+}
+
+function normalize_export_hour_value(value) {
     if (!value) {
         return '';
     }
-    const hour = String(value).split(':')[0] || '';
-    if (!hour) {
+
+    const parsedHour = parseInt(String(value), 10);
+    if (!Number.isInteger(parsedHour) || parsedHour < 0 || parsedHour > 23) {
         return '';
     }
-    return `${hour.padStart(2, '0')}:00`;
+
+    return String(parsedHour).padStart(2, '0');
 }
 
 function get_size_prefix(size) {
@@ -180,7 +216,7 @@ function download_json_file(payload, fileName) {
     setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-function export_sudoku_as_text() {
+function export_sudoku_as_text(export_options = {}) {
     if (!state.current_grid_size) {
         return;
     }
@@ -193,11 +229,13 @@ function export_sudoku_as_text() {
     const size = state.current_grid_size;
     const { type, rule } = get_mode_meta();
     const diff = get_export_diff();
-    const selectedDate = document.getElementById('exportDatePicker')?.value;
-    const selectedTime = document.getElementById('exportTimePicker')?.value;
-    const exportDate = selectedDate || format_export_date();
-    const exportTimeValue = normalize_export_time_value(selectedTime);
-    const exportHour = exportTimeValue.split(':')[0];
+    const selectedDateValue = document.getElementById('exportDatePicker')?.value;
+    const selectedHourValue = document.getElementById('exportTimePicker')?.value;
+    const exportDate = export_options.exportDate || selectedDateValue || format_export_date();
+    const exportHourSource = Object.prototype.hasOwnProperty.call(export_options, 'exportHour')
+        ? export_options.exportHour
+        : selectedHourValue;
+    const exportHour = normalize_export_hour_value(exportHourSource);
     const date = exportHour ? `${exportDate}-${exportHour}` : exportDate;
     const dateCompact = `${exportDate.replace(/-/g, '')}${exportHour}`;
     const imageFolder = state.current_mode === 'classic' ? 'classic-' : '';
@@ -279,8 +317,8 @@ function sync_export_time_button_text() {
     const btn = document.getElementById('selectExportTime');
     if (!picker || !btn) return;
 
-    const hour = picker.value ? normalize_export_time_value(picker.value).split(':')[0] : '';
-    btn.textContent = hour ? `选择时间：${hour}点（点击可取消）` : '选择时间(可选)';
+    const hour = normalize_export_hour_value(picker.value);
+    btn.textContent = hour ? `选择时间：${hour}点` : '选择时间(可选)';
 }
 
 function get_export_diff() {
@@ -318,10 +356,8 @@ function initializeEventHandlers() {
     
     document.getElementById('importSudokuFromString').addEventListener('click', import_sudoku_from_string);
     document.getElementById('exportSudokuToString').addEventListener('click', export_sudoku_to_string);
-    document.getElementById('exportSudokuAsText').addEventListener('click', () => {
-        hide_solution();
-        check_uniqueness(false);
-        export_sudoku_as_text();
+    document.getElementById('exportSudokuAsText').addEventListener('click', async () => {
+        await handle_export_text_click();
     });
     document.getElementById('selectExportDate').addEventListener('click', open_export_date_picker);
     document.getElementById('selectExportTime').addEventListener('click', open_export_time_picker);
@@ -342,7 +378,7 @@ function initializeEventHandlers() {
     const exportTimePicker = document.getElementById('exportTimePicker');
     if (exportTimePicker) {
         if (exportTimePicker.value) {
-            exportTimePicker.value = normalize_export_time_value(exportTimePicker.value);
+            exportTimePicker.value = normalize_export_hour_value(exportTimePicker.value);
         }
         exportTimePicker.addEventListener('change', sync_export_time_button_text);
         sync_export_time_button_text();
@@ -561,6 +597,8 @@ function initializeEventHandlers() {
             return generate_exclusion_puzzle(state.current_grid_size, score_lower_limit, holes_count);
         } else if (state.current_mode === 'quadruple') {
             return generate_quadruple_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        } else if (state.current_mode === 'inclusion') {
+            return generate_inclusion_puzzle(state.current_grid_size, score_lower_limit, holes_count);
         } else if (state.current_mode === 'ratio') {
             return generate_ratio_puzzle(state.current_grid_size, score_lower_limit, holes_count);
         } else if (state.current_mode === 'inequality') {
@@ -573,6 +611,10 @@ function initializeEventHandlers() {
             return generate_odd_puzzle(state.current_grid_size, score_lower_limit, holes_count);
         } else if (state.current_mode === 'odd_even') {
             return generate_odd_even_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        } else if (state.current_mode === 'kropki') {
+            return generate_kropki_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        } else if (state.current_mode === 'add') {
+            return generate_add_puzzle(state.current_grid_size, score_lower_limit, holes_count);
         } else {
             return generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
         }
@@ -738,6 +780,159 @@ function initializeEventHandlers() {
         }
 
         return `未能在限定次数内生成${conditions.join('，且')}的题目，请调整参数后重试。`;
+    }
+
+    function get_export_mode_flags() {
+        return {
+            dailyChecked: !!document.getElementById('exportModeDaily')?.checked,
+            hourlyChecked: !!document.getElementById('exportModeHourly')?.checked
+        };
+    }
+
+    function get_export_start_date() {
+        const selectedDateValue = document.getElementById('exportDatePicker')?.value;
+        const parsedDate = parse_export_date_value(selectedDateValue);
+        if (parsedDate) {
+            return parsedDate;
+        }
+
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    }
+
+    function run_single_export_text(exportOptions = {}) {
+        hide_solution();
+        check_uniqueness(false);
+        export_sudoku_as_text(exportOptions);
+    }
+
+    async function run_daily_export_text_batch(options) {
+        const exportDateCursor = get_export_start_date();
+
+        for (let i = 0; i < 7; i++) {
+            const generated = await generate_in_constraints(options, true);
+            if (!generated) {
+                show_result(`第${i + 1}次导出失败：${get_generation_failure_message(options)}`);
+                return false;
+            }
+
+            run_single_export_text({
+                exportDate: format_export_date(exportDateCursor),
+                exportHour: ''
+            });
+            exportDateCursor.setDate(exportDateCursor.getDate() + 1);
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+
+        return true;
+    }
+
+    function get_hourly_export_start_datetime() {
+        const selectedHourValue = document.getElementById('exportTimePicker')?.value;
+        const exportHour = normalize_export_hour_value(selectedHourValue);
+
+        if (!exportHour) {
+            alert('勾选“整点”后，请先选择小时。');
+            return null;
+        }
+
+        const exportDate = get_export_start_date();
+        exportDate.setHours(parseInt(exportHour, 10), 0, 0, 0);
+        return exportDate;
+    }
+
+    async function run_hourly_export_text_batch(options) {
+        const exportDateTimeCursor = get_hourly_export_start_datetime();
+        if (!exportDateTimeCursor) {
+            return false;
+        }
+
+        for (let i = 0; i < 4; i++) {
+            const generated = await generate_in_constraints(options, true);
+            if (!generated) {
+                show_result(`第${i + 1}次导出失败：${get_generation_failure_message(options)}`);
+                return false;
+            }
+
+            run_single_export_text({
+                exportDate: format_export_date(exportDateTimeCursor),
+                exportHour: format_export_hour(exportDateTimeCursor)
+            });
+            exportDateTimeCursor.setHours(exportDateTimeCursor.getHours() + 6);
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+
+        return true;
+    }
+
+    async function run_daily_hourly_export_text_batch(options) {
+        const startDateTime = get_hourly_export_start_datetime();
+        if (!startDateTime) {
+            return false;
+        }
+
+        for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+            const exportDateTimeCursor = new Date(startDateTime);
+            exportDateTimeCursor.setDate(startDateTime.getDate() + dayIndex);
+            exportDateTimeCursor.setHours(startDateTime.getHours(), 0, 0, 0);
+
+            for (let slotIndex = 0; slotIndex < 4; slotIndex++) {
+                const generated = await generate_in_constraints(options, true);
+                if (!generated) {
+                    show_result(`第${dayIndex + 1}天第${slotIndex + 1}次导出失败：${get_generation_failure_message(options)}`);
+                    return false;
+                }
+
+                run_single_export_text({
+                    exportDate: format_export_date(exportDateTimeCursor),
+                    exportHour: format_export_hour(exportDateTimeCursor)
+                });
+                exportDateTimeCursor.setHours(exportDateTimeCursor.getHours() + 6);
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
+        }
+
+        return true;
+    }
+
+    async function handle_export_text_click() {
+        const { dailyChecked, hourlyChecked } = get_export_mode_flags();
+
+        if (!dailyChecked && !hourlyChecked) {
+            run_single_export_text();
+            return;
+        }
+
+        const options = get_generation_options();
+        if (!options) {
+            return;
+        }
+
+        show_generating_timer();
+
+        try {
+            let exportSuccess = false;
+            let successMessage = '';
+
+            if (dailyChecked && hourlyChecked) {
+                exportSuccess = await run_daily_hourly_export_text_batch(options);
+                successMessage = '每日+整点导出完成，共导出28题。';
+            } else if (dailyChecked) {
+                exportSuccess = await run_daily_export_text_batch(options);
+                successMessage = '每日导出完成，共导出7题。';
+            } else {
+                exportSuccess = await run_hourly_export_text_batch(options);
+                successMessage = '整点导出完成，共导出4题。';
+            }
+
+            if (!exportSuccess) {
+                return;
+            }
+
+            show_result(successMessage);
+        } finally {
+            hide_generating_timer();
+        }
     }
 
     function get_score_range_failure_message(score_lower_limit, score_upper_limit) {

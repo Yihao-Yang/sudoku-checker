@@ -291,6 +291,26 @@ box-sizing: border-box;
     gap: 10px;
 }
 
+.export-mode-options {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: #333;
+}
+
+.export-mode-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    user-select: none;
+}
+
+.export-mode-option input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+}
+
 .hidden-date-picker {
     position: absolute;
     width: 1px;

@@ -387,6 +387,20 @@ export function solve_By_Elimination(board, size) {
 
         return multiplier;
     };
+
+    const hasNewSolvedCellAfterTechnique = (beforeBoard, afterBoard) => {
+        for (let r = 0; r < beforeBoard.length; r++) {
+            for (let c = 0; c < beforeBoard[r].length; c++) {
+                const beforeCell = beforeBoard[r][c];
+                const afterCell = afterBoard[r][c];
+                if (Array.isArray(beforeCell) && typeof afterCell === 'number' && afterCell > 0) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+
     // 技巧分值表
     const technique_scores = {
         // 唯余法分值细分，行列排除法分值细分，额外区域排除法分值细分
@@ -1155,11 +1169,9 @@ export function solve_By_Elimination(board, size) {
                                 technique_counts[chinese_name]++;
                                 total_score += (technique_scores[score_key] || 0) * getTechniqueMultiplier(score_key);
 
-                                // === 新增：唯余法 / 各种“排除”一旦填出数字就截断 ===
-                                const isEliminationOrSingle =
-                                    chinese_name.includes('唯余') ||  // 唯余法_1~9
-                                    chinese_name.includes('排除');         // 宫排除 / 行列排除 / 额外区域排除 / 一刀流宫排除 等
-                                if (state.check_next && isEliminationOrSingle) {
+                                // 检查下一步：只在本次技巧真正产生新定数时停住
+                                const hasNewSolvedCell = hasNewSolvedCellAfterTechnique(groupInitialBoard, board);
+                                if (state.check_next && hasNewSolvedCell) {
                                     state.check_next = false; // 重置检查标志，避免重复检查
                                     return {
                                         changed: true,
@@ -1169,7 +1181,6 @@ export function solve_By_Elimination(board, size) {
                                         technique_scores
                                     };
                                 }
-                                // === 新增结束 ===
                             }
                         }
 

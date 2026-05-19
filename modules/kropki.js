@@ -146,12 +146,18 @@ export function create_kropki_sudoku(size) {
     container.appendChild(grid);
     gridDisplay.appendChild(container);
 
-    // enable_kropki_mark_mode(size);
+    enable_kropki_mark_mode(size);
 
     const extraButtons = document.getElementById('extraButtons');
     if (extraButtons) {
         extraButtons.innerHTML = '';
         add_Extra_Button('黑白点', () => {create_kropki_sudoku(size)}, '#2196F3');
+        const toggle_mark_btn = add_Extra_Button('添加标记', () => {
+            const g = document.querySelector('.sudoku-grid');
+            if (!g) return;
+            g._kropki_marking_active = !g._kropki_marking_active;
+            toggle_mark_btn.textContent = g._kropki_marking_active ? '退出标记' : '添加标记';
+        });
         add_Extra_Button('清除标记', clear_marks);
         add_Extra_Button('一键标记', auto_mark_kropki);
         add_Extra_Button('自动出题', () => generate_kropki_puzzle(size), '#2196F3');
@@ -255,6 +261,7 @@ function enable_kropki_mark_mode(size) {
     const grid = document.querySelector('.sudoku-grid');
     if (!grid || grid._kropkiMarkHandlerAttached) return;
     grid._kropkiMarkHandlerAttached = true;
+    grid._kropki_marking_active = false;
 
     const container = grid.parentElement;
     if (container && getComputedStyle(container).position === 'static') {
@@ -266,6 +273,7 @@ function enable_kropki_mark_mode(size) {
 
     grid.addEventListener('click', (event) => {
         if (!container) return;
+        if (!grid._kropki_marking_active) return;
         if (event.target.closest('.vx-mark')) return;
 
         const rect = grid.getBoundingClientRect();
@@ -309,6 +317,7 @@ function enable_kropki_mark_mode(size) {
 
     grid.addEventListener('dblclick', (event) => {
         if (!container) return;
+        if (!grid._kropki_marking_active) return;
         if (event.target.closest('.vx-mark')) return;
 
         if (grid._kropkiClickTimer) {
@@ -468,6 +477,20 @@ function create_or_update_kropki_mark(container, size, row1, col1, row2, col2, t
 
         apply_kropki_dot_style(dot, normalized_type);
         mark.appendChild(dot);
+
+        mark.addEventListener('click', (evt) => {
+            evt.stopPropagation();
+            const g = container.querySelector('.sudoku-grid');
+            if (!g?._kropki_marking_active) return;
+
+            const current_type = read_mark_type(mark);
+            if (current_type === 'B') {
+                create_or_update_kropki_mark(container, size, row1, col1, row2, col2, 'W', false);
+                return;
+            }
+
+            mark.remove();
+        });
 
         // mark.addEventListener('dblclick', (evt) => {
         //     evt.stopPropagation();

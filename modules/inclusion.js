@@ -1,4 +1,4 @@
-// quadruple.js
+// inclusion.js
 import { state, set_current_mode } from '../solver/state.js';
 import { show_result, create_base_grid, create_base_cell, add_Extra_Button, log_process, backup_original_board, restore_original_board, handle_key_navigation, clear_all_inputs, clear_marks, show_generating_timer, hide_generating_timer } from '../solver/core.js';
 import { generate_solved_board_brute_force, generate_puzzle } from '../solver/generate.js';
@@ -6,12 +6,12 @@ import { get_all_regions, solve, invalidate_regions_cache, sync_marks_board_from
 import { create_technique_panel } from '../solver/classic.js';
 
 // 四数独主入口
-export function create_quadruple_sudoku(size) {
-    set_current_mode('quadruple');
-    show_result(`当前模式为四格提示数独`);
+export function create_inclusion_sudoku(size) {
+    set_current_mode('inclusion');
+    show_result(`当前模式为包含数独`);
     log_process('', true);
     log_process('规则：');
-    log_process('标记：周围四格内包含的数字');
+    log_process('标记：周围四格内至少包含的数字（提示可少于4个）');
     log_process('');
     log_process('技巧：');
     // log_process('"变型"：用到变型条件删数的技巧');
@@ -40,11 +40,11 @@ export function create_quadruple_sudoku(size) {
         Box_Block: true,
         Variant_Box_Block: true,
         Box_Pair_Block: true,
-        Extra_Region_Pair_Block: true,
+        // Extra_Region_Pair_Block: true,
         Row_Col_Block: true,
         Variant_Row_Col_Block: true,
-        Extra_Region_Block: true,
-        Variant_Extra_Region_Block: true,
+        // Extra_Region_Block: true,
+        // Variant_Extra_Region_Block: true,
         // 数对技巧
         Box_Naked_Pair: true,
         Row_Col_Naked_Pair: true,
@@ -59,11 +59,11 @@ export function create_quadruple_sudoku(size) {
         Cell_Elimination: true,
         Brute_Force: false,
         // 额外区域技巧
-        Extra_Region_Elimination: true,
-        Extra_Region_Naked_Pair: true,
-        Extra_Region_Hidden_Pair: true,
-        Extra_Region_Naked_Triple: true,
-        Extra_Region_Hidden_Triple: true,
+        // Extra_Region_Elimination: true,
+        // Extra_Region_Naked_Pair: true,
+        // Extra_Region_Hidden_Pair: true,
+        // Extra_Region_Naked_Triple: true,
+        // Extra_Region_Hidden_Triple: true,
         Special_Combination_Region_Most_Not_Contain_1: true,
         Special_Combination_Region_Most_Not_Contain_2: true,
         Special_Combination_Region_Most_Not_Contain_3: true,
@@ -148,18 +148,18 @@ export function create_quadruple_sudoku(size) {
     gridDisplay.appendChild(container);
 
     // 添加四数独圆圈功能
-    add_quadruple_mark(size);
+    add_inclusion_mark(size);
 
     // 四数独专属按钮
     const extra_buttons = document.getElementById('extraButtons');
     extra_buttons.innerHTML = '';
-    add_Extra_Button('四格提示', () => {create_quadruple_sudoku(size)}, '#2196F3');
+    add_Extra_Button('包含', () => {create_inclusion_sudoku(size)}, '#2196F3');
     add_Extra_Button('清除标记', clear_marks);
-    add_Extra_Button('自动出题', state.create_mode_specific_generate_handler?.((score_lower_limit, holes_count) => generate_quadruple_puzzle(size, score_lower_limit, holes_count)) || (() => generate_quadruple_puzzle(size)), '#2196F3');
+    add_Extra_Button('自动出题', state.create_mode_specific_generate_handler?.((score_lower_limit, holes_count) => generate_inclusion_puzzle(size, score_lower_limit, holes_count)) || (() => generate_inclusion_puzzle(size)), '#2196F3');
 }
 
 // 自动生成四数独题目
-export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
+export function generate_inclusion_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
     const start_time = performance.now();
     clear_all_inputs();
     clear_marks();
@@ -171,7 +171,7 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
     if (!container) return;
     Array.from(container.querySelectorAll('.vx-mark')).forEach(mark => mark.remove());
 
-    log_process('第一步：生成四格提示数独终盘...');
+    log_process('第一步：生成包含数独终盘...');
     const solvedBoard = generate_solved_board_brute_force(size);
     if (!solvedBoard) {
         log_process('生成终盘失败！');
@@ -189,7 +189,10 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
     const symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
     log_process(`使用对称类型: ${symmetry}`);
 
-    const MAX_MARKS = (size - 1) * (size - 1);
+    let min_marks = 2, max_marks = 4;
+    if (size === 6) { min_marks = 4; max_marks = 8; }
+    if (size === 9) { min_marks = 10; max_marks = 14; }
+    const num_marks = Math.floor(Math.random() * (max_marks - min_marks + 1)) + min_marks;
     const MAX_TRY = 200;
 
     let marks_added = 0;
@@ -202,7 +205,7 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
     show_generating_timer();
 
     setTimeout(() => {
-        while (try_count < MAX_TRY && marks_added < MAX_MARKS && !unique_found) {
+        while (try_count < MAX_TRY && marks_added < num_marks && !unique_found) {
             try_count++;
 
             const row = Math.floor(Math.random() * (size - 1));
@@ -220,21 +223,22 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
             }
 
             const addedMarks = [];
-            const mainDigits = calculate_quadruple_from_solved(row, col, solvedBoard);
+            const mark_digit_count = pick_mark_digit_count();
+            const mainDigits = calculate_inclusion_from_solved(row, col, solvedBoard, mark_digit_count);
             if (!mainDigits) continue;
 
-            const mainMark = add_quadruple_mark_with_value(row, col, size, container, mainDigits);
+            const mainMark = add_inclusion_mark_with_value(row, col, size, container, mainDigits);
             if (!mainMark) continue;
             addedMarks.push(mainMark);
 
             const symmetric_is_same = row === sym_row && col === sym_col;
             if (!symmetric_is_same) {
-                const symDigits = calculate_quadruple_from_solved(sym_row, sym_col, solvedBoard);
+                const symDigits = calculate_inclusion_from_solved(sym_row, sym_col, solvedBoard, mark_digit_count);
                 if (!symDigits) {
                     remove_marks(addedMarks);
                     continue;
                 }
-                const symMark = add_quadruple_mark_with_value(sym_row, sym_col, size, container, symDigits);
+                const symMark = add_inclusion_mark_with_value(sym_row, sym_col, size, container, symDigits);
                 if (!symMark) {
                     remove_marks(addedMarks);
                     continue;
@@ -245,7 +249,7 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
             marks_added += addedMarks.length;
 
             backup_original_board();
-            const result = solve(create_solver_board(size), size, is_valid_quadruple, true);
+            const result = solve(create_solver_board(size), size, is_valid_inclusion, true);
             restore_original_board();
 
             if (result.solution_count === 1) {
@@ -265,20 +269,21 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
         }
 
         log_process('', true)
-        log_process(`四格提示数独生成完成`);
+        log_process(`包含数独生成完成`);
         log_process(`点击检查唯一性查看技巧和分值`);
         const board = Array.from({ length: size }, () => Array.from({ length: size }, () => 0));
-        generate_puzzle(size, score_lower_limit, holes_count, board);
+        // log_process(board);
+        generate_puzzle(size, score_lower_limit, holes_count, solvedBoard);
         hide_generating_timer();
         const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
-        show_result(`四格提示数独生成完成，耗时${elapsed}秒）`);
+        show_result(`包含数独生成完成，耗时${elapsed}秒）`);
 
         if (!unique_found) {
             if (try_count >= MAX_TRY) {
                 log_process('自动出题失败：达到最大尝试次数');
             } else {
                 log_process('自动出题完成（可能非唯一解）');
-                show_result(`四格提示数独生成完成（可能非唯一解），耗时${elapsed}秒）`);
+                show_result(`包含数独生成完成（可能非唯一解），耗时${elapsed}秒）`);
             }
         }
     }, 0);
@@ -327,7 +332,15 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
         }
     }
 
-    function calculate_quadruple_from_solved(row, col, solvedBoard) {
+    function pick_mark_digit_count() {
+        const roll = Math.random();
+        if (roll < 0.3) return 1;
+        if (roll < 0.6) return 2;
+        if (roll < 0.99) return 3;
+        return 4;
+    }
+
+    function calculate_inclusion_from_solved(row, col, solvedBoard, forced_count = null) {
         const cells = [
             [row, col],
             [row, col + 1],
@@ -340,10 +353,22 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
             if (!val) return null;
             values.push(val);
         }
-        return values.sort((a, b) => a - b);
+
+        const count = Number.isInteger(forced_count) && forced_count >= 1 && forced_count <= 4
+            ? forced_count
+            : pick_mark_digit_count();
+        const pool = [...values];
+        const selected = [];
+        for (let i = 0; i < count && pool.length > 0; i++) {
+            const idx = Math.floor(Math.random() * pool.length);
+            selected.push(pool[idx]);
+            pool.splice(idx, 1);
+        }
+
+        return selected.sort((a, b) => a - b);
     }
 
-    function add_quadruple_mark_with_value(row, col, size, container, digits) {
+    function add_inclusion_mark_with_value(row, col, size, container, digits) {
         const grid = container.querySelector('.sudoku-grid');
         if (!grid) return null;
 
@@ -399,7 +424,7 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
         for (const group of groups) {
             const removedMarks = temporarily_remove_marks(container, group.keys);
             backup_original_board();
-            const result = solve(create_solver_board(size), size, is_valid_quadruple, true);
+            const result = solve(create_solver_board(size), size, is_valid_inclusion, true);
             restore_original_board();
             if (result.solution_count === 1) {
                 permanently_remove_marks(removedMarks);
@@ -471,7 +496,7 @@ export function generate_quadruple_puzzle(size, score_lower_limit = 0, holes_cou
     }
 }
 
-function get_quadruple_marks(size) {
+function get_inclusion_marks(size) {
     if (Array.isArray(state.marks_board)) {
         return state.marks_board.filter((m) =>
             m && m.kind === 'x' && Number.isInteger(m.r) && Number.isInteger(m.c)
@@ -491,7 +516,7 @@ function parse_mark_nums(mark) {
 }
 
 // 添加四数独圆圈标记
-function add_quadruple_mark(size) {
+function add_inclusion_mark(size) {
     const grid = document.querySelector('.sudoku-grid');
     if (!grid) return;
 
@@ -585,9 +610,9 @@ function add_quadruple_mark(size) {
 
 }
 
-// 应用所有四数独圆圈约束
-export function apply_quadruple_marks(board, size) {
-    const marks = get_quadruple_marks(size);
+// 应用所有包含数独圆圈约束
+export function apply_inclusion_marks(board, size) {
+    const marks = get_inclusion_marks(size);
     for (const mark of marks) {
         const included_nums = parse_mark_nums(mark);
         if (included_nums.length === 0) continue;
@@ -600,24 +625,53 @@ export function apply_quadruple_marks(board, size) {
             [mark.r + 1, mark.c + 1]
         ];
 
-        for (const [r, c] of positions) {
-            if (r >= 0 && r < size && c >= 0 && c < size) {
-                // 只处理候选数数组
-                if (Array.isArray(board[r][c])) {
-                    board[r][c] = board[r][c].filter(n => included_nums.includes(n));
+        const required_counts = {};
+        for (const n of included_nums) {
+            required_counts[n] = (required_counts[n] || 0) + 1;
+        }
+
+        // “至少包含”语义下，不应把候选数强行限制为提示集合。
+        // 这里只做安全推导：若某提示数字剩余可放位置数恰好等于仍需数量，则这些位置必须放该数字。
+        for (const [digit, required] of Object.entries(required_counts)) {
+            const n = Number(digit);
+            let fixed_count = 0;
+            const candidate_cells = [];
+
+            for (const [r, c] of positions) {
+                if (r < 0 || r >= size || c < 0 || c >= size) continue;
+
+                const cell_value = board[r][c];
+                if (typeof cell_value === 'number' && cell_value !== 0) {
+                    if (cell_value === n) {
+                        fixed_count++;
+                    }
+                    continue;
+                }
+
+                if (Array.isArray(cell_value) && cell_value.includes(n)) {
+                    candidate_cells.push([r, c]);
+                }
+            }
+
+            const need = required - fixed_count;
+            if (need > 0 && candidate_cells.length === need) {
+                for (const [r, c] of candidate_cells) {
+                    if (Array.isArray(board[r][c])) {
+                        board[r][c] = [n];
+                    }
                 }
             }
         }
     }
 }
 
-// 排除数独有效性检测函数
-export function is_valid_quadruple(board, size, row, col, num) {
+// 包含数独有效性检测函数
+export function is_valid_inclusion(board, size, row, col, num) {
     // 1. 常规区域判断（与普通数独一致）
-    const mode = state.current_mode || 'quadruple';
+    const mode = state.current_mode || 'inclusion';
     const regions = get_all_regions(size, mode);
     for (const region of regions) {
-        if (region.cells.some(([r, c]) => r === row && c === col) && region.type !== '有重复四格提示') {
+        if (region.cells.some(([r, c]) => r === row && c === col) && region.type !== '有重复包含') {
             for (const [r, c] of region.cells) {
                 if ((r !== row || c !== col) && board[r][c] === num) {
                     return false;
@@ -627,7 +681,7 @@ export function is_valid_quadruple(board, size, row, col, num) {
     }
 
     // 2. 排除标记判断
-    const marks = get_quadruple_marks(size);
+    const marks = get_inclusion_marks(size);
     for (const mark of marks) {
         const included_nums = parse_mark_nums(mark);
         if (included_nums.length === 0) continue;
@@ -650,27 +704,40 @@ export function is_valid_quadruple(board, size, row, col, num) {
         }
         if (!in_quad) continue;
 
-        // 统计交点四格已填入的数字
-        let filled_nums = [];
-        for (const [r, c] of positions) {
-            if (r >= 0 && r < size && c >= 0 && c < size) {
-                let cell_value = (r === row && c === col) ? num : board[r][c];
+        const required_counts = {};
+        for (const n of included_nums) {
+            required_counts[n] = (required_counts[n] || 0) + 1;
+        }
+
+        // “至少包含”语义：提示数字需至少出现对应次数；未提示数字允许出现。
+        for (const [digit, required] of Object.entries(required_counts)) {
+            const n = Number(digit);
+            let fixed_count = 0;
+            let possible_count = 0;
+
+            for (const [r, c] of positions) {
+                if (r < 0 || r >= size || c < 0 || c >= size) continue;
+
+                const cell_value = (r === row && c === col) ? num : board[r][c];
+
                 if (typeof cell_value === 'number' && cell_value !== 0) {
-                    filled_nums.push(cell_value);
+                    if (cell_value === n) {
+                        fixed_count++;
+                    }
+                    continue;
+                }
+
+                if (Array.isArray(cell_value)) {
+                    if (cell_value.includes(n)) {
+                        possible_count++;
+                    }
+                } else {
+                    // 对未初始化占位（如0）保守视为可放，避免误判无解。
+                    possible_count++;
                 }
             }
-        }
 
-        // 检查所有已填数字都在提示数中
-        if (filled_nums.some(n => !included_nums.includes(n))) {
-            return false;
-        }
-
-        // 检查每个数字填入的数量不能超过提示数中该数字的数量
-        for (let n of included_nums) {
-            const count_in_hint = included_nums.filter(x => x === n).length;
-            const count_in_filled = filled_nums.filter(x => x === n).length;
-            if (count_in_filled > count_in_hint) {
+            if (fixed_count + possible_count < required) {
                 return false;
             }
         }

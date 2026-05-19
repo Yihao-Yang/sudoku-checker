@@ -130,6 +130,12 @@ export function create_five_six_sudoku(size) {
     const extra_buttons = document.getElementById('extraButtons');
     extra_buttons.innerHTML = '';
     add_Extra_Button('五六', () => {create_five_six_sudoku(size)}, '#2196F3');
+    const toggle_mark_btn = add_Extra_Button('添加标记', () => {
+        const g = document.querySelector('.sudoku-grid');
+        if (!g) return;
+        g._five_six_marking_active = !g._five_six_marking_active;
+        toggle_mark_btn.textContent = g._five_six_marking_active ? '退出标记' : '添加标记';
+    });
     // add_Extra_Button('清除标记', clear_five_six_marks, '#FF5722');
     add_Extra_Button('清除标记', clear_marks);
     add_Extra_Button('标记全部', () => {
@@ -284,14 +290,33 @@ function add_five_six_circle_with_sum(row, col, size, container, type, sum) {
     input.style.transform = 'translate(-50%, -50%)';
     input.style.color = '#333';
 
-    mark.ondblclick = function(e) {
+    const toggle_mark = function(e) {
         e.stopPropagation();
-        mark.remove();
+        const g = container.querySelector('.sudoku-grid');
+        if (!g?._five_six_marking_active) return;
+
+        if (!Array.isArray(state.marks_board)) {
+            state.marks_board = [];
+        }
+
+        const index = state.marks_board.findIndex(
+            (item) => item.kind === type && item.r === row && item.c === col
+        );
+        if (index === -1) return;
+
+        const current = Number.parseInt(state.marks_board[index].sum, 10);
+        if (current === 5) {
+            state.marks_board[index].sum = 6;
+        } else {
+            state.marks_board.splice(index, 1);
+        }
+
+        render_five_six_marks_from_state(size, container);
+        invalidate_regions_cache();
     };
-    input.ondblclick = function(e) {
-        e.stopPropagation();
-        mark.remove();
-    };
+
+    mark.addEventListener('click', toggle_mark);
+    input.addEventListener('click', toggle_mark);
 
     mark.appendChild(input);
     container.appendChild(mark);
@@ -387,11 +412,15 @@ function add_five_six_mark(size) {
 
     if (grid._five_six_mark_mode) return;
     grid._five_six_mark_mode = true;
+    grid._five_six_marking_active = false;
 
     const container = grid.parentElement;
     container.style.position = 'relative';
 
     grid.addEventListener('click', function handler(e) {
+        if (!grid._five_six_marking_active) return;
+        if (e.target.closest('.vx-mark')) return;
+
         const rect = grid.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
@@ -472,59 +501,31 @@ function add_five_six_mark(size) {
         const grid_offset_left = grid.offsetLeft;
         const grid_offset_top = grid.offsetTop;
 
-        const marks = Array.from(container.querySelectorAll('.vx-mark'));
-        if (key) {
-            if (marks.some(m => m.dataset.key === key)) {
-                return;
-            }
-        } else {
-            if (marks.some(m => {
-                const l = parseInt(m.style.left || '0', 10);
-                const t = parseInt(m.style.top || '0', 10);
-                return Math.abs(l - (grid_offset_left + mark_x - 15)) <= 2 && Math.abs(t - (grid_offset_top + mark_y - 10)) <= 2;
-            })) return;
+        if (!Array.isArray(state.marks_board)) {
+            state.marks_board = [];
         }
 
-        const mark = document.createElement('div');
-        mark.className = 'vx-mark';
-        if (key) mark.dataset.key = key;
-        mark.style.position = 'absolute';
-        mark.style.left = `${grid_offset_left + mark_x - 15}px`;
-        mark.style.top = `${grid_offset_top + mark_y - 15}px`;
-        mark.style.width = '30px';
-        mark.style.height = '30px';
-        // 黑色边框
-        mark.style.border = '1px solid #000';
-        mark.style.boxSizing = 'border-box';
+        const mark_row = type === 'x' ? h_idx - 1 : row;
+        const mark_col = type === 'x' ? v_idx - 1 : col;
+        if (!Number.isInteger(mark_row) || !Number.isInteger(mark_col)) return;
 
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.maxLength = 3;
-        input.style.width = '38px';
-        input.style.height = '28px';
-        input.style.fontSize = '22px';
-        input.style.textAlign = 'center';
-        input.style.border = 'none';
-        input.style.background = 'transparent';
-        input.style.outline = 'none';
-        input.style.position = 'absolute';
-        input.style.left = '50%';
-        input.style.top = '50%';
-        input.style.transform = 'translate(-50%, -50%)';
-        input.style.color = '#333';
+        const existing_index = state.marks_board.findIndex(
+            (m) => m.kind === type && m.r === mark_row && m.c === mark_col
+        );
 
-        mark.ondblclick = function(e) {
-            e.stopPropagation();
-            mark.remove();
-        };
-        input.ondblclick = function(e) {
-            e.stopPropagation();
-            mark.remove();
-        };
+        if (existing_index === -1) {
+            state.marks_board.push({ kind: type, r: mark_row, c: mark_col, sum: 5 });
+        } else {
+            const current = Number.parseInt(state.marks_board[existing_index].sum, 10);
+            if (current === 5) {
+                state.marks_board[existing_index].sum = 6;
+            } else {
+                state.marks_board.splice(existing_index, 1);
+            }
+        }
 
-        mark.appendChild(input);
-        container.appendChild(mark);
-        input.focus();
+        render_five_six_marks_from_state(size, container);
+        invalidate_regions_cache();
     });
 }
 

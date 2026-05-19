@@ -15,9 +15,9 @@ export function create_thermo_sudoku(size) {
     log_process('温度计上的数字从圆泡处到尾部严格递增');
     log_process('');
     log_process('技巧：');
-    // log_process('"变型"：用到变型条件删数的技巧');
+    log_process('"变型"：用到变型条件删数的技巧');
     log_process('"_n"后缀：区域内剩余空格数/区块用到的空格数');
-    // log_process('"额外区域"：附加的不可重复区域');
+    log_process('"额外区域"：附加的不可重复区域');
     log_process('"特定组合"：受附加条件影响的区域');
     log_process('');
     log_process('出题：');
@@ -36,9 +36,16 @@ export function create_thermo_sudoku(size) {
     state.techniqueSettings = {
         Box_Elimination: true,
         Row_Col_Elimination: true,
+        // 区块技巧全部打开
         Box_Block: true,
+        Variant_Box_Block: true,
         Box_Pair_Block: true,
+        Extra_Region_Pair_Block: true,
         Row_Col_Block: true,
+        Variant_Row_Col_Block: true,
+        Extra_Region_Block: true,
+        Variant_Extra_Region_Block: true,
+        // 数对技巧
         Box_Naked_Pair: true,
         Row_Col_Naked_Pair: true,
         Box_Hidden_Pair: true,
@@ -81,6 +88,12 @@ export function create_thermo_sudoku(size) {
         // Multi_Special_Combination_Region_Block_1: true,
         // Multi_Special_Combination_Region_Block_2: true,
         // Multi_Special_Combination_Region_Block_3: true,
+        // 额外区域技巧
+        Extra_Region_Elimination: true,
+        Extra_Region_Naked_Pair: true,
+        Extra_Region_Hidden_Pair: true,
+        Extra_Region_Naked_Triple: true,
+        Extra_Region_Hidden_Triple: true
     };
     for (let i = 1; i <= size; i++) {
         state.techniqueSettings[`Cell_Elimination_${i}`] = true;
@@ -444,6 +457,11 @@ export function generate_thermo_puzzle(size, score_lower_limit = 0, holes_count 
 
 function invalidate_thermo_constraints() {
     state._thermo_constraint_cache = null;
+    _peers_cache = null;
+    _peers_cache_size = 0;
+    _peers_cache_mode = '';
+    _peers_cache_signature = '';
+    invalidate_regions_cache();
 }
 
 function ensure_thermo_marks() {
@@ -1335,12 +1353,20 @@ function add_thermo_mark(size) {
 let _peers_cache = null;
 let _peers_cache_size = 0;
 let _peers_cache_mode = '';
+let _peers_cache_signature = '';
 
 // modules/thermo.js (update is_valid_thermo)
 export function is_valid_thermo(board, size, row, col, num) {
     const mode = state.current_mode || 'thermo';
+    const constraint_map = get_thermo_constraint_map(size);
+    const thermo_signature = state._thermo_constraint_cache?.signature || '';
     const peers = (() => {
-        if (!_peers_cache || _peers_cache_size !== size || _peers_cache_mode !== mode) {
+        if (
+            !_peers_cache ||
+            _peers_cache_size !== size ||
+            _peers_cache_mode !== mode ||
+            _peers_cache_signature !== thermo_signature
+        ) {
             const next_peers = Array.from({ length: size }, () => Array.from({ length: size }, () => []));
             const regions = get_all_regions(size, mode);
 
@@ -1363,6 +1389,7 @@ export function is_valid_thermo(board, size, row, col, num) {
             _peers_cache = next_peers;
             _peers_cache_size = size;
             _peers_cache_mode = mode;
+            _peers_cache_signature = thermo_signature;
         }
 
         return _peers_cache[row][col];
@@ -1377,7 +1404,6 @@ export function is_valid_thermo(board, size, row, col, num) {
         }
     }
 
-    const constraint_map = get_thermo_constraint_map(size);
     const constraints = constraint_map.get(`${row},${col}`);
     if (!constraints) return true;
 

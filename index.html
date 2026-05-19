@@ -36,10 +36,46 @@
             <div class="export-text-button-wrap">
                 <div class="export-text-actions">
                     <button id="exportSudokuAsText">导出文本</button>
+                    <div class="export-mode-options">
+                        <label class="export-mode-option">
+                            <input type="checkbox" id="exportModeDaily">
+                            每日
+                        </label>
+                        <label class="export-mode-option">
+                            <input type="checkbox" id="exportModeHourly">
+                            整点
+                        </label>
+                    </div>
                     <button id="selectExportDate">选择日期</button>
                     <button id="selectExportTime">选择时间</button>
                     <input type="date" id="exportDatePicker" class="hidden-date-picker">
-                    <input type="time" id="exportTimePicker" class="hidden-date-picker" step="3600">
+                    <select id="exportTimePicker" class="hidden-date-picker" aria-label="选择导出小时">
+                        <option value="">不选择时间</option>
+                        <option value="00">00点</option>
+                        <option value="01">01点</option>
+                        <option value="02">02点</option>
+                        <option value="03">03点</option>
+                        <option value="04">04点</option>
+                        <option value="05">05点</option>
+                        <option value="06">06点</option>
+                        <option value="07">07点</option>
+                        <option value="08">08点</option>
+                        <option value="09">09点</option>
+                        <option value="10">10点</option>
+                        <option value="11">11点</option>
+                        <option value="12">12点</option>
+                        <option value="13">13点</option>
+                        <option value="14">14点</option>
+                        <option value="15">15点</option>
+                        <option value="16">16点</option>
+                        <option value="17">17点</option>
+                        <option value="18">18点</option>
+                        <option value="19">19点</option>
+                        <option value="20">20点</option>
+                        <option value="21">21点</option>
+                        <option value="22">22点</option>
+                        <option value="23">23点</option>
+                    </select>
                     <select id="exportStarPicker" aria-label="选择导出星级">
                         <option value="1" selected>星级：1</option>
                         <option value="2">星级：2</option>

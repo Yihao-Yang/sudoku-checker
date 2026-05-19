@@ -59,75 +59,44 @@ function render_vx_marks_from_state(size, container = get_vx_container()) {
         mark.style.position = 'absolute';
         mark.style.width = '22px';
         mark.style.height = '22px';
-        mark.style.display = 'block';
+        mark.style.display = 'flex';
+        mark.style.alignItems = 'center';
+        mark.style.justifyContent = 'center';
         mark.style.zIndex = '5';
         mark.style.left = `${grid_offset_left + mark_x - 11}px`;
         mark.style.top = `${grid_offset_top + mark_y - 11}px`;
 
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.maxLength = 1;
-        input.autocomplete = 'off';
-        input.value = normalizedType;
-        input.style.width = '22px';
-        input.style.height = '22px';
-        input.style.fontSize = '18px';
-        input.style.textAlign = 'center';
-        input.style.border = 'none';
-        input.style.background = 'transparent';
-        input.style.outline = 'none';
-        input.style.position = 'absolute';
-        input.style.left = '50%';
-        input.style.top = '50%';
-        input.style.transform = 'translate(-50%, -50%)';
-        input.style.color = '#333';
-        input.style.textTransform = 'uppercase';
+        const symbol = document.createElement('div');
+        symbol.textContent = normalizedType;
+        symbol.style.fontSize = '18px';
+        symbol.style.color = '#333';
+        symbol.style.userSelect = 'none';
 
-        const applyType = (nextType) => {
-            const resolvedType = nextType === 'X' ? 'X' : 'V';
-            const target = Array.isArray(state.marks_board)
-                ? state.marks_board.find((item) => item.kind === markData.kind && item.r === markData.r && item.c === markData.c)
-                : null;
-            if (target) {
-                target.type = resolvedType;
-            }
-            mark.dataset.vxType = resolvedType;
-            input.value = resolvedType;
-            invalidate_regions_cache();
-        };
-
-        input.addEventListener('input', () => {
-            const value = input.value.toUpperCase().replace(/[^VX]/g, '');
-            if (!value) {
-                input.value = mark.dataset.vxType || normalizedType;
-                return;
-            }
-            applyType(value[0]);
-        });
-
-        input.addEventListener('keydown', (event) => {
-            if (event.key === 'v' || event.key === 'V') {
-                applyType('V');
-                event.preventDefault();
-            } else if (event.key === 'x' || event.key === 'X') {
-                applyType('X');
-                event.preventDefault();
-            }
-        });
-
-        const removeMark = (event) => {
+        mark.addEventListener('click', (event) => {
             event.stopPropagation();
-            if (!Array.isArray(state.marks_board)) return;
-            state.marks_board = state.marks_board.filter(
-                (item) => !(item.kind === markData.kind && item.r === markData.r && item.c === markData.c)
-            );
-            invalidate_regions_cache();
-            mark.remove();
-        };
+            const g = container.querySelector('.sudoku-grid');
+            if (!g?._vx_marking_active) return;
 
-        mark.addEventListener('dblclick', removeMark);
-        input.addEventListener('dblclick', removeMark);
-        mark.appendChild(input);
+            if (!Array.isArray(state.marks_board)) return;
+
+            const target = state.marks_board.find(
+                (item) => item.kind === markData.kind && item.r === markData.r && item.c === markData.c
+            );
+            if (!target) return;
+
+            if (target.type === 'V') {
+                target.type = 'X';
+            } else {
+                state.marks_board = state.marks_board.filter(
+                    (item) => !(item.kind === markData.kind && item.r === markData.r && item.c === markData.c)
+                );
+            }
+
+            invalidate_regions_cache();
+            render_vx_marks_from_state(size, container);
+        });
+
+        mark.appendChild(symbol);
         fragment.appendChild(mark);
     }
 
@@ -236,10 +205,19 @@ export function create_vx_sudoku(size = 9) {
     container.appendChild(grid);
     gridDisplay.appendChild(container);
 
+    // 添加标记功能
+    add_vx_mark(size);
+
     const extraButtons = document.getElementById('extraButtons');
     if (extraButtons) {
         extraButtons.innerHTML = '';
         add_Extra_Button('VX', () => {create_vx_sudoku(size)}, '#2196F3');
+        const toggle_mark_btn = add_Extra_Button('添加标记', () => {
+            const g = document.querySelector('.sudoku-grid');
+            if (!g) return;
+            g._vx_marking_active = !g._vx_marking_active;
+            toggle_mark_btn.textContent = g._vx_marking_active ? '退出标记' : '添加标记';
+        });
         add_Extra_Button('清除标记', clear_marks);
         add_Extra_Button('一键标记', auto_mark_vx);
         add_Extra_Button('自动出题', state.create_mode_specific_generate_handler?.((score_lower_limit, holes_count) => generate_vx_puzzle(size, score_lower_limit, holes_count)) || (() => generate_vx_puzzle(size)), '#2196F3');
@@ -383,10 +361,7 @@ function create_or_update_vx_mark(container, size, row1, col1, row2, col2, type 
 
     const mark = container.querySelector(`.vx-mark[data-key="${key}"]`);
     if (focus_input && mark) {
-        const input = mark.querySelector('input');
-        if (input) {
-            requestAnimationFrame(() => input.focus());
-        }
+        mark.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     }
 
     return { mark, created };
@@ -405,6 +380,80 @@ function get_vx_container() {
         container.style.position = 'relative';
     }
     return container;
+}
+
+function add_vx_mark(size) {
+    const grid = document.querySelector('.sudoku-grid');
+    if (!grid) return;
+
+    if (grid._vx_mark_mode) return;
+    grid._vx_mark_mode = true;
+    grid._vx_marking_active = false;
+
+    const container = grid.parentElement;
+    if (container) {
+        container.style.position = 'relative';
+    }
+
+    grid.addEventListener('click', function handler(e) {
+        if (!grid._vx_marking_active) return;
+
+        const rect = grid.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        const cell_width = grid.offsetWidth / size;
+        const cell_height = grid.offsetHeight / size;
+        const col = Math.floor(x / cell_width);
+        const row = Math.floor(y / cell_height);
+
+        const dist_to_v_line = Math.abs(x - (col + 1) * cell_width);
+        const dist_to_h_line = Math.abs(y - (row + 1) * cell_height);
+        const threshold = 12;
+
+        let row_index;
+        let col_index;
+        let kind;
+
+        if (dist_to_h_line < dist_to_v_line && dist_to_h_line < threshold && row < size - 1) {
+            row_index = row;
+            col_index = col;
+            kind = 'h';
+        } else if (dist_to_v_line <= dist_to_h_line && dist_to_v_line < threshold && col < size - 1) {
+            row_index = row;
+            col_index = col;
+            kind = 'v';
+        } else {
+            return;
+        }
+
+        const row2 = kind === 'v' ? row_index : row_index + 1;
+        const col2 = kind === 'v' ? col_index + 1 : col_index;
+
+        if (!Array.isArray(state.marks_board)) {
+            state.marks_board = [];
+        }
+
+        const existing = state.marks_board.find(
+            (mark) => mark.kind === kind && mark.r === row_index && mark.c === col_index
+        );
+
+        if (!existing) {
+            create_or_update_vx_mark(container, size, row_index, col_index, row2, col2, 'V', true);
+            return;
+        }
+
+        if (existing.type === 'V') {
+            create_or_update_vx_mark(container, size, row_index, col_index, row2, col2, 'X', true);
+            return;
+        }
+
+        state.marks_board = state.marks_board.filter(
+            (mark) => !(mark.kind === kind && mark.r === row_index && mark.c === col_index)
+        );
+        invalidate_regions_cache();
+        render_vx_marks_from_state(size, container);
+    });
 }
 
 // VX 数独的有效性检测（用于求解器）：除了常规数独规则外，
@@ -439,7 +488,7 @@ export function is_valid_VX(board, size, row, col, num) {
 
             for (const mark of container.querySelectorAll('.vx-mark[data-key]')) {
                 const key = mark.dataset.key;
-                const type = (mark.dataset.vxType || mark.querySelector('input')?.value || '').toUpperCase();
+                const type = (mark.dataset.vxType || '').toUpperCase();
                 if ((type !== 'V' && type !== 'X') || !key) continue;
 
                 if (key.startsWith('v-')) {

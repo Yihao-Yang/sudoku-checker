@@ -229,6 +229,7 @@ export function set_current_mode(mode) {
         'fortress',
         'clone',
         'exclusion',
+        'inclusion',
         'quadruple',
         'add',
         'five_six',

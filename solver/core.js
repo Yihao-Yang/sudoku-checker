@@ -844,7 +844,13 @@ export function clear_marks() {
     if (!container) return;
     container.querySelectorAll('.vx-mark').forEach(mark => mark.remove());
 
-    if (state.current_mode === 'add' || state.current_mode === 'five_six' || state.current_mode === 'VX') {
+    if (
+        state.current_mode === 'add' ||
+        state.current_mode === 'five_six' ||
+        state.current_mode === 'VX' ||
+        state.current_mode === 'quadruple' ||
+        state.current_mode === 'inclusion'
+    ) {
         state.marks_board = [];
     }
 
@@ -1166,6 +1172,7 @@ export function save_sudoku_as_image(is_puzzle = true, with_watermark = false, w
         'anti_elephant': '无象',
         'exclusion': '排除',
         'quadruple': '四格提示',
+        'inclusion': '包含',
         'add': '加法',
         'product': '乘积',
         'ratio': '比例',
