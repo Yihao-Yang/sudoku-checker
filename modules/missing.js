@@ -1,20 +1,19 @@
 import { 
     show_result, 
-    clear_result, 
-    bold_border, 
     add_Extra_Button,
     create_base_grid,
     create_base_cell,
     add_base_input_handlers,
     handle_key_navigation,
-    fill_solution,
     log_process,
-    backup_original_board
+    backup_original_board,
+    show_generating_timer,
+    hide_generating_timer
 } from '../solver/core.js';
 import { state, set_current_mode } from '../solver/state.js';
 import { solve, invalidate_regions_cache } from '../solver/solver_tool.js';
 import { create_technique_panel } from '../solver/classic.js';
-import { shuffle,get_symmetric_positions } from '../solver/generate.js';
+import { shuffle, generate_puzzle } from '../solver/generate.js';
 
 let is_missing_mode_active = false;
 let missing_cells = [];
@@ -40,46 +39,36 @@ export function create_missing_sudoku(size) {
     log_process('黑格：无需填写数字');
     log_process('');
     log_process('技巧：');
-    // log_process('"变型"：用到变型条件删数的技巧');
     log_process('"_n"后缀：区域内剩余空格数/区块用到的空格数');
-    // log_process('"额外区域"：附加的不可重复区域');
-    // log_process('"特定组合"：受附加条件影响的区域');
     log_process('');
     log_process('出题：');
     log_process('10秒，超1分钟请重启页面或调整限制条件');
     log_process('若手动给的标记不合理可能会被代码忽视');
     log_process('');
     log_process('自动出题：');
-    // log_process('自动添加标记出题');
     log_process('蓝色：自动添加标记出题');
     log_process('绿色：根据给定标记出题（功能未完成）');
-    // state.is_missing_mode = true;
-    // clear_result();
     invalidate_regions_cache();
     missing_cells = [];
-
-    // 清空网格显示区域
-    // const gridDisplay = document.getElementById('gridDisplay');
-    // gridDisplay.innerHTML = '';  // 确保完全清空
 
     // 修改技巧开关 - 关闭不适合缺一门数独的技巧
     state.techniqueSettings = {
         Box_Elimination: true,
         Row_Col_Elimination: true,
-        Box_Block: true,        // 
-        Row_Col_Block: true,    // 
-        Box_Naked_Pair: true,   // 
-        Row_Col_Naked_Pair: true, // 
-        Box_Hidden_Pair: true,  // 
-        Row_Col_Hidden_Pair: true, // 
-        Box_Naked_Triple: true, // 
-        Row_Col_Naked_Triple: true, // 
-        Box_Hidden_Triple: true, // 
-        Row_Col_Hidden_Triple: true, // 
-        All_Quad: false,         // 
-        Cell_Elimination: true,  // 
-        Brute_Force: false,
-        Missing_One: true       // 
+        Box_Block: true,        
+        Box_Pair_Block: true,   // 宫组合区块打开
+        Row_Col_Block: true,    
+        Box_Naked_Pair: true,   
+        Row_Col_Naked_Pair: true, 
+        Box_Hidden_Pair: true,  
+        Row_Col_Hidden_Pair: true, 
+        Box_Naked_Triple: true, 
+        Row_Col_Naked_Triple: true, 
+        Box_Hidden_Triple: true, 
+        Row_Col_Hidden_Triple: true, 
+        All_Quad: false,         
+        Cell_Elimination: true,  
+        Brute_Force: false
     };
         // 唯余法全部默认开启
     for (let i = 1; i <= size; i++) {
@@ -102,9 +91,9 @@ export function create_missing_sudoku(size) {
             const { cell, main_input, candidates_grid } = create_base_cell(row, col, size);
 
             // 添加元素到DOM
-        cell.appendChild(main_input);
-        cell.appendChild(candidates_grid);
-        grid.appendChild(cell);
+            cell.appendChild(main_input);
+            cell.appendChild(candidates_grid);
+            grid.appendChild(cell);
             inputs[row][col] = main_input;
 
             // 添加输入处理
@@ -114,25 +103,15 @@ export function create_missing_sudoku(size) {
             main_input.addEventListener('keydown', (e) => {
                 handle_key_navigation(e, row, col, size, inputs);
             });
-            
-            cell.appendChild(main_input);
-            grid.appendChild(cell);
         }
     }
 
     container.appendChild(grid);
     
     // 添加缺一门数独专属按钮
-
-    extraButtons.innerHTML = '';
-    
-    // 主功能按钮
-    
     extraButtons.innerHTML = '';
     add_Extra_Button('缺一门', () => {create_missing_sudoku(size)});
     add_Extra_Button('添加标记', toggle_marking_mode);
-    // add_Extra_Button('验证唯一性', check_missing_uniqueness);
-    // add_Extra_Button('清除数字', clear_numbers);
     add_Extra_Button('清除标记', clear_marks);
     add_Extra_Button('自动出题', () => generate_missing_puzzle(size));
     
@@ -155,7 +134,7 @@ export function check_missing_uniqueness() {
     }
     
     // 2. 收集当前盘面数据
-    let board = Array.from({ length: size }, (_, i) =>
+    const board = Array.from({ length: size }, (_, i) =>
         Array.from({ length: size }, (_, j) => {
             // 如果是黑格，记为-1
             if (missing_cells.some(c => c.row === i && c.col === j)) {
@@ -175,22 +154,12 @@ export function check_missing_uniqueness() {
         missing_cells
     );
     state.solve_stats.solution_count = solution_count;
-    // const { solution_count, solution } = solve(board, size);
     
-    // 4. 显示结果
-
-
     if (state.solve_stats.solution_count === -1) {
         show_result("当前技巧无法解出");
     } else if (state.solve_stats.solution_count === 0 || state.solve_stats.solution_count === -2) {
         show_result("当前缺一门数独无解。", 'error');
     } else if (solution_count === 1) {
-        // show_result("当前缺一门数独有唯一解！", 'success');
-        
-        // // 可选：填充唯一解
-        // if (confirm("是否要填充唯一解？")) {
-        //     fill_missing_solution(container, solution, size, missing_cells);
-        // }
         // 退出候选数模式
         state.is_candidates_mode = false;
         document.getElementById('toggleCandidatesMode').textContent = '切换候选数模式';
@@ -231,24 +200,22 @@ export function check_missing_uniqueness() {
 /**
  * 生成缺一门数独题目
  */
-export function generate_missing_puzzle(size) {
+export async function generate_missing_puzzle(size) {
+    const start_time = performance.now();
+    show_result('正在生成题目，请稍候...');
+    show_generating_timer();
+
+    // 先让浏览器完成一次重绘，确保计时提示可见
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    try {
     // 重置状态
-    state.box_missing_subsets = {};
-    state.row_missing_subsets = {};
-    state.col_missing_subsets = {};
     invalidate_regions_cache();
 
     let puzzle, solution, missingCells;
 
     // 允许用户自定义分值下限
     let score_lower_limit = 0;
-    // if (typeof window !== 'undefined') {
-    //     const input = window.prompt(
-    //         `请输入你想要的题目分值下限（六宫简单0，普通20，困难40：九宫简单0，普通100，困难200）：`,
-    //         '0'
-    //     );
-    //     score_lower_limit = Number(input) || 0;
-    // }
 
     // 根据分值下限自动设置难度
     let difficulty = 'easy';
@@ -290,37 +257,20 @@ export function generate_missing_puzzle(size) {
         const result = generate_missing_solution(size);
         solution = result.board;
         missingCells = result.missingCells;
-        
-        // 3. 创建可挖洞的盘面副本
-        puzzle = solution.map(row => [...row]);
-        
-        // 4. 尝试挖洞
-        const symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
-        const already_dug = new Set();
-        for (const { row, col } of missingCells) {
-            const symPositions = get_symmetric_positions(row, col, size, symmetry);
-            for (const [r, c] of symPositions) {
-                // 跳过黑格本身
-                if (missingCells.some(cell => cell.row === r && cell.col === c)) continue;
-                // 避免重复挖同一个格
-                const key = `${r},${c}`;
-                if (already_dug.has(key)) continue;
-                puzzle[r][c] = 0;
-                already_dug.add(key);
-            }
-        }
-        const testBoard1 = puzzle.map(row => [...row]);
-        const solveResult1 = missing_solve(testBoard1, size, missingCells, true);
-        if (solveResult1.solution_count !== 1) {
-            // 不是唯一解，重新生成终盘
+
+        // 3. 把缺一门终盘喂给通用出题器，由 generate_puzzle 负责挖洞出题
+        const generated = generate_puzzle(size, score_lower_limit, undefined, solution);
+        if (!generated || !generated.puzzle) {
             continue;
         }
+        puzzle = generated.puzzle;
 
-        const digResult = dig_missing_holes(puzzle, size, missingCells, symmetry);
-        
-        // 5. 验证题目唯一性并显示技巧统计
+        // 4. 二次校验（缺一门求解器口径）
         const testBoard = puzzle.map(row => [...row]);
         const solveResult = missing_solve(testBoard, size, missingCells, true);
+        if (solveResult.solution_count !== 1) {
+            continue;
+        }
 
         // 分值判断（包含用户输入的下限）
         if (solveResult.total_score !== undefined && solveResult.total_score < score_lower_limit) {
@@ -329,16 +279,12 @@ export function generate_missing_puzzle(size) {
             state.silentMode = true; // 恢复静默
             continue;
         }
-        if (digResult !== false) {
-            break; // 挖洞成功，退出循环
-        }
+
+        break;
     }
 
     // 4. 填充到网格
     const container = document.querySelector('.sudoku-container');
-    
-    // 先清除现有标记
-    // clear_marks();
     
     // 设置黑格标记
     missingCells.forEach(({row, col}) => {
@@ -358,34 +304,17 @@ export function generate_missing_puzzle(size) {
     }
     
     backup_original_board();
-    show_result(`已生成${size}宫格${difficulty}难度缺一门数独题目`);
-
-    // 4. 验证题目唯一性并显示技巧统计
-    const testBoard = puzzle.map(row => [...row]);
-    // const testBoard = puzzle.map(row => 
-    //     row.map(cell => cell === 0 ? 
-    //         [...Array(size)].map((_, n) => n + 1) :  // 空格转为全候选数
-    //         cell  // 已有数字保持不变
-    //     )
-    // );
-    const result = missing_solve(testBoard, size, missingCells, true);
-    if (result.technique_counts) {
-        log_process("\n=== 技巧使用统计 ===");
-        for (const [technique, count] of Object.entries(result.technique_counts)) {
-            if (count > 0) {
-                log_process(`${technique}: ${count}次`);
-            }
-        }
-        if (result.total_score !== undefined) {
-            log_process(`总分值: ${result.total_score}`);
-        }
-    }
+    const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
+    show_result(`已生成${size}宫格${difficulty}难度缺一门数独题目（耗时${elapsed}秒）`);
     
     return {
         puzzle,
         solution,
         missingCells
     };
+    } finally {
+        hide_generating_timer();
+    }
 }
 
 /**
@@ -417,7 +346,7 @@ function generate_missing_solution(size) {
                     const nums = shuffle([...Array(size)].map((_, i) => i + 1));
                     
                     for (const num of nums) {
-                        if (isValid_Missing(board, size, row, col, num)) {
+                        if (is_valid_missing(board, size, row, col, num)) {
                             board[row][col] = num;
                             
                             if (backtrack()) {
@@ -446,7 +375,7 @@ function setup_missing_event_listeners() {
     const cells = container.querySelectorAll('.sudoku-cell');
     
     cells.forEach(cell => {
-        cell.addEventListener('click', function(e) {
+        cell.addEventListener('click', function() {
             if (!is_missing_mode_active) return;
             
             const row = parseInt(this.dataset.row);
@@ -461,7 +390,6 @@ function setup_missing_event_listeners() {
  * 切换标记模式
  */
 function toggle_marking_mode() {
-    // const btn = document.querySelector('#extraButtons button:first-child');
     const btns = document.querySelectorAll('#extraButtons button');
     const btn = btns[1]; // 第二个按钮是“添加标记”
     
@@ -511,7 +439,7 @@ function toggle_missing_cell(row, col) {
 /**
  * 验证当前盘面是否有效
  */
-function isValid_Missing(board, size, row, col, num) {
+export function is_valid_missing(board, size, row, col, num) {
     // 如果是黑格，直接返回false（不应该被填充）
     if (board[row][col] === -1) return false;
 
@@ -538,13 +466,7 @@ function isValid_Missing(board, size, row, col, num) {
  * 缺一门数独专用求解器（改进版）
  */
 function missing_solve(board, size, missingCells, silent = false) {
-    // 首先验证当前盘面是否有效
-    // if (!isValidMissingBoard(board, size, missingCells)) {
-    //     return { solution_count: 0, solution: null };
-    // }
-
     if (silent) {
-        // log_process = () => {}; // 静默模式下不输出
         state.silentMode = true;
     }
     else {
@@ -568,9 +490,8 @@ function missing_solve(board, size, missingCells, silent = false) {
         })
     );
 
-    // log_process("1")
     // 调用主求解函数
-    const result = solve(candidateBoard, size, isValid_Missing, state.silentMode);
+    const result = solve(candidateBoard, size, is_valid_missing, state.silentMode);
     
     // 处理结果
     if (result.solution_count === -2) {
@@ -587,7 +508,6 @@ function missing_solve(board, size, missingCells, silent = false) {
         return {
             solution_count: result.solution_count,
             solution: filteredSolution,
-            technique_counts: result.technique_counts,
             total_score: result.total_score
         };
     }
@@ -665,8 +585,6 @@ function validate_missing_cells_count(size) {
  * 清除所有标记，保留数字
  */
 export function clear_marks() {
-    const container = document.querySelector('.sudoku-container');
-    
     missing_cells.forEach(cell => {
         cell.element.style.backgroundColor = '';
         const input = cell.element.querySelector('input');
@@ -677,7 +595,6 @@ export function clear_marks() {
     is_missing_mode_active = false;
     
     // 重置按钮文本
-    // const btn = document.querySelector('#extraButtons button:first-child');
     const btns = document.querySelectorAll('#extraButtons button');
     const btn = btns[1]; // 第二个按钮
     if (btn) btn.textContent = '添加标记';
@@ -732,214 +649,3 @@ function get_box_index(row, col, boxSize) {
     const boxCol = Math.floor(col / boxSize[1]);
     return boxRow * boxSize[1] + boxCol;
 }
-
-const SYMMETRY_TYPES = ['horizontal', 'vertical', 'central', 'diagonal', 'anti-diagonal'];
-
-
-/**
- * 挖洞函数（保留黑格，支持对称挖洞）
- */
-function dig_missing_holes(puzzle, size, missingCells, symmetry = 'none') {
-    // 收集所有可挖洞的位置（非黑格）
-    const positions = [];
-    for (let i = 0; i < size; i++) {
-        for (let j = 0; j < size; j++) {
-            if (!missingCells.some(c => c.row === i && c.col === j)) {
-                positions.push(i * size + j);
-            }
-        }
-    }
-    shuffle(positions);
-
-    let holes_dug = 0;
-    let changed;
-
-    do {
-        changed = false;
-        let best_score = -1;
-        let best_positions_to_dig = null;
-        let best_temp_values = null;
-
-        // 新增：收集本轮所有候选方案及分值
-        const candidates = [];
-
-        // 遍历所有可挖位置，寻找分值最高的方案
-        for (let idx = 0; idx < positions.length; idx++) {
-            const pos = positions[idx];
-            const row = Math.floor(pos / size);
-            const col = pos % size;
-
-            if (puzzle[row][col] === 0) continue;
-
-            // 获取对称位置（过滤掉黑格）
-            const symmetric_positions = get_symmetric_positions(row, col, size, symmetry)
-                .filter(([r, c]) => !missingCells.some(cell => cell.row === r && cell.col === c));
-
-            // 跳过已挖过的格子
-            const positions_to_dig = [ [row, col], ...symmetric_positions ];
-            if (positions_to_dig.some(([r, c]) => puzzle[r][c] === 0)) continue;
-
-            // 临时保存所有位置的数字
-            const temp_values = positions_to_dig.map(([r, c]) => puzzle[r][c]);
-
-            // 预挖洞
-            positions_to_dig.forEach(([r, c]) => puzzle[r][c] = 0);
-
-            // 验证唯一解并计算分值
-            const test_board = puzzle.map(row => [...row]);
-            const result = missing_solve(test_board, size, missingCells, true);
-
-            // 仅考虑唯一解的情况
-            if (result.solution_count === 1 && result.total_score !== undefined) {
-                // candidates.push({
-                //     positions: positions_to_dig.map(([r, c]) => [r, c]),
-                //     score: result.total_score
-                // });
-                if (result.total_score > best_score) {
-                    best_score = result.total_score;
-                    best_positions_to_dig = positions_to_dig.map(([r, c]) => [r, c]);
-                    best_temp_values = [...temp_values];
-                }
-            }
-
-            // 恢复数字
-            positions_to_dig.forEach(([r, c], idx2) => puzzle[r][c] = temp_values[idx2]);
-        }
-
-        // // 输出本轮所有候选方案及分值
-        // if (candidates.length > 0) {
-        //     log_process(`本轮候选挖洞方案分值如下:`);
-        //     candidates.forEach((item, idx) => {
-        //         const pos_str = item.positions.map(([r, c]) => `(${r},${c})`).join(' ');
-        //         const chosen = (item.score === best_score) ? ' <-- 本轮最优' : '';
-        //         log_process(`方案${idx+1}: 挖洞位置: ${pos_str}，分值: ${item.score}${chosen}`);
-        //     });
-        // }
-
-        // 如果本轮有最优挖洞方案，则实际挖洞
-        if (best_positions_to_dig) {
-            best_positions_to_dig.forEach(([r, c]) => puzzle[r][c] = 0);
-            holes_dug += best_positions_to_dig.length;
-            changed = true;
-        }
-    } while (changed);
-
-    // log_process(`生成${size}宫格缺一门数独，提示数: ${size*size-holes_dug-size}，对称模式: ${symmetry}`);
-    log_process(`生成${size}宫格缺一门数独`);
-    return holes_dug;
-}
-
-
-
-// function dig_missing_holes(puzzle, size, missingCells, symmetry = 'none') {
-//     // 收集所有可挖洞的位置（非黑格）
-//     const positions = [];
-//     for (let i = 0; i < size; i++) {
-//         for (let j = 0; j < size; j++) {
-//             if (!missingCells.some(c => c.row === i && c.col === j)) {
-//                 positions.push(i * size + j);
-//             }
-//         }
-//     }
-//     shuffle(positions);
-    
-//     let holesDug = 0;
-//     let changed;
-    
-//     do {
-//         changed = false;
-//         for (let i = 0; i < positions.length; i++) {
-//             const pos = positions[i];
-//             const row = Math.floor(pos / size);
-//             const col = pos % size;
-            
-//             if (puzzle[row][col] === 0) continue;
-            
-//             // 获取对称位置（过滤掉黑格）
-//             const symmetricPositions = get_symmetric_positions(row, col, size, symmetry)
-//                 // .filter(([r, c]) => !missingCells.some(cell => cell.row === r && cell.col === c));
-//             // 检查是否有对称位置是黑格
-//             const hasSymmetricBlackCell = symmetricPositions.some(([r, c]) => 
-//                 missingCells.some(cell => cell.row === r && cell.col === c)
-//             );
-            
-//             // // 如果有对称位置是黑格，则跳过不挖
-//             // if (hasBlackCellInSymmetry) continue;
-
-//             // 如果对称位置是黑格，则直接挖除当前格
-//             // if (hasSymmetricBlackCell) {
-//             //     puzzle[row][col] = 0;
-//             //     holesDug++;
-//             //     changed = true;
-//             //     continue;
-//             // }
-//             if (hasSymmetricBlackCell) {
-//                 // 临时保存数字
-//                 const tempValue = puzzle[row][col];
-                
-//                 // 尝试挖洞
-//                 puzzle[row][col] = 0;
-                
-//                 // 验证唯一解
-//                 const testBoard = puzzle.map(row => [...row]);
-//                 const { solution_count } = missing_solve(
-//                     testBoard, 
-//                     size,
-//                     missingCells,
-//                     true
-//                 );
-                
-//                 if (solution_count === 1) {
-//                     holesDug++;
-//                     changed = true;
-//                     continue; // 成功挖洞，继续下一个位置
-//                 } else {
-//                     return false;
-//                 }
-//             }
-
-//             // // 否则正常处理对称挖洞
-//             // // 过滤掉黑格
-//             // const validSymmetricPositions = symmetricPositions.filter(([r, c]) => 
-//             //     !missingCells.some(cell => cell.row === r && cell.col === c)
-//             // );
-            
-//             // 所有要挖的位置（包括对称位置）
-//             const positionsToDig = [ [row, col], ...symmetricPositions ];
-            
-//             // 临时保存数字
-//             const tempValues = positionsToDig.map(([r, c]) => puzzle[r][c]);
-            
-//             // 尝试挖洞
-//             for (const [r, c] of positionsToDig) {
-//                 puzzle[r][c] = 0;
-//             }
-            
-//             // 验证唯一解
-//             const testBoard = puzzle.map(row => [...row]);
-//             const { solution_count } = missing_solve(
-//                 testBoard, 
-//                 size,
-//                 missingCells,
-//                 true
-//             );
-            
-//             if (solution_count === 1) {
-//                 holesDug += positionsToDig.length;
-//                 changed = true;
-//             } else {
-//                 // 恢复数字
-//                 positionsToDig.forEach(([r, c], idx) => {
-//                     puzzle[r][c] = tempValues[idx];
-//                 });
-//             }
-//         }
-//     } while (changed);
-    
-//     // log_process(`实际挖洞数: ${holesDug}，对称模式: ${symmetry}`);
-//     // log_process(`生成${size}宫格缺一门数独，实际挖洞数: ${holesDug}，对称模式: ${symmetry}`);
-//     log_process(`生成${size}宫格缺一门数独，提示数: ${size*size-holesDug-size}，对称模式: ${symmetry}`);
-//     return holesDug;
-// }
-
-// ... rest of existing code ...

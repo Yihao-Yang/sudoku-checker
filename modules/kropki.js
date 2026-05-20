@@ -16,7 +16,7 @@ import {
 import { state, set_current_mode } from '../solver/state.js';
 import { create_technique_panel } from '../solver/classic.js';
 import { generate_solved_board_brute_force, generate_puzzle } from '../solver/generate.js';
-import { get_all_regions, invalidate_regions_cache } from '../solver/solver_tool.js';
+import { get_all_regions, invalidate_regions_cache, sync_marks_board_from_dom } from '../solver/solver_tool.js';
 
 const MARK_WIDTH = 32;
 const MARK_HEIGHT = 26;
@@ -50,6 +50,7 @@ export function create_kropki_sudoku(size) {
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
+    state.marks_board = [];
     invalidate_regions_cache();
 
     state.techniqueSettings = {
@@ -430,6 +431,28 @@ function create_or_update_kropki_mark(container, size, row1, col1, row2, col2, t
     if (!orientation) return { mark: null, created: false };
 
     const normalized_type = (type === 'W' ? 'W' : 'B');
+
+    if (!Array.isArray(state.marks_board)) {
+        state.marks_board = [];
+    }
+    const stateIndex = state.marks_board.findIndex((m) =>
+        m &&
+        m.kind === orientation.orientation &&
+        m.r === orientation.row &&
+        m.c === orientation.col
+    );
+    const created = stateIndex === -1;
+    if (created) {
+        state.marks_board.push({
+            kind: orientation.orientation,
+            r: orientation.row,
+            c: orientation.col,
+            type: normalized_type,
+        });
+    } else {
+        state.marks_board[stateIndex].type = normalized_type;
+    }
+
     const grid = container.querySelector('.sudoku-grid');
     if (!grid) return { mark: null, created: false };
 
@@ -451,7 +474,6 @@ function create_or_update_kropki_mark(container, size, row1, col1, row2, col2, t
     }
 
     let mark = container.querySelector(`.vx-mark[data-key="${key}"]`);
-    const created = !mark;
 
     if (!mark) {
         mark = document.createElement('div');
@@ -489,6 +511,13 @@ function create_or_update_kropki_mark(container, size, row1, col1, row2, col2, t
                 return;
             }
 
+            state.marks_board = Array.isArray(state.marks_board)
+                ? state.marks_board.filter((m) =>
+                    !(m && m.kind === orientation.orientation && m.r === orientation.row && m.c === orientation.col)
+                )
+                : [];
+            invalidate_regions_cache();
+
             mark.remove();
         });
 
@@ -518,6 +547,8 @@ function create_or_update_kropki_mark(container, size, row1, col1, row2, col2, t
         mark.classList.add('kropki-mark-highlight');
         setTimeout(() => mark.classList.remove('kropki-mark-highlight'), 200);
     }
+
+    invalidate_regions_cache();
 
     return { mark, created };
 }
@@ -554,6 +585,31 @@ function parse_mark_key(key) {
         return { row1: row, col1: col, row2: row + 1, col2: col };
     }
     return null;
+}
+
+function get_kropki_marks(size) {
+    const marksFromState = Array.isArray(state.marks_board)
+        ? state.marks_board.filter((m) =>
+            m &&
+            (m.kind === 'v' || m.kind === 'h') &&
+            Number.isInteger(m.r) &&
+            Number.isInteger(m.c) &&
+            (m.type === 'B' || m.type === 'W')
+        )
+        : [];
+
+    if (marksFromState.length > 0) {
+        return marksFromState;
+    }
+
+    const container = get_kropki_container();
+    return sync_marks_board_from_dom(size, container).filter((m) =>
+        m &&
+        (m.kind === 'v' || m.kind === 'h') &&
+        Number.isInteger(m.r) &&
+        Number.isInteger(m.c) &&
+        (m.type === 'B' || m.type === 'W')
+    );
 }
 
 function read_mark_type(mark) {
@@ -640,26 +696,27 @@ export function is_valid_kropki(board, size, row, col, num) {
         }
     }
 
-    // 2) 收集界面上的标记约束（B/W）
-    const container = document.querySelector('.sudoku-container');
+    // 2) 收集标记约束（B/W），优先使用 state
     const kropkiConstraints = [];
     const kropkiConstraintKeySet = new Set();
-    if (container) {
-        const marks = Array.from(container.querySelectorAll('.vx-mark[data-key]'));
-        for (const mark of marks) {
-            const key = mark.dataset.key;
-            const pair = parse_mark_key(key);
-            const type = read_mark_type(mark); // 'B' 或 'W' 或 null
-            if (!pair || !type) continue;
-            const normalizedKey = normalize_pair_key(pair.row1, pair.col1, pair.row2, pair.col2);
-            kropkiConstraints.push({
-                cell1: { row: pair.row1, col: pair.col1 },
-                cell2: { row: pair.row2, col: pair.col2 },
-                type,
-                key: normalizedKey,
-            });
-            kropkiConstraintKeySet.add(normalizedKey);
+    const marks = get_kropki_marks(size);
+    for (const mark of marks) {
+        let pair = null;
+        if (mark.kind === 'v') {
+            pair = { row1: mark.r, col1: mark.c, row2: mark.r, col2: mark.c + 1 };
+        } else if (mark.kind === 'h') {
+            pair = { row1: mark.r, col1: mark.c, row2: mark.r + 1, col2: mark.c };
         }
+        if (!pair || (mark.type !== 'B' && mark.type !== 'W')) continue;
+
+        const normalizedKey = normalize_pair_key(pair.row1, pair.col1, pair.row2, pair.col2);
+        kropkiConstraints.push({
+            cell1: { row: pair.row1, col: pair.col1 },
+            cell2: { row: pair.row2, col: pair.col2 },
+            type: mark.type,
+            key: normalizedKey,
+        });
+        kropkiConstraintKeySet.add(normalizedKey);
     }
 
     // 3) 对涉及标记对的检查：若另一格已确定数字，则当前填入数字必须满足对应关系

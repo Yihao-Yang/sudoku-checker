@@ -1,6 +1,6 @@
 import { state, set_current_mode } from '../solver/state.js';
 import { show_result, log_process, clear_result, clear_outer_clues, bold_border, add_Extra_Button, create_base_grid, backup_original_board, restore_original_board, handle_key_navigation, create_base_cell, clear_all_inputs, clear_marks, show_generating_timer, hide_generating_timer } from '../solver/core.js';
-import { solve, isValid, get_all_regions, invalidate_regions_cache } from '../solver/solver_tool.js';
+import { solve, isValid, get_all_regions, invalidate_regions_cache, sync_marks_board_from_dom } from '../solver/solver_tool.js';
 import { create_technique_panel } from '../solver/classic.js';
 import { generate_puzzle, generate_solved_board_brute_force } from '../solver/generate.js';
 
@@ -28,6 +28,7 @@ export function create_exclusion_sudoku(size) {
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
+    state.marks_board = [];
     invalidate_regions_cache();
 
     // 技巧设置（可根据具体规则调整）
@@ -308,11 +309,11 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
     const start_time = performance.now();
     clear_all_inputs();
     clear_marks();
+    state.marks_board = [];
     log_process('', true);
 
     const container = document.querySelector('.sudoku-container');
     if (!container) return;
-    Array.from(container.querySelectorAll('.vx-mark')).forEach(mark => mark.remove());
     invalidate_regions_cache();
 
     // 先生成终盘
@@ -338,6 +339,34 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
         'vertical',
     ];
     const symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
+
+    const has_exclusion_mark = (row, col) =>
+        Array.isArray(state.marks_board) &&
+        state.marks_board.some((m) => m && m.kind === 'x' && m.r === row && m.c === col);
+
+    const upsert_exclusion_mark = (row, col, clue = '') => {
+        if (!Array.isArray(state.marks_board)) {
+            state.marks_board = [];
+        }
+        const index = state.marks_board.findIndex((m) =>
+            m && m.kind === 'x' && m.r === row && m.c === col
+        );
+        const next = { kind: 'x', r: row, c: col, clue: String(clue ?? '') };
+        if (index === -1) {
+            state.marks_board.push(next);
+            return;
+        }
+        state.marks_board[index] = { ...state.marks_board[index], ...next };
+    };
+
+    const remove_exclusion_marks_by_keys = (keys = []) => {
+        if (!Array.isArray(state.marks_board) || keys.length === 0) return;
+        const keySet = new Set(keys.filter(Boolean));
+        state.marks_board = state.marks_board.filter((m) => {
+            if (!m || m.kind !== 'x' || !Number.isInteger(m.r) || !Number.isInteger(m.c)) return true;
+            return !keySet.has(get_exclusion_mark_key(m.r, m.c));
+        });
+    };
 
     function get_symmetric(row, col, size, symmetry) {
         switch (symmetry) {
@@ -371,50 +400,6 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
         return res;
     }
 
-    // 在交点添加一个排除提示（单数字，沿用现UI与校验）
-    function add_exclusion_mark_with_value(row, col, size, container, digit) {
-        const grid = container.querySelector('.sudoku-grid');
-        if (!grid) return null;
-        const cellWidth = grid.offsetWidth / size;
-        const cellHeight = grid.offsetHeight / size;
-        const gridOffsetLeft = grid.offsetLeft;
-        const gridOffsetTop = grid.offsetTop;
-        const crossX = (col + 1) * cellWidth;
-        const crossY = (row + 1) * cellHeight;
-
-        const mark = document.createElement('div');
-        mark.className = 'vx-mark';
-        mark.dataset.key = get_mark_key(row, col); // 新增：设置位置键 e-row+1-col+1
-        mark.style.position = 'absolute';
-        mark.style.left = `${gridOffsetLeft + crossX - 15}px`;
-        mark.style.top = `${gridOffsetTop + crossY - 15}px`;
-
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.maxLength = 1;
-        input.value = String(digit);
-        input.style.width = '28px';
-        input.style.height = '28px';
-        input.style.fontSize = '22px';
-        input.style.textAlign = 'center';
-        input.style.border = 'none';
-        input.style.background = 'transparent';
-        input.style.outline = 'none';
-        input.style.position = 'absolute';
-        input.style.left = '50%';
-        input.style.top = '50%';
-        input.style.transform = 'translate(-50%, -50%)';
-        input.style.color = '#333';
-
-        mark.appendChild(input);
-        // 双击删除标记，沿用原交互
-        mark.ondblclick = function(e) { e.stopPropagation(); mark.remove(); };
-        input.ondblclick = function(e) { e.stopPropagation(); mark.remove(); };
-
-        container.appendChild(mark);
-        return mark;
-    }
-
     function is_valid_position(row, col) {
         return row >= 0 && row < size - 1 && col >= 0 && col < size - 1;
     }
@@ -426,89 +411,75 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
     log_process(`正在生成题目，请稍候...`);
     log_process('九宫：1分钟，超时请重启页面或调整限制条件');
     show_result(`正在生成题目，请稍候...`);
+    setTimeout(() => {
         while (marks_added < num_marks) {
-            let row = Math.floor(Math.random() * (size - 1));
-            let col = Math.floor(Math.random() * (size - 1));
+            const row = Math.floor(Math.random() * (size - 1));
+            const col = Math.floor(Math.random() * (size - 1));
             const [sym_row, sym_col] = get_symmetric(row, col, size, symmetry);
 
             const key = `${row}-${col}`;
             const sym_key = `${sym_row}-${sym_col}`;
 
-            // 位置有效、未重复、且不在右/下边线
-            if (!is_valid_position(row, col) || positions_set.has(key)) continue;
-            if (!is_valid_position(sym_row, sym_col) || positions_set.has(sym_key)) continue;
+            if (!is_valid_position(row, col) || !is_valid_position(sym_row, sym_col)) continue;
+            if (positions_set.has(key) || positions_set.has(sym_key)) continue;
+            if (has_exclusion_mark(row, col) || has_exclusion_mark(sym_row, sym_col)) continue;
 
-            const addedMarks = [];
+            const addedKeys = [];
             const mainExcluded = calculate_excluded_digits(row, col, solvedBoard);
             if (!mainExcluded || mainExcluded.length === 0) continue;
             const mainDigit = mainExcluded[Math.floor(Math.random() * mainExcluded.length)];
-            const mainMark = add_exclusion_mark_with_value(row, col, size, container, mainDigit);
-            if (!mainMark) continue;
-            addedMarks.push(mainMark);
+            upsert_exclusion_mark(row, col, String(mainDigit));
+            addedKeys.push(get_exclusion_mark_key(row, col));
 
             const symmetric_is_same = row === sym_row && col === sym_col;
             if (!symmetric_is_same) {
                 const symExcluded = calculate_excluded_digits(sym_row, sym_col, solvedBoard);
                 if (!symExcluded || symExcluded.length === 0) {
-                    // 回滚
-                    for (const m of addedMarks) if (m && m.parentNode) m.remove();
+                    remove_exclusion_marks_by_keys(addedKeys);
                     continue;
                 }
                 const symDigit = symExcluded[Math.floor(Math.random() * symExcluded.length)];
-                const symMark = add_exclusion_mark_with_value(sym_row, sym_col, size, container, symDigit);
-                if (!symMark) {
-                    for (const m of addedMarks) if (m && m.parentNode) m.remove();
-                    continue;
-                }
-                addedMarks.push(symMark);
+                upsert_exclusion_mark(sym_row, sym_col, String(symDigit));
+                addedKeys.push(get_exclusion_mark_key(sym_row, sym_col));
             }
 
-            // 检查是否有解/唯一解
             backup_original_board();
-            const solverBoard = Array.from({ length: size }, () =>
-                Array.from({ length: size }, () => [...Array(size)].map((_, n) => n + 1))
-            );
-            const result = solve(solverBoard, size, is_valid_exclusion, true);
-            // log_process(`尝试添加圆圈位置：(${row},${col})${!symmetric_is_same ? ` 和 (${sym_row},${sym_col})` : ''}，解的数量：${result.solution_count}`);
+            const result = solve(create_solver_board(size), size, is_valid_exclusion, true);
+            restore_original_board();
 
             if (result.solution_count === 0 || result.solution_count === -2) {
-                // 无解，撤销刚添加的标记
-                restore_original_board();
-                for (const m of addedMarks) if (m && m.parentNode) m.remove();
+                remove_exclusion_marks_by_keys(addedKeys);
                 continue;
             }
 
-            restore_original_board();
-            marks_added += addedMarks.length;
+            marks_added += addedKeys.length;
             positions_set.add(key);
             if (!symmetric_is_same) positions_set.add(sym_key);
 
-            // 找到唯一解时提前停止（沿用原逻辑）
             if (result.solution_count === 1) {
                 break;
             }
         }
-    show_generating_timer();
 
-    setTimeout(() => {
+        render_exclusion_marks_from_state(size, container);
 
         log_process('', true)
         log_process(`排除数独生成完成`);
         log_process(`点击检查唯一性查看技巧和分值`);
-        // const board = Array.from({ length: size }, () => Array.from({ length: size }, () => 0));
         const { puzzle: puzzle } = generate_puzzle(size, score_lower_limit, holes_count, solvedBoard);
-        // 新增：按对称性优化标记
-        optimize_marks(container, size, symmetry);
-        generate_puzzle(size, score_lower_limit, holes_count, puzzle);
+        optimize_marks_state(size, symmetry);
+        render_exclusion_marks_from_state(size, container);
+        // generate_puzzle(size, score_lower_limit, holes_count, puzzle);
         hide_generating_timer();
         const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
         show_result(`排除数独生成完成，耗时${elapsed}秒）`);
     }, 0);
+    show_generating_timer();
 
-    // // 生成题目（洞数与评分沿用原参数）
-    // generate_puzzle(size, score_lower_limit, holes_count);
-    function get_mark_key(row, col) {
-        return `e-${row + 1}-${col + 1}`;
+    function create_solver_board(size) {
+        return Array.from({ length: size }, () =>
+            Array.from({ length: size }, () => [...Array(size)].map((_, n) => n + 1))
+        );
     }
     
     function create_current_solver_board(size) {
@@ -532,52 +503,53 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
         return board;
     }
     
-    function optimize_marks(container, size, symmetry) {
+    function optimize_marks_state(size, symmetry) {
         log_process('开始优化标记，删除无用条件...');
-        const groups = group_marks_by_symmetry(container, size, symmetry);
+        const groups = group_mark_keys_by_symmetry(size, symmetry);
         let removed = 0;
-    
+
         for (const group of groups) {
-            const removedMarks = temporarily_remove_marks(container, group.keys);
+            const removedMarks = temporarily_remove_marks_state(group.keys);
             backup_original_board();
-            // 使用当前出好的题（包含给定数）的盘面进行唯一性检查
             const board = create_current_solver_board(size);
             const result = solve(board, size, is_valid_exclusion, true);
             restore_original_board();
-    
+
             if (result.solution_count === 1) {
-                permanently_remove_marks(removedMarks);
                 removed += removedMarks.length;
             } else {
-                restore_marks(container, removedMarks);
+                restore_marks_state(removedMarks);
             }
         }
-    
+
         log_process(`优化完成，共删除 ${removed} 个标记`);
     }
-    
-    function group_marks_by_symmetry(container, size, symmetry) {
-        const marks = Array.from(container.querySelectorAll('.vx-mark[data-key^="e-"]'));
+
+    function group_mark_keys_by_symmetry(size, symmetry) {
+        const marks = Array.isArray(state.marks_board)
+            ? state.marks_board.filter((m) =>
+                m && m.kind === 'x' && Number.isInteger(m.r) && Number.isInteger(m.c)
+            )
+            : [];
         const groups = [];
         const visited = new Set();
-    
+        const keySet = new Set(marks.map((m) => get_exclusion_mark_key(m.r, m.c)));
+
         for (const mark of marks) {
-            const key = mark.dataset.key;
+            const key = get_exclusion_mark_key(mark.r, mark.c);
             if (visited.has(key)) continue;
-    
-            const [, rowStr, colStr] = key.split('-');
-            const baseRow = parseInt(rowStr, 10) - 1;
-            const baseCol = parseInt(colStr, 10) - 1;
-    
+
+            const baseRow = mark.r;
+            const baseCol = mark.c;
             const [symRow, symCol] = get_symmetric(baseRow, baseCol, size, symmetry);
             if (symRow < 0 || symRow >= size - 1 || symCol < 0 || symCol >= size - 1) {
                 groups.push({ keys: [key] });
                 visited.add(key);
                 continue;
             }
-    
-            const symKey = get_mark_key(symRow, symCol);
-            if (symKey && symKey !== key && marks.some(m => m.dataset.key === symKey) && !visited.has(symKey)) {
+
+            const symKey = get_exclusion_mark_key(symRow, symCol);
+            if (symKey && symKey !== key && keySet.has(symKey) && !visited.has(symKey)) {
                 groups.push({ keys: [key, symKey] });
                 visited.add(symKey);
             } else {
@@ -587,36 +559,148 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
         }
         return groups;
     }
-    
-    function temporarily_remove_marks(container, keys = []) {
-        const removed = [];
-        for (const key of keys.filter(Boolean)) {
-            const mark = container.querySelector(`.vx-mark[data-key="${key}"]`);
-            if (!mark) continue;
-            const placeholder = document.createElement('div');
-            placeholder.style.display = 'none';
-            placeholder.className = 'vx-mark-placeholder';
-            mark.parentNode.insertBefore(placeholder, mark);
-            removed.push({ element: mark, placeholder });
-            mark.remove();
+
+    function temporarily_remove_marks_state(keys = []) {
+        if (!Array.isArray(state.marks_board)) {
+            state.marks_board = [];
         }
+        const keySet = new Set(keys.filter(Boolean));
+        const removed = [];
+        const next = [];
+        for (const m of state.marks_board) {
+            if (m && m.kind === 'x' && Number.isInteger(m.r) && Number.isInteger(m.c)) {
+                const key = get_exclusion_mark_key(m.r, m.c);
+                if (keySet.has(key)) {
+                    removed.push(m);
+                    continue;
+                }
+            }
+            next.push(m);
+        }
+        state.marks_board = next;
         return removed;
     }
-    
-    function restore_marks(container, removedMarks) {
-        for (const info of removedMarks) {
-            if (info.placeholder && info.placeholder.parentNode) {
-                info.placeholder.parentNode.replaceChild(info.element, info.placeholder);
-            }
+
+    function restore_marks_state(removedMarks) {
+        for (const m of removedMarks || []) {
+            if (!m || m.kind !== 'x' || !Number.isInteger(m.r) || !Number.isInteger(m.c)) continue;
+            const clue = typeof m.clue === 'string' ? m.clue : '';
+            upsert_exclusion_mark(m.r, m.c, clue);
         }
     }
-    
-    function permanently_remove_marks(removedMarks) {
-        for (const info of removedMarks) {
-            if (info.placeholder && info.placeholder.parentNode) {
-                info.placeholder.remove();
-            }
+}
+
+function get_exclusion_mark_key(row, col) {
+    return `x-${row + 1}-${col + 1}`;
+}
+
+function get_exclusion_marks(size) {
+    const marksFromState = Array.isArray(state.marks_board)
+        ? state.marks_board.filter((m) =>
+            m && m.kind === 'x' && Number.isInteger(m.r) && Number.isInteger(m.c)
+        )
+        : [];
+    if (marksFromState.length > 0) {
+        return marksFromState;
+    }
+
+    const container = document.querySelector('.sudoku-container');
+    return sync_marks_board_from_dom(size, container).filter((m) =>
+        m && m.kind === 'x' && Number.isInteger(m.r) && Number.isInteger(m.c)
+    );
+}
+
+function parse_exclusion_mark_nums(mark, size) {
+    const clue = typeof mark?.clue === 'string' ? mark.clue.trim() : '';
+    if (!/^\d+$/.test(clue)) return [];
+
+    const nums = [];
+    for (const ch of clue) {
+        const n = parseInt(ch, 10);
+        if (!isNaN(n) && n >= 1 && n <= size) {
+            nums.push(n);
         }
+    }
+    return nums;
+}
+
+function render_exclusion_marks_from_state(size, container = document.querySelector('.sudoku-container')) {
+    if (!container) return;
+
+    if (!Array.isArray(state.marks_board)) {
+        state.marks_board = [];
+    }
+
+    const grid = container.querySelector('.sudoku-grid');
+    if (!grid) return;
+
+    Array.from(container.querySelectorAll('.vx-mark')).forEach((m) => m.remove());
+    const marks = state.marks_board.filter((m) =>
+        m && m.kind === 'x' && Number.isInteger(m.r) && Number.isInteger(m.c)
+    );
+
+    const cellWidth = grid.offsetWidth / size;
+    const cellHeight = grid.offsetHeight / size;
+    const gridOffsetLeft = grid.offsetLeft;
+    const gridOffsetTop = grid.offsetTop;
+
+    for (const markData of marks) {
+        const row = markData.r;
+        const col = markData.c;
+        const key = get_exclusion_mark_key(row, col);
+        const crossX = (col + 1) * cellWidth;
+        const crossY = (row + 1) * cellHeight;
+
+        const mark = document.createElement('div');
+        mark.className = 'vx-mark';
+        mark.dataset.key = key;
+        mark.style.position = 'absolute';
+        mark.style.left = `${gridOffsetLeft + crossX - 15}px`;
+        mark.style.top = `${gridOffsetTop + crossY - 15}px`;
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.maxLength = size;
+        input.value = typeof markData.clue === 'string' ? markData.clue : '';
+        input.style.width = '28px';
+        input.style.height = '28px';
+        input.style.fontSize = '22px';
+        input.style.textAlign = 'center';
+        input.style.border = 'none';
+        input.style.background = 'transparent';
+        input.style.outline = 'none';
+        input.style.position = 'absolute';
+        input.style.left = '50%';
+        input.style.top = '50%';
+        input.style.transform = 'translate(-50%, -50%)';
+        input.style.color = '#333';
+
+        input.addEventListener('input', function() {
+            const regex = new RegExp(`[^1-${size}]`, 'g');
+            this.value = this.value.replace(regex, '');
+
+            const index = state.marks_board.findIndex((m) =>
+                m && m.kind === 'x' && m.r === row && m.c === col
+            );
+            if (index !== -1) {
+                state.marks_board[index].clue = this.value;
+                invalidate_regions_cache();
+            }
+        });
+
+        const removeCurrentMark = (e) => {
+            e.stopPropagation();
+            state.marks_board = state.marks_board.filter((m) =>
+                !(m && m.kind === 'x' && m.r === row && m.c === col)
+            );
+            render_exclusion_marks_from_state(size, container);
+            invalidate_regions_cache();
+        };
+        mark.ondblclick = removeCurrentMark;
+        input.ondblclick = removeCurrentMark;
+
+        mark.appendChild(input);
+        container.appendChild(mark);
     }
 }
 
@@ -651,92 +735,42 @@ function add_exclusion_mark(size) {
         const dist = Math.sqrt((x - crossX) ** 2 + (y - crossY) ** 2);
         if (dist > 12) return;
 
-        const gridOffsetLeft = grid.offsetLeft;
-        const gridOffsetTop = grid.offsetTop;
+        const markRow = row - 1;
+        const markCol = col - 1;
+        if (markRow < 0 || markRow >= size - 1 || markCol < 0 || markCol >= size - 1) return;
 
-        // 防止重复添加同一交点标记
-        const marks = Array.from(container.querySelectorAll('.vx-mark'));
-        if (marks.some(m => Math.abs(parseInt(m.style.left) - (gridOffsetLeft + crossX - 15)) < 2 &&
-                            Math.abs(parseInt(m.style.top) - (gridOffsetTop + crossY - 15)) < 2)) {
-            return;
+        if (!Array.isArray(state.marks_board)) {
+            state.marks_board = [];
         }
+        const exists = state.marks_board.some((m) =>
+            m && m.kind === 'x' && m.r === markRow && m.c === markCol
+        );
+        if (exists) return;
 
-        const mark = document.createElement('div');
-        mark.className = 'vx-mark';
-        mark.style.position = 'absolute';
-        mark.style.left = `${gridOffsetLeft + crossX - 15}px`;
-        mark.style.top = `${gridOffsetTop + crossY - 15}px`;
+        state.marks_board.push({ kind: 'x', r: markRow, c: markCol, clue: '' });
+        render_exclusion_marks_from_state(size, container);
+        invalidate_regions_cache();
 
-        // 创建数字输入框
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.maxLength = 1;
-        input.style.width = '28px';
-        input.style.height = '28px';
-        input.style.fontSize = '22px';
-        input.style.textAlign = 'center';
-        input.style.border = 'none';
-        input.style.background = 'transparent';
-        input.style.outline = 'none';
-        input.style.position = 'absolute';
-        input.style.left = '50%';
-        input.style.top = '50%';
-        input.style.transform = 'translate(-50%, -50%)';
-        input.style.color = '#333';
-
-        input.addEventListener('input', function() {
-            const max_value = size;
-            const regex = new RegExp(`[^1-${max_value}]`, 'g');
-            this.value = this.value.replace(regex, '');
-        });
-
-        // 双击圆圈或输入框删除标记
-        mark.ondblclick = function(e) {
-            e.stopPropagation();
-            mark.remove();
-        };
-        input.ondblclick = function(e) {
-            e.stopPropagation();
-            mark.remove();
-        };
-
-        mark.appendChild(input);
-        container.appendChild(mark);
-        // 新增：自动聚焦输入框
-        input.focus();
+        const key = get_exclusion_mark_key(markRow, markCol);
+        const input = container.querySelector(`.vx-mark[data-key="${key}"] input`);
+        input?.focus();
     });
 
 }
 
 // 新增：应用所有排除标记，移除交点四格的候选数
 export function apply_exclusion_marks(board, size) {
-    const container = document.querySelector('.sudoku-container');
-    const marks = container ? container.querySelectorAll('.vx-mark') : [];
+    const marks = get_exclusion_marks(size);
     for (const mark of marks) {
-        const input = mark.querySelector('input');
-        const value = input && input.value.trim();
-        if (!value || !/^\d+$/.test(value)) continue;
-        // 支持多个数字
-        const excluded_nums = value.split('').map(Number);
-
-        const left = parseInt(mark.style.left);
-        const top = parseInt(mark.style.top);
-
-        const grid = container.querySelector('.sudoku-grid');
-        const grid_offset_left = grid.offsetLeft;
-        const grid_offset_top = grid.offsetTop;
-        const cell_width = grid.offsetWidth / size;
-        const cell_height = grid.offsetHeight / size;
-
-        const col_mark = Math.round((left - grid_offset_left + 15) / cell_width);
-        const row_mark = Math.round((top - grid_offset_top + 15) / cell_height);
+        const excluded_nums = parse_exclusion_mark_nums(mark, size);
+        if (excluded_nums.length === 0) continue;
 
         // 四个相邻格子的坐标
         const positions = [
-            [row_mark - 1, col_mark - 1],
-            [row_mark - 1, col_mark],
-            [row_mark, col_mark - 1],
-            [row_mark, col_mark]
+            [mark.r, mark.c],
+            [mark.r, mark.c + 1],
+            [mark.r + 1, mark.c],
+            [mark.r + 1, mark.c + 1]
         ];
 
         for (const [r, c] of positions) {
@@ -765,43 +799,25 @@ export function is_valid_exclusion(board, size, row, col, num) {
         }
     }
 
-    // // 2. 排除标记判断
-    // const container = document.querySelector('.sudoku-container');
-    // const marks = container ? container.querySelectorAll('.vx-mark') : [];
-    // for (const mark of marks) {
-    //     const input = mark.querySelector('input');
-    //     const value = input && input.value.trim();
-    //     if (!value || !/^\d+$/.test(value)) continue;
-    //     const excluded_num = parseInt(value);
+    // 2. 排除标记判断
+    const marks = get_exclusion_marks(size);
+    for (const mark of marks) {
+        const excluded_nums = parse_exclusion_mark_nums(mark, size);
+        if (excluded_nums.length === 0) continue;
 
-    //     // 计算交点对应的行列
-    //     const left = parseInt(mark.style.left);
-    //     const top = parseInt(mark.style.top);
+        const positions = [
+            [mark.r, mark.c],
+            [mark.r, mark.c + 1],
+            [mark.r + 1, mark.c],
+            [mark.r + 1, mark.c + 1]
+        ];
 
-    //     const grid = container.querySelector('.sudoku-grid');
-    //     const grid_offset_left = grid.offsetLeft;
-    //     const grid_offset_top = grid.offsetTop;
-    //     const cell_width = grid.offsetWidth / size;
-    //     const cell_height = grid.offsetHeight / size;
-
-    //     const col_mark = Math.round((left - grid_offset_left + 15) / cell_width);
-    //     const row_mark = Math.round((top - grid_offset_top + 15) / cell_height);
-
-    //     // 四个相邻格子的坐标
-    //     const positions = [
-    //         [row_mark - 1, col_mark - 1],
-    //         [row_mark - 1, col_mark],
-    //         [row_mark, col_mark - 1],
-    //         [row_mark, col_mark]
-    //     ];
-
-    //     // 如果当前格子在交点四格内，且填入被排除数字，则不合法
-    //     for (const [r, c] of positions) {
-    //         if (r === row && c === col && num === excluded_num) {
-    //             return false;
-    //         }
-    //     }
-    // }
+        for (const [r, c] of positions) {
+            if (r === row && c === col && excluded_nums.includes(num)) {
+                return false;
+            }
+        }
+    }
 
     return true;
 }

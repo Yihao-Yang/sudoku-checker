@@ -31,6 +31,22 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
     state.clues_board = null;
     invalidate_regions_cache();
     const container = document.querySelector('.sudoku-container');
+
+    const dom_black_template = (() => {
+        if (state.current_mode !== 'missing' || !container) return null;
+        let has_black_cell = false;
+        const template = Array.from({ length: size }, (_, r) =>
+            Array.from({ length: size }, (_, c) => {
+                const input = container.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
+                if (input && input.disabled) {
+                    has_black_cell = true;
+                    return -1;
+                }
+                return 0;
+            })
+        );
+        return has_black_cell ? template : null;
+    })();
     if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
         state.clues_board = Array.from({ length: size + 2 }, (_, i) =>
             Array.from({ length: size + 2 }, (_, j) => {
@@ -109,9 +125,11 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
                 // log_process(solution);
                 // log_process('使用外部传入的带边界终盘，已去除边界并作为终盘使用...');
             } else {
+            // log_process('随便说点啥...');
                 // 尺寸不匹配，退回生成终盘
                 log_process('传入的外部终盘尺寸不匹配，改为自动生成终盘...');
-                solution = generate_solution(size, existing_numbers, symmetry);
+                const seed_board = dom_black_template ? dom_black_template.map(row => [...row]) : null;
+                solution = generate_solution(size, existing_numbers, symmetry, seed_board);
                 if (!solution) {
                     log_process('生成终盘失败，重试...');
                     continue;
@@ -122,10 +140,10 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
             // // solution = generate_solution(size, existing_numbers, symmetry, pre_solved_board);
             // // log_process(solution);
             // // log_process('', true);
-            // log_process('使用外部传入的终盘（跳过终盘生成）...');
         } else {
             // 生成终盘
-            solution = generate_solution(size, existing_numbers, symmetry);
+            const seed_board = dom_black_template ? dom_black_template.map(row => [...row]) : null;
+            solution = generate_solution(size, existing_numbers, symmetry, seed_board);
             // log_process(solution
             //     .map(row => row.map(cell => (cell === 0 ? '.' : cell)).join(''))
             //     .join('')
@@ -186,14 +204,18 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
                         return 0; // 边界填充为 0
                     }
                     const cell = puzzle[i - 1][j - 1];
-                    return cell === 0
+                    return cell === -1
+                        ? -1
+                        : cell === 0
                         ? [...Array(size)].map((_, n) => n + 1)
                         : cell;
                 })
             );
         } else {
             test_board = puzzle.map(row =>
-                row.map(cell => cell === 0
+                row.map(cell => cell === -1
+                    ? -1
+                    : cell === 0
                     ? [...Array(size)].map((_, n) => n + 1)
                     : cell
                 )
@@ -223,6 +245,10 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
             const col = isBorderedMode ? j + 1 : j;
             const input = container.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
             if (input) {
+                if ((state.current_mode === 'missing' && input.disabled) || puzzle[i][j] === -1) {
+                    input.value = '';
+                    continue;
+                }
                 input.value = puzzle[i][j] || '';
             }
         }
@@ -526,23 +552,48 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
         use_external_board = true;
         // log_process("未提供终盘，已自动生成一个终盘用于指导给数");
     } else if (pre_solved_board && Array.isArray(pre_solved_board) && pre_solved_board.length === sudoku_size) {
-        // 验证提供的终盘是否是一个完整的解
+        // 验证提供的终盘是否完整
         let is_complete = true;
+        const is_missing_mode = state.current_mode === 'missing';
         for (let i = 0; i < sudoku_size; i++) {
             for (let j = 0; j < sudoku_size; j++) {
-                if (!pre_solved_board[i][j] || pre_solved_board[i][j] === 0) {
+                const cell = pre_solved_board[i][j];
+                if (is_missing_mode) {
+                    // 缺一门允许 -1 作为黑格，其余必须是 1..size 的定值
+                    if (cell === -1) continue;
+                    if (!Number.isInteger(cell) || cell < 1 || cell > sudoku_size) {
+                        is_complete = false;
+                        break;
+                    }
+                } else if (!cell || cell === 0) {
                     is_complete = false;
                     break;
                 }
             }
             if (!is_complete) break;
         }
-        
+
         if (is_complete) {
+            if (is_missing_mode) {
+                log_process("检测到缺一门完整终盘，直接使用该终盘进行挖洞");
+                return pre_solved_board.map((row) => row.map((cell) => cell));
+            }
             log_process("检测到外部传入的完整终盘，将按照该终盘给数");
             use_external_board = true;
         }
     }
+
+    const blocked_cell_keys = new Set();
+    if (pre_solved_board && Array.isArray(pre_solved_board) && pre_solved_board.length === sudoku_size) {
+        for (let r = 0; r < sudoku_size; r++) {
+            for (let c = 0; c < sudoku_size; c++) {
+                if (pre_solved_board[r][c] === -1) {
+                    blocked_cell_keys.add(`${r},${c}`);
+                }
+            }
+        }
+    }
+    const is_blocked_cell = (row, col) => blocked_cell_keys.has(`${row},${col}`);
 
     // 初始化为候选数数组
     let sudoku_board;
@@ -556,10 +607,16 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
             })
         );
     } else {
-        sudoku_board = Array.from({ length: sudoku_size }, () =>
-            Array.from({ length: sudoku_size }, () => [...Array(sudoku_size)].map((_, i) => i + 1))
+        sudoku_board = Array.from({ length: sudoku_size }, (_, r) =>
+            Array.from({ length: sudoku_size }, (_, c) =>
+                is_blocked_cell(r, c)
+                    ? -1
+                    : [...Array(sudoku_size)].map((_, i) => i + 1)
+            )
         );
-        check_lookup_table(sudoku_board, sudoku_size);
+        if (blocked_cell_keys.size === 0) {
+            check_lookup_table(sudoku_board, sudoku_size);
+        }
     }
 
     // 主动给数的记录
@@ -569,7 +626,7 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
     if (existing_numbers) {
         for (let r = 0; r < sudoku_size; r++) {
             for (let c = 0; c < sudoku_size; c++) {
-                if (existing_numbers[r][c]) {
+                if (existing_numbers[r][c] > 0 && !is_blocked_cell(r, c)) {
                     given_numbers.push({ row: r, col: c, num: existing_numbers[r][c] });
                     log_process(`初始给定: [${r+1},${c+1}] = ${existing_numbers[r][c]}`);
                 }
@@ -627,6 +684,7 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
     const cell_positions = [];
     for (let r = 0; r < sudoku_size; r++) {
         for (let c = 0; c < sudoku_size; c++) {
+            if (is_blocked_cell(r, c)) continue;
             cell_positions.push([r, c]);
         }
     }
@@ -635,7 +693,8 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
     cell_positions.sort((a, b) => {
         function avg_region_count(pos) {
             const [row, col] = pos;
-            const sym = get_symmetric_positions(row, col, sudoku_size, symmetry);
+            const sym = get_symmetric_positions(row, col, sudoku_size, symmetry)
+                .filter(([sr, sc]) => !is_blocked_cell(sr, sc));
             if (sym.length > 0) {
                 const [sym_row, sym_col] = sym[0];
                 return (region_counts[row][col] + region_counts[sym_row][sym_col]) / 2;
@@ -661,7 +720,7 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
         test_board = Array.from({ length: sudoku_size }, (_, r) =>
             Array.from({ length: sudoku_size }, (_, c) => {
                 const found = given_numbers.find(item => item.row === r && item.col === c);
-                return found ? found.num : 0;
+                return found ? found.num : (is_blocked_cell(r, c) ? -1 : 0);
             })
         );
     }
@@ -694,7 +753,7 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
                 return Array.from({ length: sudoku_size }, (_, r) =>
                     Array.from({ length: sudoku_size }, (_, c) => {
                         const found = given_numbers.find(item => item.row === r && item.col === c);
-                        return found ? found.num : 0;
+                        return found ? found.num : (is_blocked_cell(r, c) ? -1 : 0);
                     })
                 );
             } else {
@@ -707,7 +766,7 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
             return Array.from({ length: sudoku_size }, (_, r) =>
                 Array.from({ length: sudoku_size }, (_, c) => {
                     const found = given_numbers.find(item => item.row === r && item.col === c);
-                    return found ? found.num : 0;
+                    return found ? found.num : (is_blocked_cell(r, c) ? -1 : 0);
                 })
             );
         }
@@ -736,7 +795,8 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
         const [row, col] = cell_positions[cell_index];
 
         // 获取对称位置
-        const symmetric_positions = get_symmetric_positions(row, col, sudoku_size, symmetry);
+        const symmetric_positions = get_symmetric_positions(row, col, sudoku_size, symmetry)
+            .filter(([sr, sc]) => !is_blocked_cell(sr, sc));
         let sym_row = row, sym_col = col;
         if (symmetric_positions.length > 0) {
             [sym_row, sym_col] = symmetric_positions[0];
@@ -816,7 +876,7 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
                     test_board = Array.from({ length: sudoku_size }, (_, r) =>
                         Array.from({ length: sudoku_size }, (_, c) => {
                             const found = given_numbers.find(item => item.row === r && item.col === c);
-                            return found ? found.num : 0;
+                            return found ? found.num : (is_blocked_cell(r, c) ? -1 : 0);
                         })
                     );
                 }
@@ -860,7 +920,7 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
                             return Array.from({ length: sudoku_size }, (_, r) =>
                                 Array.from({ length: sudoku_size }, (_, c) => {
                                     const found = given_numbers.find(item => item.row === r && item.col === c);
-                                    return found ? found.num : 0;
+                                    return found ? found.num : (is_blocked_cell(r, c) ? -1 : 0);
                                 })
                             );
                         } else {
@@ -879,7 +939,7 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
                         return Array.from({ length: sudoku_size }, (_, r) =>
                             Array.from({ length: sudoku_size }, (_, c) => {
                                 const found = given_numbers.find(item => item.row === r && item.col === c);
-                                return found ? found.num : 0;
+                                return found ? found.num : (is_blocked_cell(r, c) ? -1 : 0);
                             })
                         );
                     }
@@ -1235,6 +1295,17 @@ export function generate_solved_board_brute_force(size) {
 // 挖洞，返回题目盘
 function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined) {
     const puzzle = solution.map(row => [...row]);
+    const blocked_cell_keys = new Set();
+    const blocked_positions = [];
+    for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+            if (puzzle[r][c] === -1) {
+                blocked_cell_keys.add(`${r},${c}`);
+                blocked_positions.push([r, c]);
+            }
+        }
+    }
+    const is_blocked_cell = (row, col) => blocked_cell_keys.has(`${row},${col}`);
     let holes_dug = 0;
     let changed;
 
@@ -1271,6 +1342,28 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
         }
     }
 
+    // 与缺一门生成一致：先按黑格触发一次对称预挖
+    if (blocked_positions.length > 0) {
+        const already_dug = new Set();
+        for (const [row, col] of blocked_positions) {
+            if (holes_limit !== undefined && holes_dug >= holes_limit) break;
+
+            const symmetric_positions = get_symmetric_positions(row, col, size, symmetry)
+                .filter(([sr, sc]) => !is_blocked_cell(sr, sc));
+
+            for (const [sr, sc] of symmetric_positions) {
+                if (holes_limit !== undefined && holes_dug >= holes_limit) break;
+
+                const key = `${sr},${sc}`;
+                if (already_dug.has(key) || puzzle[sr][sc] === 0) continue;
+
+                puzzle[sr][sc] = 0;
+                already_dug.add(key);
+                holes_dug++;
+            }
+        }
+    }
+
     do {
         if (holes_limit !== undefined && holes_dug >= holes_limit) break; // 挖洞数量达到上限，停止
 
@@ -1283,13 +1376,14 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
         for (let pos = 0; pos < size * size; pos++) {
             let row = Math.floor(pos / size);
             let col = pos % size;
-            if (puzzle[row][col] === 0) continue;
+            if (puzzle[row][col] === 0 || is_blocked_cell(row, col)) continue;
 
-            const symmetric_positions = get_symmetric_positions(row, col, size, symmetry);
+            const symmetric_positions = get_symmetric_positions(row, col, size, symmetry)
+                .filter(([sr, sc]) => !is_blocked_cell(sr, sc));
             const positions_to_dig = [ [row, col], ...symmetric_positions ];
 
             // 跳过已挖过的格子
-            if (positions_to_dig.some(([r, c]) => puzzle[r][c] === 0)) continue;
+            if (positions_to_dig.some(([r, c]) => puzzle[r][c] === 0 || is_blocked_cell(r, c))) continue;
 
             // 临时保存所有位置的数字
             const temp_values = positions_to_dig.map(([r, c]) => puzzle[r][c]);
@@ -1306,12 +1400,20 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
                             return 0;
                         }
                         const cell = puzzle[i - 1][j - 1];
-                        return cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell;
+                        return cell === -1
+                            ? -1
+                            : cell === 0
+                            ? [...Array(size)].map((_, n) => n + 1)
+                            : cell;
                     })
                 );
             } else {
                 test_board = puzzle.map(row =>
-                    row.map(cell => cell === 0 ? [...Array(size)].map((_, n) => n + 1) : cell)
+                    row.map(cell => cell === -1
+                        ? -1
+                        : cell === 0
+                        ? [...Array(size)].map((_, n) => n + 1)
+                        : cell)
                 );
             }
             // log_process(

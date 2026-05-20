@@ -982,13 +982,6 @@ export function create_technique_panel() {
             ]
         },
         {
-            id: 'missing', // 新增欠一排除分组
-            name: '欠一排除',
-            items: [
-                { id: 'Missing_One', name: '欠一排除', default: state.current_mode === 'missing' }
-            ]
-        },
-        {
             id: 'lookup_table', // 新增打表分组
             name: '打表',
             items: [
@@ -1362,11 +1355,13 @@ export function check_uniqueness(check_next = false) {
 
     const container = document.querySelector('.sudoku-container');
     const size = state.current_grid_size;
+    const is_missing_mode = state.current_mode === 'missing';
+    const is_missing_black_cell = (input) => is_missing_mode && !!input && input.disabled;
 
-    if (state.current_mode === 'missing') {
-        check_missing_uniqueness();
-        return;
-    }
+    // if (state.current_mode === 'missing') {
+    //     check_missing_uniqueness();
+    //     return;
+    // }
 
     // 备份当前题目状态
     backup_original_board();
@@ -1389,6 +1384,12 @@ export function check_uniqueness(check_next = false) {
         board = Array.from({ length: size }, (_, i) =>
             Array.from({ length: size }, (_, j) => {
                 const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+
+                // 缺一门模式：黑格固定为-1，禁止在检查唯一性时出数
+                if (is_missing_black_cell(input)) {
+                    return -1;
+                }
+
                 const val = parseInt(input.value);
 
                 if (state.is_candidates_mode && input.value.length > 1) {
@@ -1496,6 +1497,12 @@ export function check_uniqueness(check_next = false) {
                         input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
                     }
                     if (!input) continue; // 防止input未找到
+
+                    // 缺一门模式：黑格不参与回填
+                    if (is_missing_black_cell(input)) {
+                        continue;
+                    }
+
                     const cell = input.parentElement;
                     const candidatesGrid = cell.querySelector('.candidates-grid');
 

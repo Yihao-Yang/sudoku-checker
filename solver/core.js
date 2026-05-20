@@ -849,7 +849,11 @@ export function clear_marks() {
         state.current_mode === 'five_six' ||
         state.current_mode === 'VX' ||
         state.current_mode === 'quadruple' ||
-        state.current_mode === 'inclusion'
+        state.current_mode === 'inclusion' ||
+        state.current_mode === 'ratio' ||
+        state.current_mode === 'product' ||
+        state.current_mode === 'kropki' ||
+        state.current_mode === 'exclusion'
     ) {
         state.marks_board = [];
     }

@@ -4,6 +4,7 @@ import { state } from "./state.js";
 import { get_all_mark_lines, get_cells_on_line } from "../modules/multi_diagonal.js";
 import { get_extra_region_cells } from '../modules/extra_region.js';
 import { get_renban_cells, is_valid_renban } from '../modules/renban.js';
+import { is_valid_missing } from "../modules/missing.js";
 import { is_valid_fortress } from "../modules/fortress.js";
 import { is_valid_clone, get_clone_cells, are_regions_same_shape } from "../modules/clone.js";
 import { apply_exclusion_marks, is_valid_exclusion } from "../modules/exclusion.js";
@@ -381,31 +382,40 @@ export function eliminate_candidates(board, size, i, j, num, calc_score = true) 
     }
     // Kropki（黑白点）模式专用候选数处理
     else if (mode === 'kropki') {
-        const container = (typeof document !== "undefined") ? document.querySelector('.sudoku-container') : null;
+        const marks = (Array.isArray(state.marks_board) && state.marks_board.length > 0)
+            ? state.marks_board.filter((m) =>
+                m &&
+                (m.kind === 'v' || m.kind === 'h') &&
+                Number.isInteger(m.r) &&
+                Number.isInteger(m.c) &&
+                (m.type === 'B' || m.type === 'W')
+            )
+            : sync_marks_board_from_dom(
+                size,
+                (typeof document !== 'undefined') ? document.querySelector('.sudoku-container') : null
+            ).filter((m) =>
+                m &&
+                (m.kind === 'v' || m.kind === 'h') &&
+                Number.isInteger(m.r) &&
+                Number.isInteger(m.c) &&
+                (m.type === 'B' || m.type === 'W')
+            );
+
         // 收集所有黑白点标记
         const kropkiMarks = [];
         const kropkiMarkKeySet = new Set();
-        if (container) {
-            container.querySelectorAll('.vx-mark[data-key]').forEach(mark => {
-                const key = mark.dataset.key;
-                const type = (mark.dataset.kropkiType || '').toUpperCase();
-                if (type === 'B' || type === 'W') {
-                    // 解析key
-                    let pair = null;
-                    if (key.startsWith('v-')) {
-                        const [_, r, c] = key.split('-').map(Number);
-                        pair = { row1: r, col1: c - 1, row2: r, col2: c };
-                    } else if (key.startsWith('h-')) {
-                        const [_, r, c] = key.split('-').map(Number);
-                        pair = { row1: r - 1, col1: c, row2: r, col2: c };
-                    }
-                    if (pair) {
-                        kropkiMarks.push({ ...pair, type });
-                        kropkiMarkKeySet.add(`${pair.row1},${pair.col1},${pair.row2},${pair.col2}`);
-                        kropkiMarkKeySet.add(`${pair.row2},${pair.col2},${pair.row1},${pair.col1}`);
-                    }
-                }
-            });
+        for (const mark of marks) {
+            let pair = null;
+            if (mark.kind === 'v') {
+                pair = { row1: mark.r, col1: mark.c, row2: mark.r, col2: mark.c + 1 };
+            } else if (mark.kind === 'h') {
+                pair = { row1: mark.r, col1: mark.c, row2: mark.r + 1, col2: mark.c };
+            }
+            if (pair) {
+                kropkiMarks.push({ ...pair, type: mark.type });
+                kropkiMarkKeySet.add(`${pair.row1},${pair.col1},${pair.row2},${pair.col2}`);
+                kropkiMarkKeySet.add(`${pair.row2},${pair.col2},${pair.row1},${pair.col1}`);
+            }
         }
         // 所有相邻格对
         const allAdjacentPairs = [];
@@ -1726,55 +1736,43 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
             break;
         }
         case 'product': {
-            const container = document.querySelector('.sudoku-container');
-            if (!container) return regions;
-            const marks = container.querySelectorAll('.vx-mark');
-            let region_index = 1;
+            const container = typeof document !== 'undefined' ? document.querySelector('.sudoku-container') : null;
+            const marks = (Array.isArray(state.marks_board) && state.marks_board.length > 0)
+                ? state.marks_board.filter((m) =>
+                    m &&
+                    (m.kind === 'v' || m.kind === 'h') &&
+                    Number.isInteger(m.r) &&
+                    Number.isInteger(m.c)
+                )
+                : sync_marks_board_from_dom(size, container).filter((m) =>
+                    m &&
+                    (m.kind === 'v' || m.kind === 'h') &&
+                    Number.isInteger(m.r) &&
+                    Number.isInteger(m.c)
+                );
+
             for (const mark of marks) {
-                const input = mark.querySelector('input');
-                const value = input && input.value.trim();
-                // 只处理有效的乘积数字
-                const product = parseInt(value, 10);
+                const product = parseInt(typeof mark.clue === 'string' ? mark.clue.trim() : '', 10);
                 if (isNaN(product) || product <= 0) continue;
 
-                // 解析标记的唯一key
-                const key = mark.dataset.key;
-                if (!key) continue;
-
-                // 解析标记对应的两格
-                // 竖线：v-row-col，横线：h-row-col
                 let cell_a, cell_b;
-                if (key.startsWith('v-')) {
-                    // 竖线，row、col
-                    const [_, row_str, col_str] = key.split('-');
-                    const r = parseInt(row_str);
-                    const c = parseInt(col_str);
-                    cell_a = [r, c - 1];
-                    cell_b = [r, c];
-                } else if (key.startsWith('h-')) {
-                    // 横线，row、col
-                    const [_, row_str, col_str] = key.split('-');
-                    const r = parseInt(row_str);
-                    const c = parseInt(col_str);
-                    cell_a = [r - 1, c];
-                    cell_b = [r, c];
+                if (mark.kind === 'v') {
+                    cell_a = [mark.r, mark.c];
+                    cell_b = [mark.r, mark.c + 1];
+                } else if (mark.kind === 'h') {
+                    cell_a = [mark.r, mark.c];
+                    cell_b = [mark.r + 1, mark.c];
                 } else {
                     continue;
                 }
 
-                // 计算所有满足乘积的数字组合
-                const clue_nums_set = new Set();
-                for (let a = 1; a <= size; a++) {
-                    for (let b = 1; b <= size; b++) {
-                        if (a * b === product) {
-                            clue_nums_set.add(a);
-                            clue_nums_set.add(b);
-                        }
-                    }
+                if (
+                    cell_a[0] < 0 || cell_a[0] >= size || cell_a[1] < 0 || cell_a[1] >= size ||
+                    cell_b[0] < 0 || cell_b[0] >= size || cell_b[1] < 0 || cell_b[1] >= size
+                ) {
+                    continue;
                 }
-                const clue_nums = Array.from(clue_nums_set).sort((x, y) => x - y);
 
-                // 生成区域的 index
                 const index = [cell_a, cell_b]
                     .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
                     .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
@@ -1784,63 +1782,51 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
                     type: '特定组合',
                     index,
                     cells: [cell_a, cell_b],
-                    // clue_nums: clue_nums
                 });
             }
             break;
         }
         case 'ratio': {
-            const container = document.querySelector('.sudoku-container');
-            if (!container) return regions;
-            const marks = container.querySelectorAll('.vx-mark');
-            let region_index = 1;
+            const container = typeof document !== 'undefined' ? document.querySelector('.sudoku-container') : null;
+            const marks = (Array.isArray(state.marks_board) && state.marks_board.length > 0)
+                ? state.marks_board.filter((m) =>
+                    m &&
+                    (m.kind === 'v' || m.kind === 'h') &&
+                    Number.isInteger(m.r) &&
+                    Number.isInteger(m.c)
+                )
+                : sync_marks_board_from_dom(size, container).filter((m) =>
+                    m &&
+                    (m.kind === 'v' || m.kind === 'h') &&
+                    Number.isInteger(m.r) &&
+                    Number.isInteger(m.c)
+                );
+
             for (const mark of marks) {
-                const input = mark.querySelector('input');
-                const value = input && input.value.trim();
-                // 只处理形如 "a/b" 的比例
+                const value = typeof mark.clue === 'string' ? mark.clue.trim() : '';
                 if (!value || !/^(\d*)\/(\d*)$/.test(value)) continue;
                 const match = value.match(/^(\d*)\/(\d*)$/);
                 const left_num = match[1] ? parseInt(match[1]) : null;
                 const right_num = match[2] ? parseInt(match[2]) : null;
-                if (!left_num && !right_num) continue;
-                // 解析标记的唯一key
-                const key = mark.dataset.key;
-                if (!key) continue;
-                // 解析标记对应的两格
-                // 竖线：v-row-col，横线：h-row-col
+                if (!left_num || !right_num) continue;
+
                 let cell_a, cell_b;
-                if (key.startsWith('v-')) {
-                    // 竖线，row、col
-                    const [_, row_str, col_str] = key.split('-');
-                    const r = parseInt(row_str);
-                    const c = parseInt(col_str);
-                    cell_a = [r, c - 1];
-                    cell_b = [r, c];
-                } else if (key.startsWith('h-')) {
-                    // 横线，row、col
-                    const [_, row_str, col_str] = key.split('-');
-                    const r = parseInt(row_str);
-                    const c = parseInt(col_str);
-                    cell_a = [r - 1, c];
-                    cell_b = [r, c];
+                if (mark.kind === 'v') {
+                    cell_a = [mark.r, mark.c];
+                    cell_b = [mark.r, mark.c + 1];
+                } else if (mark.kind === 'h') {
+                    cell_a = [mark.r, mark.c];
+                    cell_b = [mark.r + 1, mark.c];
                 } else {
                     continue;
                 }
 
-                // 计算所有满足比例的数字组合
-                const clue_nums_set = new Set();
-                for (let a = 1; a <= size; a++) {
-                    for (let b = 1; b <= size; b++) {
-                        if (
-                            (a * right_num === b * left_num) ||
-                            (b * right_num === a * left_num)
-                        ) {
-                            clue_nums_set.add(a);
-                            clue_nums_set.add(b);
-                        }
-                    }
+                if (
+                    cell_a[0] < 0 || cell_a[0] >= size || cell_a[1] < 0 || cell_a[1] >= size ||
+                    cell_b[0] < 0 || cell_b[0] >= size || cell_b[1] < 0 || cell_b[1] >= size
+                ) {
+                    continue;
                 }
-                const clue_nums = Array.from(clue_nums_set).sort((x, y) => x - y);
 
                 const index = [cell_a, cell_b]
                     .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
@@ -1851,7 +1837,6 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
                     type: '特定组合',
                     index,
                     cells: [cell_a, cell_b],
-                    // clue_nums: clue_nums
                 });
             }
             break;
@@ -1920,40 +1905,34 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
             break;
         }
         case 'kropki': {
-            const container = document.querySelector('.sudoku-container');
-            if (!container) return regions;
-            const marks = container.querySelectorAll('.vx-mark[data-key]');
-            let region_index = 1;
-
-            const parsePairFromKey = (key) => {
-                if (!key) return null;
-                if (key.startsWith('v-')) {
-                    const [, rowStr, colStr] = key.split('-');
-                    const row = Number.parseInt(rowStr, 10);
-                    const col = Number.parseInt(colStr, 10) - 1;
-                    if (Number.isNaN(row) || Number.isNaN(col)) return null;
-                    return { row1: row, col1: col, row2: row, col2: col + 1 };
-                }
-                if (key.startsWith('h-')) {
-                    const [, rowStr, colStr] = key.split('-');
-                    const row = Number.parseInt(rowStr, 10) - 1;
-                    const col = Number.parseInt(colStr, 10);
-                    if (Number.isNaN(row) || Number.isNaN(col)) return null;
-                    return { row1: row, col1: col, row2: row + 1, col2: col };
-                }
-                return null;
-            };
-
-            const readKropkiType = (mark) => {
-                const raw = (mark.dataset.kropkiType || mark.querySelector('input')?.value || '').trim().toUpperCase();
-                return raw === 'B' || raw === 'W' ? raw : null;
-            };
+            const container = typeof document !== 'undefined' ? document.querySelector('.sudoku-container') : null;
+            const marks = (Array.isArray(state.marks_board) && state.marks_board.length > 0)
+                ? state.marks_board.filter((m) =>
+                    m &&
+                    (m.kind === 'v' || m.kind === 'h') &&
+                    Number.isInteger(m.r) &&
+                    Number.isInteger(m.c) &&
+                    (m.type === 'B' || m.type === 'W')
+                )
+                : sync_marks_board_from_dom(size, container).filter((m) =>
+                    m &&
+                    (m.kind === 'v' || m.kind === 'h') &&
+                    Number.isInteger(m.r) &&
+                    Number.isInteger(m.c) &&
+                    (m.type === 'B' || m.type === 'W')
+                );
 
             for (const mark of marks) {
-                const key = mark.dataset.key;
-                const pair = parsePairFromKey(key);
-                const type = readKropkiType(mark);
-                if (!pair || !type) continue;
+                const type = mark.type;
+                if (type !== 'B' && type !== 'W') continue;
+
+                let pair = null;
+                if (mark.kind === 'v') {
+                    pair = { row1: mark.r, col1: mark.c, row2: mark.r, col2: mark.c + 1 };
+                } else if (mark.kind === 'h') {
+                    pair = { row1: mark.r, col1: mark.c, row2: mark.r + 1, col2: mark.c };
+                }
+                if (!pair) continue;
 
                 const clueNumsSet = new Set();
                 if (type === 'B') {
@@ -2632,7 +2611,11 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
         state.current_mode === 'five_six' ||
         state.current_mode === 'VX' ||
         state.current_mode === 'quadruple' ||
-        state.current_mode === 'inclusion'
+        state.current_mode === 'inclusion' ||
+        state.current_mode === 'ratio' ||
+        state.current_mode === 'product' ||
+        state.current_mode === 'kropki' ||
+        state.current_mode === 'exclusion'
     ) {
         const has_cached_marks = Array.isArray(state.marks_board) && state.marks_board.length > 0;
         if (!has_cached_marks) {
@@ -2736,6 +2719,10 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
                 // log_process("移除相关候选数");
             }
         }
+    }
+
+    if (state.current_mode === 'exclusion') {
+        apply_exclusion_marks(board, size);
     }
     // log_process(
     //     board
@@ -2865,7 +2852,9 @@ function solve_By_Logic() {
  * 通用有效性检测函数，根据当前模式自动判断所有相关区域
  */
 export function isValid(board, size, row, col, num) {
-    if (state.current_mode === 'exclusion') {
+    if (state.current_mode === 'missing') {
+        return is_valid_missing(board, size, row, col, num);
+    } else if (state.current_mode === 'exclusion') {
         return is_valid_exclusion(board, size, row, col, num);
     } else if (state.current_mode === 'quadruple') {
         return is_valid_quadruple(board, size, row, col, num);
@@ -3164,12 +3153,12 @@ export function sync_marks_board_from_dom(size, container = document.querySelect
         return state.marks_board;
     }
 
-    if (state.current_mode === 'quadruple' || state.current_mode === 'inclusion') {
+    if (state.current_mode === 'quadruple' || state.current_mode === 'inclusion' || state.current_mode === 'exclusion') {
         for (const markEl of domMarks) {
             const inputValue = (markEl.querySelector('input')?.value || '').trim();
             const key = markEl.dataset.key;
 
-            if (key?.startsWith('x-')) {
+            if (key?.startsWith('x-') || key?.startsWith('e-')) {
                 const [, rStr, cStr] = key.split('-');
                 const rMark = parseInt(rStr, 10);
                 const cMark = parseInt(cStr, 10);
@@ -3194,6 +3183,65 @@ export function sync_marks_board_from_dom(size, container = document.querySelect
                 const c = col_mark - 1;
                 if (Number.isInteger(r) && Number.isInteger(c) && r >= 0 && r < size - 1 && c >= 0 && c < size - 1) {
                     marks.push({ kind: 'x', r, c, clue: inputValue });
+                }
+            }
+        }
+
+        state.marks_board = marks;
+        return state.marks_board;
+    }
+
+    if (state.current_mode === 'kropki') {
+        for (const markEl of domMarks) {
+            const key = markEl.dataset.key;
+            const type = (markEl.dataset.kropkiType || markEl.querySelector('input')?.value || '').trim().toUpperCase();
+            if (type !== 'B' && type !== 'W') continue;
+
+            if (key?.startsWith('v-')) {
+                const [, rStr, cStr] = key.split('-');
+                const r = parseInt(rStr, 10);
+                const c = parseInt(cStr, 10) - 1;
+                if (Number.isInteger(r) && Number.isInteger(c) && r >= 0 && r < size && c >= 0 && c < size - 1) {
+                    marks.push({ kind: 'v', r, c, type });
+                }
+                continue;
+            }
+
+            if (key?.startsWith('h-')) {
+                const [, rStr, cStr] = key.split('-');
+                const r = parseInt(rStr, 10) - 1;
+                const c = parseInt(cStr, 10);
+                if (Number.isInteger(r) && Number.isInteger(c) && r >= 0 && r < size - 1 && c >= 0 && c < size) {
+                    marks.push({ kind: 'h', r, c, type });
+                }
+            }
+        }
+
+        state.marks_board = marks;
+        return state.marks_board;
+    }
+
+    if (state.current_mode === 'ratio' || state.current_mode === 'product') {
+        for (const markEl of domMarks) {
+            const clue = (markEl.querySelector('input')?.value || '').trim();
+            const key = markEl.dataset.key;
+
+            if (key?.startsWith('v-')) {
+                const [, rStr, cStr] = key.split('-');
+                const r = parseInt(rStr, 10);
+                const c = parseInt(cStr, 10) - 1;
+                if (Number.isInteger(r) && Number.isInteger(c) && r >= 0 && r < size && c >= 0 && c < size - 1) {
+                    marks.push({ kind: 'v', r, c, clue });
+                }
+                continue;
+            }
+
+            if (key?.startsWith('h-')) {
+                const [, rStr, cStr] = key.split('-');
+                const r = parseInt(rStr, 10) - 1;
+                const c = parseInt(cStr, 10);
+                if (Number.isInteger(r) && Number.isInteger(c) && r >= 0 && r < size - 1 && c >= 0 && c < size) {
+                    marks.push({ kind: 'h', r, c, clue });
                 }
             }
         }
