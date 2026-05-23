@@ -200,7 +200,7 @@ export function check_missing_uniqueness() {
 /**
  * 生成缺一门数独题目
  */
-export async function generate_missing_puzzle(size) {
+export async function generate_missing_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
     const start_time = performance.now();
     show_result('正在生成题目，请稍候...');
     show_generating_timer();
@@ -213,21 +213,6 @@ export async function generate_missing_puzzle(size) {
     invalidate_regions_cache();
 
     let puzzle, solution, missingCells;
-
-    // 允许用户自定义分值下限
-    let score_lower_limit = 0;
-
-    // 根据分值下限自动设置难度
-    let difficulty = 'easy';
-    if (size === 6) {
-        if (score_lower_limit >= 40) difficulty = 'hard';
-        else if (score_lower_limit >= 20) difficulty = 'medium';
-        else difficulty = 'easy';
-    } else if (size === 9) {
-        if (score_lower_limit >= 200) difficulty = 'hard';
-        else if (score_lower_limit >= 100) difficulty = 'medium';
-        else difficulty = 'easy';
-    }
 
     while (true) {
         log_process('', true);
@@ -259,7 +244,7 @@ export async function generate_missing_puzzle(size) {
         missingCells = result.missingCells;
 
         // 3. 把缺一门终盘喂给通用出题器，由 generate_puzzle 负责挖洞出题
-        const generated = generate_puzzle(size, score_lower_limit, undefined, solution);
+        const generated = generate_puzzle(size, score_lower_limit, holes_count, solution);
         if (!generated || !generated.puzzle) {
             continue;
         }
@@ -269,14 +254,6 @@ export async function generate_missing_puzzle(size) {
         const testBoard = puzzle.map(row => [...row]);
         const solveResult = missing_solve(testBoard, size, missingCells, true);
         if (solveResult.solution_count !== 1) {
-            continue;
-        }
-
-        // 分值判断（包含用户输入的下限）
-        if (solveResult.total_score !== undefined && solveResult.total_score < score_lower_limit) {
-            state.silentMode = false; // 强制输出
-            log_process(`题目分值为${solveResult.total_score}，低于下限${score_lower_limit}，重新生成...`);
-            state.silentMode = true; // 恢复静默
             continue;
         }
 
@@ -305,7 +282,7 @@ export async function generate_missing_puzzle(size) {
     
     backup_original_board();
     const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
-    show_result(`已生成${size}宫格${difficulty}难度缺一门数独题目（耗时${elapsed}秒）`);
+    show_result(`已生成${size}宫格缺一门数独题目（耗时${elapsed}秒）`);
     
     return {
         puzzle,

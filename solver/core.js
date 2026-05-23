@@ -853,6 +853,7 @@ export function clear_marks() {
         state.current_mode === 'ratio' ||
         state.current_mode === 'product' ||
         state.current_mode === 'kropki' ||
+        state.current_mode === 'consecutive' ||
         state.current_mode === 'exclusion'
     ) {
         state.marks_board = [];

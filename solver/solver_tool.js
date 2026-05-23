@@ -490,90 +490,93 @@ export function eliminate_candidates(board, size, i, j, num, calc_score = true) 
             }
         }
     } 
-    // else if (mode === 'consecutive') {
-    //     const container = (typeof document !== "undefined") ? document.querySelector('.sudoku-container') : null;
-    //     const consecutiveMarkType = new Map();
-    //     if (container) {
-    //         container.querySelectorAll('.vx-mark[data-key]').forEach(mark => {
-    //             const key = mark.dataset.key;
-    //             const rawType = (mark.dataset.consecutiveType || '').toUpperCase();
-    //             if (!key || (rawType !== 'W' && rawType !== 'B')) return;
-    //             const parts = key.split('-');
-    //             if (parts.length < 3) return;
-    //             const rowToken = Number(parts[1]);
-    //             const colToken = Number(parts[2]);
-    //             if (Number.isNaN(rowToken) || Number.isNaN(colToken)) return;
-    //             let pair = null;
-    //             if (key.startsWith('v-')) {
-    //                 pair = { row1: rowToken, col1: colToken - 1, row2: rowToken, col2: colToken };
-    //             } else if (key.startsWith('h-')) {
-    //                 pair = { row1: rowToken - 1, col1: colToken, row2: rowToken, col2: colToken };
-    //             }
-    //             if (!pair) return;
-    //             const forward = `${pair.row1},${pair.col1},${pair.row2},${pair.col2}`;
-    //             const reverse = `${pair.row2},${pair.col2},${pair.row1},${pair.col1}`;
-    //             consecutiveMarkType.set(forward, 'W');
-    //             consecutiveMarkType.set(reverse, 'W');
-    //         });
-    //     }
+    else if (mode === 'consecutive') {
+        const container = (typeof document !== 'undefined') ? document.querySelector('.sudoku-container') : null;
+        const marks = (Array.isArray(state.marks_board) && state.marks_board.length > 0)
+            ? state.marks_board.filter((m) =>
+                m &&
+                (m.kind === 'v' || m.kind === 'h') &&
+                Number.isInteger(m.r) &&
+                Number.isInteger(m.c) &&
+                m.type === 'W'
+            )
+            : sync_marks_board_from_dom(size, container).filter((m) =>
+                m &&
+                (m.kind === 'v' || m.kind === 'h') &&
+                Number.isInteger(m.r) &&
+                Number.isInteger(m.c) &&
+                m.type === 'W'
+            );
+        const consecutiveMarkKeySet = new Set();
 
-    //     const allAdjacentPairs = [];
-    //     for (const [dr, dc] of [[0, 1], [1, 0]]) {
-    //         for (let r = 0; r < size; r++) {
-    //             for (let c = 0; c < size; c++) {
-    //                 const nr = r + dr;
-    //                 const nc = c + dc;
-    //                 if (nr < size && nc < size) {
-    //                     allAdjacentPairs.push({ row1: r, col1: c, row2: nr, col2: nc });
-    //                 }
-    //             }
-    //         }
-    //     }
+        for (const mark of marks) {
+            let pair = null;
+            if (mark.kind === 'v') {
+                pair = { row1: mark.r, col1: mark.c, row2: mark.r, col2: mark.c + 1 };
+            } else if (mark.kind === 'h') {
+                pair = { row1: mark.r, col1: mark.c, row2: mark.r + 1, col2: mark.c };
+            }
+            if (!pair) continue;
+                consecutiveMarkKeySet.add(`${pair.row1},${pair.col1},${pair.row2},${pair.col2}`);
+                consecutiveMarkKeySet.add(`${pair.row2},${pair.col2},${pair.row1},${pair.col1}`);
+        }
 
-    //     for (const pair of allAdjacentPairs) {
-    //         let otherRow;
-    //         let otherCol;
-    //         if (pair.row1 === i && pair.col1 === j) {
-    //             otherRow = pair.row2;
-    //             otherCol = pair.col2;
-    //         } else if (pair.row2 === i && pair.col2 === j) {
-    //             otherRow = pair.row1;
-    //             otherCol = pair.col1;
-    //         } else {
-    //             continue;
-    //         }
-    //         if (!Array.isArray(board[otherRow][otherCol])) continue;
+        const allAdjacentPairs = [];
+        for (const [dr, dc] of [[0, 1], [1, 0]]) {
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    const nr = r + dr;
+                    const nc = c + dc;
+                    if (nr < size && nc < size) {
+                        allAdjacentPairs.push({ row1: r, col1: c, row2: nr, col2: nc });
+                    }
+                }
+            }
+        }
 
-    //         const relationKey = `${i},${j},${otherRow},${otherCol}`;
-    //         const hasMark = consecutiveMarkType.has(relationKey);
-    //         if (hasMark) {
-    //             const allowed = [];
-    //             if (num + 1 <= size) allowed.push(num + 1);
-    //             if (num - 1 >= 1) allowed.push(num - 1);
-    //             for (let k = board[otherRow][otherCol].length - 1; k >= 0; k--) {
-    //                 const candidate = board[otherRow][otherCol][k];
-    //                 if (!allowed.includes(candidate)) {
-    //                     if (calc_score) {
-    //                         state.candidate_elimination_score[`${otherRow},${otherCol},${candidate}`] = 1;
-    //                     }
-    //                     eliminations.push({ row: otherRow, col: otherCol, val: candidate });
-    //                     board[otherRow][otherCol].splice(k, 1);
-    //                 }
-    //             }
-    //         } else {
-    //             for (let k = board[otherRow][otherCol].length - 1; k >= 0; k--) {
-    //                 const candidate = board[otherRow][otherCol][k];
-    //                 if (Math.abs(num - candidate) === 1) {
-    //                     if (calc_score) {
-    //                         state.candidate_elimination_score[`${otherRow},${otherCol},${candidate}`] = 1;
-    //                     }
-    //                     eliminations.push({ row: otherRow, col: otherCol, val: candidate });
-    //                     board[otherRow][otherCol].splice(k, 1);
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
+        for (const pair of allAdjacentPairs) {
+            let otherRow, otherCol;
+            if (pair.row1 === i && pair.col1 === j) {
+                otherRow = pair.row2;
+                otherCol = pair.col2;
+            } else if (pair.row2 === i && pair.col2 === j) {
+                otherRow = pair.row1;
+                otherCol = pair.col1;
+            } else {
+                continue;
+            }
+            if (!Array.isArray(board[otherRow][otherCol])) continue;
+
+            const hasMark = consecutiveMarkKeySet.has(`${i},${j},${otherRow},${otherCol}`);
+            if (hasMark) {
+                const allowed = [];
+                if (num + 1 <= size) allowed.push(num + 1);
+                if (num - 1 >= 1) allowed.push(num - 1);
+
+                for (let k = board[otherRow][otherCol].length - 1; k >= 0; k--) {
+                    const candidate = board[otherRow][otherCol][k];
+                    if (!allowed.includes(candidate)) {
+                        if (calc_score) {
+                            state.candidate_elimination_score[`${otherRow},${otherCol},${candidate}`] = 1;
+                        }
+                        eliminations.push({ row: otherRow, col: otherCol, val: candidate });
+                        board[otherRow][otherCol].splice(k, 1);
+                    }
+                }
+            } else {
+                for (let k = board[otherRow][otherCol].length - 1; k >= 0; k--) {
+                    const candidate = board[otherRow][otherCol][k];
+                    if (Math.abs(num - candidate) === 1) {
+                        if (calc_score) {
+                            state.candidate_elimination_score[`${otherRow},${otherCol},${candidate}`] = 1;
+                        }
+                        eliminations.push({ row: otherRow, col: otherCol, val: candidate });
+                        board[otherRow][otherCol].splice(k, 1);
+                    }
+                }
+            }
+        }
+    }
     // 不等号/温度计模式专用候选数处理
     else if (mode === 'inequality') {
         eliminations.push(...apply_inequality_candidate_elimination(board, size, i, j, num, calc_score));
@@ -1981,6 +1984,17 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
                     // clue_nums,
                 });
             }
+
+            for (let row = 0; row < size; row++) {
+                for (let col = 0; col < size; col++) {
+                    const index = `${getRowLetter(row + 1)}${col + 1}`;
+                    regions.push({
+                        type: '单格特定组合',
+                        index,
+                        cells: [[row, col]],
+                    });
+                }
+            }
             break;
         }
         case 'VX':
@@ -2064,39 +2078,52 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
             break;
         }
         case 'consecutive': {
-            // 处理连续数独的白点标记
-            const container = document.querySelector('.sudoku-container');
-            if (container) {
-                container.querySelectorAll('.vx-mark[data-key]').forEach(mark => {
-                    const key = mark.dataset.key;
-                    const type = (mark.dataset.consecutiveType || '').toUpperCase();
-                    if (type !== 'W') return; // 只处理白点标记
+            // 处理连续数独的白点标记（优先 state，DOM 兜底）
+            const container = typeof document !== 'undefined' ? document.querySelector('.sudoku-container') : null;
+            const marks = (Array.isArray(state.marks_board) && state.marks_board.length > 0)
+                ? state.marks_board.filter((m) =>
+                    m &&
+                    (m.kind === 'v' || m.kind === 'h') &&
+                    Number.isInteger(m.r) &&
+                    Number.isInteger(m.c) &&
+                    m.type === 'W'
+                )
+                : sync_marks_board_from_dom(size, container).filter((m) =>
+                    m &&
+                    (m.kind === 'v' || m.kind === 'h') &&
+                    Number.isInteger(m.r) &&
+                    Number.isInteger(m.c) &&
+                    m.type === 'W'
+                );
 
-                    const parts = key.split('-');
-                    if (parts.length < 3) return;
+            for (const mark of marks) {
+                let pair = null;
+                if (mark.kind === 'v') {
+                    pair = { row1: mark.r, col1: mark.c, row2: mark.r, col2: mark.c + 1 };
+                } else if (mark.kind === 'h') {
+                    pair = { row1: mark.r, col1: mark.c, row2: mark.r + 1, col2: mark.c };
+                }
+                if (!pair) continue;
 
-                    const rowToken = Number(parts[1]);
-                    const colToken = Number(parts[2]);
-                    if (Number.isNaN(rowToken) || Number.isNaN(colToken)) return;
-
-                    let pair = null;
-                    if (key.startsWith('v-')) {
-                        pair = { row1: rowToken, col1: colToken - 1, row2: rowToken, col2: colToken };
-                    } else if (key.startsWith('h-')) {
-                        pair = { row1: rowToken - 1, col1: colToken, row2: rowToken, col2: colToken };
-                    }
-
-                    if (pair) {
-                        regions.push({
-                            type: '连续数独白点',
-                            index: `${pair.row1},${pair.col1}-${pair.row2},${pair.col2}`,
-                            cells: [
-                                [pair.row1, pair.col1],
-                                [pair.row2, pair.col2]
-                            ]
-                        });
-                    }
+                regions.push({
+                    type: '连续数独白点',
+                    index: `${pair.row1},${pair.col1}-${pair.row2},${pair.col2}`,
+                    cells: [
+                        [pair.row1, pair.col1],
+                        [pair.row2, pair.col2]
+                    ]
                 });
+            }
+
+            for (let row = 0; row < size; row++) {
+                for (let col = 0; col < size; col++) {
+                    const index = `${getRowLetter(row + 1)}${col + 1}`;
+                    regions.push({
+                        type: '单格特定组合',
+                        index,
+                        cells: [[row, col]],
+                    });
+                }
             }
             break;
         }
@@ -2615,6 +2642,7 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
         state.current_mode === 'ratio' ||
         state.current_mode === 'product' ||
         state.current_mode === 'kropki' ||
+        state.current_mode === 'consecutive' ||
         state.current_mode === 'exclusion'
     ) {
         const has_cached_marks = Array.isArray(state.marks_board) && state.marks_board.length > 0;
@@ -3196,6 +3224,36 @@ export function sync_marks_board_from_dom(size, container = document.querySelect
             const key = markEl.dataset.key;
             const type = (markEl.dataset.kropkiType || markEl.querySelector('input')?.value || '').trim().toUpperCase();
             if (type !== 'B' && type !== 'W') continue;
+
+            if (key?.startsWith('v-')) {
+                const [, rStr, cStr] = key.split('-');
+                const r = parseInt(rStr, 10);
+                const c = parseInt(cStr, 10) - 1;
+                if (Number.isInteger(r) && Number.isInteger(c) && r >= 0 && r < size && c >= 0 && c < size - 1) {
+                    marks.push({ kind: 'v', r, c, type });
+                }
+                continue;
+            }
+
+            if (key?.startsWith('h-')) {
+                const [, rStr, cStr] = key.split('-');
+                const r = parseInt(rStr, 10) - 1;
+                const c = parseInt(cStr, 10);
+                if (Number.isInteger(r) && Number.isInteger(c) && r >= 0 && r < size - 1 && c >= 0 && c < size) {
+                    marks.push({ kind: 'h', r, c, type });
+                }
+            }
+        }
+
+        state.marks_board = marks;
+        return state.marks_board;
+    }
+
+    if (state.current_mode === 'consecutive') {
+        for (const markEl of domMarks) {
+            const key = markEl.dataset.key;
+            const type = (markEl.dataset.consecutiveType || markEl.querySelector('input')?.value || '').trim().toUpperCase();
+            if (type !== 'W') continue;
 
             if (key?.startsWith('v-')) {
                 const [, rStr, cStr] = key.split('-');

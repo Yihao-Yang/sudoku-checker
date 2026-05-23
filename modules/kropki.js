@@ -57,8 +57,10 @@ export function create_kropki_sudoku(size) {
         Box_Elimination: true,
         Row_Col_Elimination: true,
         Box_Block: true,
+        Variant_Box_Block: true,
         Box_Pair_Block: true,
         Row_Col_Block: true,
+        Variant_Row_Col_Block: true,
         Box_Naked_Pair: true,
         Row_Col_Naked_Pair: true,
         Box_Hidden_Pair: true,
@@ -249,7 +251,7 @@ export function generate_kropki_puzzle(size, score_lower_limit = 0, holes_count 
 
         // 生成最终题目（挖空）
         const board = Array.from({ length: effectiveSize }, () => Array.from({ length: effectiveSize }, () => 0));
-        generate_puzzle(effectiveSize, score_lower_limit, holes_count, board);
+        generate_puzzle(effectiveSize, score_lower_limit, holes_count, solvedBoard);
         hide_generating_timer();
         const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
         show_result(`黑白点数独生成成功，耗时${elapsed}秒`);

@@ -36,8 +36,10 @@ export function create_fortress_sudoku(size) {
         Box_Elimination: true,
         Row_Col_Elimination: true,
         Box_Block: true,        // 
+        Variant_Box_Block: true,
         Box_Pair_Block: true,
         Row_Col_Block: true,    // 
+        Variant_Row_Col_Block: true,
         Box_Naked_Pair: true,   // 
         Row_Col_Naked_Pair: true, // 
         Box_Hidden_Pair: true,  // 
@@ -529,7 +531,10 @@ export function generate_fortress_puzzle(size, score_lower_limit = 0, holes_coun
         for (const [row, col] of region) {
             let key = `${row},${col}`;
             state.fortress_cells.add(key);
-            let cell = document.querySelector(`.sudoku-cell.extra-region-mode[data-row="${row}"][data-col="${col}"]`);
+            let cell = null;
+            if (typeof document !== 'undefined') {
+                cell = document.querySelector(`.sudoku-cell.extra-region-mode[data-row="${row}"][data-col="${col}"]`);
+            }
             if (cell) cell.classList.add('extra-region-cell');
         }
     }
@@ -715,6 +720,7 @@ export function get_fortress_cells() {
 // }
 export function clear_fortress_marks(size) {
     state.fortress_cells.clear();
+    if (typeof document === 'undefined') return;
     const cells = document.querySelectorAll('.sudoku-cell.extra-region-mode');
     cells.forEach(cell => {
     cell.classList.remove('extra-region-cell');
@@ -724,8 +730,6 @@ export function clear_fortress_marks(size) {
 }
 
 export function is_valid_fortress(board, size, row, col, num) {
-    const container = document.querySelector('.sudoku-container');
-
     // 1. 常规区域判断（与普通数独一致）
     const mode = state.current_mode || 'fortress';
     const regions = get_all_regions(size, mode);

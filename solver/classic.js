@@ -1152,17 +1152,23 @@ export function create_technique_panel() {
                     multiplierInput.type = 'number';
                     multiplierInput.min = '0';
                     multiplierInput.step = '0.1';
-                    multiplierInput.value = String(state.techniqueScoreMultipliers[item.id] ?? 1);
+                    const currentMultiplier = Number(state.techniqueScoreMultipliers[item.id] ?? 1);
+                    multiplierInput.value = currentMultiplier === 1 ? '' : String(currentMultiplier);
+                    multiplierInput.placeholder = '总倍率';
                     multiplierInput.title = techniqueMultiplierTargets[item.id];
                     multiplierInput.style.width = '56px';
                     multiplierInput.style.marginLeft = '10px';
                     multiplierInput.style.padding = '2px 4px';
 
                     const syncMultiplier = () => {
+                        if (multiplierInput.value.trim() === '') {
+                            state.techniqueScoreMultipliers[item.id] = 1;
+                            return;
+                        }
                         const parsedValue = Number(multiplierInput.value);
                         state.techniqueScoreMultipliers[item.id] = Number.isFinite(parsedValue) && parsedValue >= 0 ? parsedValue : 1;
                         if (!Number.isFinite(parsedValue) || parsedValue < 0) {
-                            multiplierInput.value = '1';
+                            multiplierInput.value = '';
                         }
                     };
 

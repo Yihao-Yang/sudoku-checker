@@ -9,17 +9,21 @@ import {
     add_Extra_Button,
     clear_all_inputs,
     fill_solution,
-    clear_marks
+    clear_marks,
+    show_generating_timer,
+    hide_generating_timer
 } from '../solver/core.js';
 import { state, set_current_mode } from '../solver/state.js';
 import { create_technique_panel } from '../solver/classic.js';
 import { generate_solved_board_brute_force, generate_puzzle } from '../solver/generate.js';
-import { get_all_regions, invalidate_regions_cache } from '../solver/solver_tool.js';
+import { get_all_regions, invalidate_regions_cache, sync_marks_board_from_dom } from '../solver/solver_tool.js';
 
 const MARK_WIDTH = 32;
 const MARK_HEIGHT = 26;
 const EDGE_CLICK_THRESHOLD_MIN = 12;
-const consecutive_MARK_DIAMETER = 16;
+const consecutive_MARK_SIZE = 24;
+const consecutive_MARK_LENGTH = 40;
+const consecutive_MARK_THICKNESS = 10;
 let current_consecutive_type = 'W'; // 连续模式只使用白点标记
 
 export function create_consecutive_sudoku(size) {
@@ -28,14 +32,17 @@ export function create_consecutive_sudoku(size) {
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
+    state.marks_board = [];
     invalidate_regions_cache();
 
     state.techniqueSettings = {
         Box_Elimination: true,
         Row_Col_Elimination: true,
         Box_Block: true,
+        Variant_Box_Block: true,
         Box_Pair_Block: true,
         Row_Col_Block: true,
+        Variant_Row_Col_Block: true,
         Box_Naked_Pair: true,
         Row_Col_Naked_Pair: true,
         Box_Hidden_Pair: true,
@@ -111,6 +118,13 @@ export function create_consecutive_sudoku(size) {
     const extraButtons = document.getElementById('extraButtons');
     if (extraButtons) {
         extraButtons.innerHTML = '';
+        add_Extra_Button('连续', () => {create_consecutive_sudoku(size)}, '#2196F3');
+        const toggle_mark_btn = add_Extra_Button('添加标记', () => {
+            const g = document.querySelector('.sudoku-grid');
+            if (!g) return;
+            g._consecutive_marking_active = !g._consecutive_marking_active;
+            toggle_mark_btn.textContent = g._consecutive_marking_active ? '退出标记' : '添加标记';
+        });
         add_Extra_Button('清除标记', clear_marks);
         add_Extra_Button('一键标记', auto_mark_consecutive);
         add_Extra_Button('自动出题', () => generate_consecutive_puzzle(size), '#2196F3');
@@ -167,7 +181,7 @@ export function generate_consecutive_puzzle(size, score_lower_limit = 0, holes_c
         }
     }
 
-    const startTime = performance.now();
+    const start_time = performance.now();
     clear_all_inputs();
     log_process('', true);
     reset_consecutive_highlights(container);
@@ -182,23 +196,34 @@ export function generate_consecutive_puzzle(size, score_lower_limit = 0, holes_c
         return;
     }
 
-    log_process('第二步：标记全部符合条件的黑/白点关系...');
+    log_process('第二步：标记全部符合条件的连续关系...');
     const marksAdded = populate_all_consecutive_marks(container, solvedBoard, effectiveSize);
 
-    const elapsed = ((performance.now() - startTime) / 1000).toFixed(3);
+    const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
     log_process(`总计标记 ${marksAdded} 个符合条件的相邻格`);
     show_result(
         `连续标记生成完成，标记${marksAdded}个（耗时${elapsed}秒）`,
         marksAdded > 0 ? 'success' : 'info'
     );
 
-    // generate_puzzle(effectiveSize, score_lower_limit, holes_count, solvedBoard);
+    log_process(`正在生成题目，请稍候...`);
+    show_result(`正在生成题目，请稍候...`);
+    show_generating_timer();
+    setTimeout(() => {
+        // 生成最终题目（挖空）
+        const board = Array.from({ length: effectiveSize }, () => Array.from({ length: effectiveSize }, () => 0));
+        generate_puzzle(effectiveSize, score_lower_limit, holes_count, solvedBoard);
+        hide_generating_timer();
+        const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
+        show_result(`连续数独生成成功，耗时${elapsed}秒`);
+    }, 0);
 }
 
 function enable_consecutive_mark_mode(size) {
     const grid = document.querySelector('.sudoku-grid');
     if (!grid || grid._consecutiveMarkHandlerAttached) return;
     grid._consecutiveMarkHandlerAttached = true;
+    grid._consecutive_marking_active = false;
 
     const container = grid.parentElement;
     if (container && getComputedStyle(container).position === 'static') {
@@ -210,6 +235,7 @@ function enable_consecutive_mark_mode(size) {
 
     grid.addEventListener('click', (event) => {
         if (!container) return;
+        if (!grid._consecutive_marking_active) return;
         if (event.target.closest('.vx-mark')) return;
 
         const rect = grid.getBoundingClientRect();
@@ -253,6 +279,7 @@ function enable_consecutive_mark_mode(size) {
 
     grid.addEventListener('dblclick', (event) => {
         if (!container) return;
+        if (!grid._consecutive_marking_active) return;
         if (event.target.closest('.vx-mark')) return;
 
         if (grid._consecutiveClickTimer) {
@@ -335,6 +362,28 @@ function create_or_update_consecutive_mark(container, size, row1, col1, row2, co
     const orientation = get_orientation(row1, col1, row2, col2);
     if (!orientation) return { mark: null, created: false };
 
+    const normalized_type = 'W';
+
+    if (!Array.isArray(state.marks_board)) {
+        state.marks_board = [];
+    }
+    const stateIndex = state.marks_board.findIndex((m) =>
+        m &&
+        m.kind === orientation.orientation &&
+        m.r === orientation.row &&
+        m.c === orientation.col
+    );
+    if (stateIndex === -1) {
+        state.marks_board.push({
+            kind: orientation.orientation,
+            r: orientation.row,
+            c: orientation.col,
+            type: normalized_type,
+        });
+    } else {
+        state.marks_board[stateIndex].type = normalized_type;
+    }
+
     const grid = container.querySelector('.sudoku-grid');
     if (!grid) return { mark: null, created: false };
 
@@ -363,45 +412,53 @@ function create_or_update_consecutive_mark(container, size, row1, col1, row2, co
         mark.className = 'vx-mark';
         mark.dataset.key = key;
         mark.style.position = 'absolute';
-        mark.style.width = `${consecutive_MARK_DIAMETER}px`;
-        mark.style.height = `${consecutive_MARK_DIAMETER}px`;
+        mark.style.width = `${consecutive_MARK_SIZE}px`;
+        mark.style.height = `${consecutive_MARK_SIZE}px`;
         mark.style.display = 'flex';
         mark.style.alignItems = 'center';
         mark.style.justifyContent = 'center';
         mark.style.background = 'transparent';
+        mark.style.borderRadius = '0';
         mark.style.padding = '0';
         mark.style.zIndex = '5';
 
-        const dot = document.createElement('div');
-        dot.className = 'consecutive-dot';
-        dot.style.width = '100%';
-        dot.style.height = '100%';
-        dot.style.borderRadius = '50%';
-        dot.style.boxSizing = 'border-box';
-        dot.style.pointerEvents = 'none';
+        const line = document.createElement('div');
+        line.className = 'consecutive-line consecutive-dot';
+        line.style.position = 'absolute';
+        line.style.left = '50%';
+        line.style.top = '50%';
+        line.style.boxSizing = 'border-box';
+        line.style.pointerEvents = 'none';
 
-        apply_consecutive_dot_style(dot, type);
-        mark.appendChild(dot);
+        apply_consecutive_line_style(line, orientation.orientation);
+        mark.appendChild(line);
 
         mark.addEventListener('dblclick', (evt) => {
             evt.stopPropagation();
+
+            state.marks_board = Array.isArray(state.marks_board)
+                ? state.marks_board.filter((m) =>
+                    !(m && m.kind === orientation.orientation && m.r === orientation.row && m.c === orientation.col)
+                )
+                : [];
+            invalidate_regions_cache();
+
             mark.remove();
         });
 
         container.appendChild(mark);
     } else {
-        mark.style.width = `${consecutive_MARK_DIAMETER}px`;
-        mark.style.height = `${consecutive_MARK_DIAMETER}px`;
-        const dot = mark.querySelector('.consecutive-dot');
-        if (dot) {
-            dot.style.width = '100%';
-            dot.style.height = '100%';
-            apply_consecutive_dot_style(dot, type);
+        mark.style.width = `${consecutive_MARK_SIZE}px`;
+        mark.style.height = `${consecutive_MARK_SIZE}px`;
+        mark.style.borderRadius = '0';
+        const line = mark.querySelector('.consecutive-line, .consecutive-dot');
+        if (line) {
+            apply_consecutive_line_style(line, orientation.orientation);
         }
     }
 
-    mark.dataset.consecutiveType = type;
-    const half_mark = consecutive_MARK_DIAMETER / 2;
+    mark.dataset.consecutiveType = normalized_type;
+    const half_mark = consecutive_MARK_SIZE / 2;
     mark.style.left = `${grid.offsetLeft + mark_x - half_mark}px`;
     mark.style.top = `${grid.offsetTop + mark_y - half_mark}px`;
 
@@ -410,17 +467,21 @@ function create_or_update_consecutive_mark(container, size, row1, col1, row2, co
         setTimeout(() => mark.classList.remove('consecutive-mark-highlight'), 200);
     }
 
+    invalidate_regions_cache();
+
     return { mark, created };
 }
 
-function apply_consecutive_dot_style(dot, type) {
-    if (!dot) return;
-    dot.style.width = '100%';
-    dot.style.height = '100%';
-    dot.style.borderRadius = '50%';
-    dot.style.boxSizing = 'border-box';
-    dot.style.backgroundColor = '#fff';
-    dot.style.border = '3px solid #000';
+function apply_consecutive_line_style(line, orientation) {
+    if (!line) return;
+
+    line.style.width = `${consecutive_MARK_LENGTH}px`;
+    line.style.height = `${consecutive_MARK_THICKNESS}px`;
+    line.style.transformOrigin = 'center center';
+    line.style.transform = orientation === 'v'
+        ? 'translate(-50%, -50%) rotate(90deg)'
+        : 'translate(-50%, -50%)';
+    line.style.backgroundColor = '#8d8d8d';
 }
 
 function parse_mark_key(key) {
@@ -449,6 +510,31 @@ function read_mark_type(mark) {
         return 'W';
     }
     return null;
+}
+
+function get_consecutive_marks(size) {
+    const marksFromState = Array.isArray(state.marks_board)
+        ? state.marks_board.filter((m) =>
+            m &&
+            (m.kind === 'v' || m.kind === 'h') &&
+            Number.isInteger(m.r) &&
+            Number.isInteger(m.c) &&
+            m.type === 'W'
+        )
+        : [];
+
+    if (marksFromState.length > 0) {
+        return marksFromState;
+    }
+
+    const container = get_consecutive_container();
+    return sync_marks_board_from_dom(size, container).filter((m) =>
+        m &&
+        (m.kind === 'v' || m.kind === 'h') &&
+        Number.isInteger(m.r) &&
+        Number.isInteger(m.c) &&
+        m.type === 'W'
+    );
 }
 
 function reset_consecutive_highlights(container) {
@@ -525,26 +611,26 @@ export function is_valid_consecutive(board, size, row, col, num) {
         }
     }
 
-    // 2) 收集界面上的白点标记约束
-    const container = document.querySelector('.sudoku-container');
+    // 2) 收集白点标记约束（优先 state，DOM 兜底）
     const consecutiveConstraints = [];
     const consecutiveConstraintKeySet = new Set();
-    if (container) {
-        const marks = Array.from(container.querySelectorAll('.vx-mark[data-key]'));
-        for (const mark of marks) {
-            const key = mark.dataset.key;
-            const pair = parse_mark_key(key);
-            const type = read_mark_type(mark); // 仅处理 'W' 标记
-            if (!pair || type !== 'W') continue;
+    const marks = get_consecutive_marks(size);
+    for (const mark of marks) {
+        let pair = null;
+        if (mark.kind === 'v') {
+            pair = { row1: mark.r, col1: mark.c, row2: mark.r, col2: mark.c + 1 };
+        } else if (mark.kind === 'h') {
+            pair = { row1: mark.r, col1: mark.c, row2: mark.r + 1, col2: mark.c };
+        }
+        if (!pair || mark.type !== 'W') continue;
             const normalizedKey = normalize_pair_key(pair.row1, pair.col1, pair.row2, pair.col2);
             consecutiveConstraints.push({
                 cell1: { row: pair.row1, col: pair.col1 },
                 cell2: { row: pair.row2, col: pair.col2 },
-                type,
+                type: mark.type,
                 key: normalizedKey,
             });
             consecutiveConstraintKeySet.add(normalizedKey);
-        }
     }
 
     // 3) 对涉及白点标记对的检查：若另一格已确定数字，则当前填入数字必须满足白点关系

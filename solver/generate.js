@@ -226,6 +226,11 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
         // log_process(size);
         result = solve(test_board, size, isValid, true);
 
+        // 二次校验（缺一门求解器口径）
+        if (result.solution_count !== 1) {
+            continue;
+        }
+
         break;
     }
 
@@ -1014,8 +1019,12 @@ export function generate_solution_old(size) {
     // 用于存储每次调用 eliminate_candidates 前的候选数状态
     const candidate_stack = [];
 
-    // 获取所有区域（宫、行、列）
-    const regions = get_all_regions(size, state.current_mode);
+    // 获取所有区域（宫、行、列 + 变型特定组合）
+    let regions = get_all_regions(size, state.current_mode);
+    // const special_regions = get_special_combination_regions(null, size, state.current_mode);
+    // if (Array.isArray(special_regions) && special_regions.length > 0) {
+    //     regions = regions.concat(special_regions);
+    // }
 
     // 预计算每个格子所属的区域数量（供 find_best_cell 使用）
     const region_counts = Array.from({ length: size }, () => Array(size).fill(0));

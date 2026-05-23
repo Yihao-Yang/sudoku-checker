@@ -20,7 +20,7 @@ import {
 } from './modules/candidates.js';
 
 import {
-    generate_puzzle, fill_puzzle_to_grid
+    generate_puzzle, fill_puzzle_to_grid, generate_exterior_puzzle
 } from './solver/generate.js'
 import { state } from './solver/state.js';
 import { generate_multi_diagonal_puzzle } from './modules/multi_diagonal.js';
@@ -41,6 +41,7 @@ import { generate_product_puzzle } from './modules/product.js';
 import { generate_five_six_puzzle } from './modules/five_six.js';
 import { generate_add_puzzle } from './modules/add.js';
 import { generate_kropki_puzzle } from './modules/kropki.js';
+import { generate_missing_puzzle } from './modules/missing.js';
 
 
 const MODE_EXPORT_META = {
@@ -615,6 +616,10 @@ function initializeEventHandlers() {
             return generate_kropki_puzzle(state.current_grid_size, score_lower_limit, holes_count);
         } else if (state.current_mode === 'add') {
             return generate_add_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        } else if (state.current_mode === 'missing') {
+            return generate_missing_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        } else if (state.current_mode === 'X_sums' || state.current_mode === 'skyscraper' || state.current_mode === 'sandwich') {
+            return generate_exterior_puzzle(state.current_grid_size, score_lower_limit, holes_count);
         } else {
             return generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
         }

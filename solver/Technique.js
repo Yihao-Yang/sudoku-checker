@@ -2547,6 +2547,7 @@ function region_block_elimination(board, size, region_cells, region_type, region
 
             // 复制board，模拟填入num
             const board_copy = board.map(row => row.map(cell => Array.isArray(cell) ? [...cell] : cell));
+            const original_candidates = Array.isArray(board[r][c]) ? [...board[r][c]] : [];
             board_copy[r][c] = num;
             // const eliminations = eliminate_candidates(board_copy, size, r, c, num, false);
             // 根据classic参数选择调用的函数
@@ -2555,6 +2556,17 @@ function region_block_elimination(board, size, region_cells, region_type, region
                 : eliminate_candidates(board_copy, size, r, c, num, false);
 
             const eliminated_map = new Map();
+
+            // 把“模拟格自身固定为 num 后删去其他候选”也计入本次模拟删数集合。
+            // 这样在后续取交集时，这部分信息也会被纳入统一处理。
+            if (original_candidates.length > 0) {
+                const self_deleted = original_candidates.filter(candidate_num => candidate_num !== num);
+                if (self_deleted.length > 0) {
+                    const self_key = `${r},${c}`;
+                    eliminated_map.set(self_key, new Set(self_deleted));
+                }
+            }
+
             for (const elim of eliminations) {
                 const deleted_nums = [];
                 if (Array.isArray(elim.eliminated) && elim.eliminated.length > 0) {
@@ -2602,10 +2614,10 @@ function region_block_elimination(board, size, region_cells, region_type, region
             }
         }
 
-        // 排除本身候选格
-        for (const [r, c] of candidate_positions) {
-            intersection_map.delete(`${r},${c}`);
-        }
+        // // 排除本身候选格
+        // for (const [r, c] of candidate_positions) {
+        //     intersection_map.delete(`${r},${c}`);
+        // }
         if (intersection_map.size === 0) continue;
 
         let score_sum = 1;
