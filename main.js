@@ -42,6 +42,7 @@ import { generate_five_six_puzzle } from './modules/five_six.js';
 import { generate_add_puzzle } from './modules/add.js';
 import { generate_kropki_puzzle } from './modules/kropki.js';
 import { generate_missing_puzzle } from './modules/missing.js';
+import { generate_consecutive_puzzle } from './modules/consecutive.js';
 
 
 const MODE_EXPORT_META = {
@@ -614,6 +615,8 @@ function initializeEventHandlers() {
             return generate_odd_even_puzzle(state.current_grid_size, score_lower_limit, holes_count);
         } else if (state.current_mode === 'kropki') {
             return generate_kropki_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        } else if (state.current_mode === 'consecutive') {
+            return generate_consecutive_puzzle(state.current_grid_size, score_lower_limit, holes_count);
         } else if (state.current_mode === 'add') {
             return generate_add_puzzle(state.current_grid_size, score_lower_limit, holes_count);
         } else if (state.current_mode === 'missing') {
