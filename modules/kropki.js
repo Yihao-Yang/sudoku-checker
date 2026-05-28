@@ -30,7 +30,7 @@ export function create_kropki_sudoku(size) {
     show_result(`当前模式为黑白点数独`);
     log_process('', true);
     log_process('规则：');
-    log_process('标记：两侧格内数字关系');
+    log_process('标记：两侧格内数字关系（全标）');
     log_process('黑点：两倍');
     log_process('白点：差1');
     log_process('');

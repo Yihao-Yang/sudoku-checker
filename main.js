@@ -3,6 +3,7 @@ import {
     clear_all_inputs,
     import_sudoku_from_string,
     export_sudoku_to_string,
+    backup_original_board,
     restore_original_board,
     save_sudoku_as_image,
     change_candidates_mode,
@@ -12,7 +13,7 @@ import {
 } from './solver/core.js';
 
 import { 
-    create_sudoku_grid, check_uniqueness
+    create_sudoku_grid, check_uniqueness, check_minimal_next_step, check_minimal_uniqueness
 } from './solver/classic.js';
 
 import { 
@@ -342,7 +343,9 @@ function initializeEventHandlers() {
     const nineGridBtn = document.getElementById('nineGrid');
     const checkSolutionBtn = document.getElementById('checkSolution');
     const check_nextBtn = document.getElementById('check_next');
+    const check_minimal_nextBtn = document.getElementById('check_minimal_next');
     const check_uniquenessBtn = document.getElementById('check_uniqueness');
+    const check_minimal_uniquenessBtn = document.getElementById('check_minimal_uniqueness');
     const hide_solutionBtn = document.getElementById('hide_solution');
     const generatepuzzleBtn = document.getElementById('generate_puzzle');
     const clearAllBtn = document.getElementById('clearAll');
@@ -353,6 +356,8 @@ function initializeEventHandlers() {
     // checkSolutionBtn.addEventListener('click', check_solution);
     check_uniquenessBtn.addEventListener('click', () => check_uniqueness(false));
     check_nextBtn.addEventListener('click', () => check_uniqueness(true));
+    check_minimal_nextBtn.addEventListener('click', () => check_minimal_next_step());
+    check_minimal_uniquenessBtn.addEventListener('click', () => check_minimal_uniqueness());
     hide_solutionBtn.addEventListener('click', hide_solution);
     clearAllBtn.addEventListener('click', clear_all_inputs);
     
@@ -565,17 +570,109 @@ function initializeEventHandlers() {
     jumpBtn.textContent = '跳转卡点';
     jumpBtn.style.marginLeft = '5px';
 
+    const hardestBtn = document.createElement('button');
+    hardestBtn.id = 'hardestScoreBtn';
+    hardestBtn.textContent = '最难卡点';
+    hardestBtn.style.marginLeft = '5px';
+
+    const clone_board_snapshot = (boardSnapshot) => {
+        if (!Array.isArray(boardSnapshot)) {
+            return null;
+        }
+
+        return boardSnapshot.map((row) =>
+            row.map((cell) => ({
+                ...cell,
+                classList: Array.isArray(cell?.classList) ? [...cell.classList] : []
+            }))
+        );
+    };
+
+    const capture_current_board_snapshot = () => {
+        backup_original_board();
+        return clone_board_snapshot(state.originalBoard);
+    };
+
+    const restore_board_snapshot = (snapshot) => {
+        const cloned = clone_board_snapshot(snapshot);
+        if (!cloned) {
+            return false;
+        }
+
+        state.originalBoard = cloned;
+        restore_original_board();
+        return true;
+    };
+
     // 插入到分值下限输入框后面
     check_nextBtn.parentNode.insertBefore(jumpBtn, check_uniquenessBtn);
+    check_nextBtn.parentNode.insertBefore(hardestBtn, check_uniquenessBtn);
 
     jumpBtn.addEventListener('click', async () => {
         let maxLoop = 100; // 防止死循环
         while (maxLoop-- > 0) {
-            check_uniqueness(true);
+            check_minimal_next_step();
             // 等待异步渲染（如有），可适当延时
             await new Promise(resolve => setTimeout(resolve, 200));
-            if (state.solve_stats.total_score > 29 || state.solve_stats.total_score === 0) break;
+            if (state.solve_stats.total_score > 29 || state.solve_stats.total_score === 0) {
+                // 停止时撤回最后一次“最简下一步”
+                restore_original_board();
+                break;
+            }
         }
+    });
+
+    hardestBtn.addEventListener('click', async () => {
+        let maxLoop = 100; // 防止死循环
+        let currentStep = 0;
+        let highestStep = 0;
+        let stepBeforeHighest = 0;
+        let highestScore = Number.NEGATIVE_INFINITY;
+        let snapshotBeforeHighest = capture_current_board_snapshot();
+        let previousSnapshot = clone_board_snapshot(snapshotBeforeHighest);
+        let previousStep = 0;
+        let reachedZero = false;
+
+        while (maxLoop-- > 0) {
+            const result = check_minimal_next_step();
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            currentStep++;
+            const currentScore = Number(result?.total_score ?? state.solve_stats?.total_score);
+            const currentSnapshot = capture_current_board_snapshot();
+
+            if (Number.isFinite(currentScore) && currentScore > highestScore) {
+                const prevSnapshotClone = clone_board_snapshot(previousSnapshot);
+                if (prevSnapshotClone) {
+                    highestScore = currentScore;
+                    snapshotBeforeHighest = prevSnapshotClone;
+                    highestStep = currentStep;
+                    stepBeforeHighest = previousStep;
+                }
+            }
+
+            if (currentScore === 0) {
+                reachedZero = true;
+                break;
+            }
+
+            if (currentSnapshot) {
+                previousSnapshot = currentSnapshot;
+                previousStep = currentStep;
+            }
+        }
+
+        if (snapshotBeforeHighest && restore_board_snapshot(snapshotBeforeHighest) && Number.isFinite(highestScore)) {
+            show_result(`已回退到最高分上一步：第${stepBeforeHighest}步（最高分在第${highestStep}步，分值${highestScore}）`);
+            return;
+        }
+
+        if (!reachedZero) {
+            show_result('未在限制步数内到达分值0，无法定位最难卡点');
+            return;
+        }
+
+        show_result('未找到有效的最高分步骤，无法回退');
     });
 
     function generate_once_by_mode(score_lower_limit, holes_count, use_mode_specific_generator) {

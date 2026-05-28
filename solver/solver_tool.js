@@ -2740,7 +2740,13 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
                     // log_process(`[冲突] ${getRowLetter(i+1)}${j+1}=${num}与已有数字冲突，无解！`);
                     // return { changed: false, hasEmptyCandidate: true }; // 直接返回冲突状态
                     state.solve_stats.solution_count = -2; // 直接返回冲突状态
-                    return {solution_count: state.solve_stats.solution_count}
+                    if (silent) {
+                        state.silentMode = false;
+                    }
+                    return {
+                        solution_count: state.solve_stats.solution_count,
+                        implicit_replay_ok: state.implicit_replay_ok !== false
+                    };
                 }
                 board[i][j] = num; // 恢复原值
                 eliminate_candidates(board, size, i, j, num); // 移除相关候选数
@@ -2796,29 +2802,39 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
             solve_By_BruteForce();
         } else {
             if (state.solve_stats.solution_count === -2) {
-                return {solution_count: state.solve_stats.solution_count};
+                if (silent) {
+                    state.silentMode = false;
+                }
+                return {
+                    solution_count: state.solve_stats.solution_count,
+                    implicit_replay_ok: state.implicit_replay_ok !== false
+                };
             }
             else {
                 state.solve_stats.solution_count = -1;  // 设置特殊标记值
                 // log_process("暴力求解被禁用，无法继续求解。");
-                return {solution_count: state.solve_stats.solution_count};  // 提前返回防止后续覆盖
+                if (silent) {
+                    state.silentMode = false;
+                }
+                return {
+                    solution_count: state.solve_stats.solution_count,
+                    implicit_replay_ok: state.implicit_replay_ok !== false
+                };  // 提前返回防止后续覆盖
                 
             }
         }
     }
 
-    // 恢复日志函数
     if (silent) {
-        // log_process = originalLog;
         state.silentMode = false;
     }
-
     return {
         solution_count: state.solve_stats.solution_count,
         solution,
         technique_counts: state.solve_stats.technique_counts,
         total_score: state.solve_stats.total_score,
-        technique_scores: logical_result.technique_scores || {}
+        technique_scores: logical_result.technique_scores || {},
+        implicit_replay_ok: state.implicit_replay_ok !== false
     };
 }
 

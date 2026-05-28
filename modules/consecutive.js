@@ -29,6 +29,24 @@ let current_consecutive_type = 'W'; // 连续模式只使用白点标记
 export function create_consecutive_sudoku(size) {
     // 保留外部 mode 名称为 consecutive（避免改动其它模块），但 UI/逻辑实现为连续
     set_current_mode('consecutive');
+    show_result(`当前模式为连续数独`);
+    log_process('', true);
+    log_process('规则：');
+    log_process('标记：两侧格内数字连续（全标）');
+    log_process('');
+    log_process('技巧：');
+    log_process('"变型"：用到变型条件删数的技巧');
+    log_process('"_n"后缀：区域内剩余空格数/区块用到的空格数');
+    // log_process('"额外区域"：附加的不可重复区域');
+    log_process('"特定组合"：受附加条件影响的区域（仅考虑有标记部分）');
+    log_process('');
+    log_process('出题：');
+    log_process('10秒，超1分钟请重启页面或调整限制条件');
+    log_process('若手动给的标记不合理可能会被代码忽视');
+    log_process('');
+    log_process('自动出题：');
+    log_process('蓝色：自动添加标记出题');
+    log_process('绿色：根据给定标记出题');
     gridDisplay.innerHTML = '';
     controls.classList.remove('hidden');
     state.current_grid_size = size;
@@ -54,18 +72,36 @@ export function create_consecutive_sudoku(size) {
         All_Quad: false,
         Cell_Elimination: true,
         Brute_Force: false,
-        Special_Combination_Region_Elimination_1: true,
-        Special_Combination_Region_Elimination_2: true,
-        Special_Combination_Region_Elimination_3: true,
-        Multi_Special_Combination_Region_Elimination_1: true,
-        Multi_Special_Combination_Region_Elimination_2: true,
-        Multi_Special_Combination_Region_Elimination_3: true,
+        // Special_Combination_Region_Most_Not_Contain_1: true,
+        // Special_Combination_Region_Most_Not_Contain_2: true,
+        // Special_Combination_Region_Most_Not_Contain_3: true,
+        // Multi_Special_Combination_Region_Most_Not_Contain_1: true,
+        // Multi_Special_Combination_Region_Most_Not_Contain_2: true,
+        // Multi_Special_Combination_Region_Most_Not_Contain_3: true,
+        // Special_Combination_Region_Most_Contain_1: true,
+        // Special_Combination_Region_Most_Contain_2: true,
+        // Special_Combination_Region_Most_Contain_3: true,
+        // Multi_Special_Combination_Region_Most_Contain_1: true,
+        // Multi_Special_Combination_Region_Most_Contain_2: true,
+        // Multi_Special_Combination_Region_Most_Contain_3: true,
+        Special_Combination_Region_Cell_Elimination_1: true,
+        // Special_Combination_Region_Cell_Elimination_2: true,
+        // Special_Combination_Region_Cell_Elimination_3: true,
+        // Multi_Special_Combination_Region_Cell_Elimination_1: true,
+        // Multi_Special_Combination_Region_Cell_Elimination_2: true,
+        // Multi_Special_Combination_Region_Cell_Elimination_3: true,
+        // Special_Combination_Region_Elimination_1: true,
+        // Special_Combination_Region_Elimination_2: true,
+        // Special_Combination_Region_Elimination_3: true,
+        // Multi_Special_Combination_Region_Elimination_1: true,
+        // Multi_Special_Combination_Region_Elimination_2: true,
+        // Multi_Special_Combination_Region_Elimination_3: true,
         Special_Combination_Region_Block_1: true,
-        Special_Combination_Region_Block_2: true,
-        Special_Combination_Region_Block_3: true,
-        Multi_Special_Combination_Region_Block_1: true,
-        Multi_Special_Combination_Region_Block_2: true,
-        Multi_Special_Combination_Region_Block_3: true,
+        // Special_Combination_Region_Block_2: true,
+        // Special_Combination_Region_Block_3: true,
+        // Multi_Special_Combination_Region_Block_1: true,
+        // Multi_Special_Combination_Region_Block_2: true,
+        // Multi_Special_Combination_Region_Block_3: true,
     };
     for (let i = 1; i <= size; i++) {
         state.techniqueSettings[`Cell_Elimination_${i}`] = true;
