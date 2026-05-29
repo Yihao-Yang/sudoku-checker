@@ -1623,7 +1623,7 @@ export function solve_By_Elimination(board, size) {
                         return { changed: false, hasEmptyCandidate: true, technique_counts, technique_scores };
                     }
 
-                    if (!groupChanged && !isEqual(board, groupInitialBoard)) {
+                    if (!isEqual(board, groupInitialBoard)) {
                         groupChanged = true;
                         const chinese_name = techniqueMeta.chinese_name;
                         const score_key = techniqueMeta.score_key;
@@ -1667,7 +1667,11 @@ export function solve_By_Elimination(board, size) {
                                 technique_counts[chinese_name] = 0;
                             }
                             technique_counts[chinese_name]++;
-                            total_score += getTechniqueScore(score_key);
+                            const technique_score = getTechniqueScore(score_key);
+                            total_score += technique_score;
+                            if (score_key && chinese_name && score_key !== chinese_name) {
+                                technique_scores[chinese_name] = technique_score;
+                            }
 
                             const hasNewSolvedCell = hasNewSolvedCellAfterTechnique(groupInitialBoard, board);
                             if (state.check_next && hasNewSolvedCell) {

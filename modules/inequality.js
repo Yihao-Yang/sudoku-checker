@@ -162,13 +162,18 @@ export function generate_inequality_puzzle(size, score_lower_limit = 0, holes_co
     invalidate_inequality_constraints();
     render_inequality_marks_from_state(size, container);
 
+    const format_step_elapsed = (step_start_time) => ((performance.now() - step_start_time) / 1000).toFixed(3);
+
+    const step1_start = performance.now();
     log_process('第一步：生成不等号数独终盘...');
     const solvedBoard = generate_solved_board_brute_force(size);
     if (!solvedBoard) {
         log_process('生成终盘失败！');
         return;
     }
+    log_process(`第一步完成（耗时${format_step_elapsed(step1_start)}秒）`);
 
+    const step2_start = performance.now();
     log_process('第二步：开始标记全部不等号标记...');
     const SYMMETRY_TYPES = [
         'central','central','central','central','central',
@@ -210,11 +215,15 @@ export function generate_inequality_puzzle(size, score_lower_limit = 0, holes_co
             } else {
                 log_process(`全标记状态下当前解数：${result.solution_count}`);
             }
+            log_process(`第二步完成（耗时${format_step_elapsed(step2_start)}秒）`);
 
+            const step3_start = performance.now();
             // 第二步：调用 generate_puzzle 函数出题
             log_process('第三步：调用标准出题流程生成题目...');
             const puzzle_result = generate_puzzle(size, score_lower_limit, holes_count, solvedBoard);
+            log_process(`第三步完成（耗时${format_step_elapsed(step3_start)}秒）`);
 
+            const step4_start = performance.now();
             // 第三步：优化删除多余的不等号标记
             log_process('第四步：开始优化删除多余的不等号标记...');
             if (puzzle_result && Array.isArray(puzzle_result.puzzle)) {
@@ -226,6 +235,7 @@ export function generate_inequality_puzzle(size, score_lower_limit = 0, holes_co
             } else {
                 log_process('出题未返回有效题目，跳过标记优化');
             }
+            log_process(`第四步完成（耗时${format_step_elapsed(step4_start)}秒）`);
 
             render_inequality_marks_from_state(size, container);
 
@@ -310,6 +320,9 @@ function puzzle_has_unique_solution(size, puzzle_board) {
 }
 
 // 优化：尝试按组删除标记，仍能唯一解则保留删除，否则恢复
+// 调大该值可减少求解次数（更快），但会牺牲部分可删除标记（更保守）。
+const INEQUALITY_PRUNE_MIN_SPLIT_GROUPS = 3;
+
 function optimize_marks_state(size, symmetry, puzzle_board) {
     const groups = group_marks_by_symmetry(size, symmetry);
     // 随机打乱分组顺序，避免每次删除顺序相同导致结果偏向
@@ -317,18 +330,32 @@ function optimize_marks_state(size, symmetry, puzzle_board) {
         const j = Math.floor(Math.random() * (i + 1));
         [groups[i], groups[j]] = [groups[j], groups[i]];
     }
-    for (const keys of groups) {
-        const removed = remove_inequality_marks_from_state(keys);
-        if (removed.length === 0) continue;
-        invalidate_inequality_constraints();
-        if (puzzle_has_unique_solution(size, puzzle_board)) {
-            // 确认删除
-        } else {
-            // 恢复
-            restore_inequality_marks_to_state(removed);
-            invalidate_inequality_constraints();
-        }
+    optimize_marks_groups_recursively(size, puzzle_board, groups, INEQUALITY_PRUNE_MIN_SPLIT_GROUPS);
+}
+
+function optimize_marks_groups_recursively(size, puzzle_board, groups, min_split_groups = 1) {
+    if (!Array.isArray(groups) || groups.length === 0) return;
+
+    const flattened_keys = groups.flat();
+    const removed = remove_inequality_marks_from_state(flattened_keys);
+    if (removed.length === 0) return;
+
+    invalidate_inequality_constraints();
+    if (puzzle_has_unique_solution(size, puzzle_board)) {
+        return;
     }
+
+    restore_inequality_marks_to_state(removed);
+    invalidate_inequality_constraints();
+
+    // 批量已经够小则停止细分，直接保留本批，避免继续触发大量 solve。
+    if (groups.length <= Math.max(1, min_split_groups)) {
+        return;
+    }
+
+    const mid = Math.floor(groups.length / 2);
+    optimize_marks_groups_recursively(size, puzzle_board, groups.slice(0, mid), min_split_groups);
+    optimize_marks_groups_recursively(size, puzzle_board, groups.slice(mid), min_split_groups);
 }
 
 function invalidate_inequality_constraints() {
@@ -493,18 +520,24 @@ function render_inequality_marks_from_state(size, container = document.querySele
 
 export function get_inequality_constraint_map(size) {
     const marks = ensure_inequality_marks();
-    const signature = get_inequality_mark_signature(marks);
     const cached = state._inequality_constraint_cache;
 
-    if (cached && cached.size === size && cached.signature === signature) {
+    // 标记变化时都会调用 invalidate_inequality_constraints，缓存命中无需再做签名排序。
+    if (cached && cached.size === size) {
         return cached.map;
     }
 
     const map = new Map();
+    const by_cell = Array.from({ length: size }, () => Array.from({ length: size }, () => null));
     const addConstraint = (row, col, constraint) => {
         const key = `${row},${col}`;
         if (!map.has(key)) map.set(key, []);
         map.get(key).push(constraint);
+
+        if (!by_cell[row][col]) {
+            by_cell[row][col] = [];
+        }
+        by_cell[row][col].push(constraint);
     };
 
     for (const mark of marks) {
@@ -518,44 +551,82 @@ export function get_inequality_constraint_map(size) {
         addConstraint(b_row, b_col, { type: 'compare', otherRow: a_row, otherCol: a_col, relation: relation === '>' ? '<' : '>' });
     }
 
-    state._inequality_constraint_cache = { size, signature, map };
+    state._inequality_constraint_cache = { size, map, by_cell };
     return map;
+}
+
+function get_inequality_constraints_at(size, row, col) {
+    const cached = state._inequality_constraint_cache;
+    if (cached && cached.size === size && cached.by_cell) {
+        return cached.by_cell[row]?.[col] || null;
+    }
+
+    get_inequality_constraint_map(size);
+    const refreshed = state._inequality_constraint_cache;
+    return refreshed?.by_cell?.[row]?.[col] || null;
 }
 
 export function apply_inequality_candidate_elimination(board, size, row, col, num, calc_score = true) {
     const eliminations = [];
-    const constraint_map = get_inequality_constraint_map(size);
-    const constraints = constraint_map.get(`${row},${col}`);
+    const constraints = get_inequality_constraints_at(size, row, col);
 
     if (!constraints) {
         return eliminations;
     }
 
     for (const constraint of constraints) {
-        const other_row = constraint.otherRow;
-        const other_col = constraint.otherCol;
-        const other_cell = board[other_row]?.[other_col];
-
-        if (!Array.isArray(other_cell) || constraint.type !== 'compare') {
+        if (constraint.type !== 'compare') {
             continue;
         }
 
-        for (let k = other_cell.length - 1; k >= 0; k--) {
-            const candidate = other_cell[k];
-            const should_remove = constraint.relation === '>'
-                ? candidate >= num
-                : candidate <= num;
+        const other_row = constraint.otherRow;
+        const other_col = constraint.otherCol;
+        const other_cell = board[other_row]?.[other_col];
+        if (!Array.isArray(other_cell) || other_cell.length === 0) {
+            continue;
+        }
 
-            if (!should_remove) {
+        // 候选数组在求解流程中保持升序，可用阈值切片避免逐项关系判断。
+        if (constraint.relation === '>') {
+            let split = 0;
+            while (split < other_cell.length && other_cell[split] < num) {
+                split++;
+            }
+            if (split >= other_cell.length) {
                 continue;
             }
 
+            const removed = other_cell.slice(split);
             if (calc_score) {
-                state.candidate_elimination_score[`${other_row},${other_col},${candidate}`] = 1;
+                for (let i = 0; i < removed.length; i++) {
+                    const candidate = removed[i];
+                    state.candidate_elimination_score[`${other_row},${other_col},${candidate}`] = 1;
+                }
+            }
+            for (let i = 0; i < removed.length; i++) {
+                eliminations.push({ row: other_row, col: other_col, val: removed[i] });
+            }
+            board[other_row][other_col] = other_cell.slice(0, split);
+        } else {
+            let split = 0;
+            while (split < other_cell.length && other_cell[split] <= num) {
+                split++;
+            }
+            if (split <= 0) {
+                continue;
             }
 
-            eliminations.push({ row: other_row, col: other_col, val: candidate });
-            other_cell.splice(k, 1);
+            const removed = other_cell.slice(0, split);
+            if (calc_score) {
+                for (let i = 0; i < removed.length; i++) {
+                    const candidate = removed[i];
+                    state.candidate_elimination_score[`${other_row},${other_col},${candidate}`] = 1;
+                }
+            }
+            for (let i = 0; i < removed.length; i++) {
+                eliminations.push({ row: other_row, col: other_col, val: removed[i] });
+            }
+            board[other_row][other_col] = other_cell.slice(split);
         }
     }
 
@@ -778,8 +849,7 @@ export function is_valid_inequality(board, size, row, col, num) {
         }
     }
 
-    const constraint_map = get_inequality_constraint_map(size);
-    const constraints = constraint_map.get(`${row},${col}`);
+    const constraints = get_inequality_constraints_at(size, row, col);
     if (!constraints) return true;
 
     for (const constraint of constraints) {
