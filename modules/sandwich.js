@@ -161,7 +161,7 @@ export function create_sandwich_sudoku(size) {
     add_Extra_Button('清除内部', clear_inner_numbers, '#2196F3'); // 添加清除内部数字按钮
     add_Extra_Button('清除提示', clear_outer_clues, '#2196F3'); // 清除外部提示数
     add_Extra_Button('标记提示', () => mark_outer_clues_sandwich(size), '#2196F3'); // 添加标记外部提示数按钮
-    add_Extra_Button('自动出题', () => generate_exterior_puzzle(size), '#2196F3');
+    add_Extra_Button('自动出题', state.create_mode_specific_generate_handler?.((score_lower_limit, holes_count) => generate_exterior_puzzle(size, score_lower_limit, holes_count)) || (() => generate_exterior_puzzle(size)), '#2196F3');
     // add_Extra_Button('一键标记', auto_mark_skyscraper_clues, '#2196F3');
     // add_Extra_Button('验证摩天楼唯一性', check_skyscraper_uniqueness, '#2196F3');
     // add_Extra_Button('清除标记', clear_outer_clues, '#2196F3');

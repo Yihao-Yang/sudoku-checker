@@ -81,6 +81,38 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
     let try_count = 0;
     const MAX_TRY = 30;
     const existing_numbers = null;
+    let has_checked_external_puzzle = false;
+
+    const build_test_board_from_puzzle = (candidate_puzzle) => {
+        if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
+            return Array.from({ length: size + 2 }, (_, i) =>
+                Array.from({ length: size + 2 }, (_, j) => {
+                    if (i === 0 || i === size + 1 || j === 0 || j === size + 1) {
+                        if (pre_solved_board && Array.isArray(pre_solved_board) && pre_solved_board.length === size + 2) {
+                            const val = pre_solved_board[i] && pre_solved_board[i][j];
+                            return (val === undefined || val === null) ? 0 : val;
+                        }
+                        return 0;
+                    }
+                    const cell = candidate_puzzle[i - 1][j - 1];
+                    return cell === -1
+                        ? -1
+                        : cell === 0
+                        ? [...Array(size)].map((_, n) => n + 1)
+                        : cell;
+                })
+            );
+        }
+        return candidate_puzzle.map(row =>
+            row.map(cell => cell === -1
+                ? -1
+                : cell === 0
+                ? [...Array(size)].map((_, n) => n + 1)
+                : cell
+            )
+        );
+    };
+
     while (true) {
         try_count++;
         if (try_count > MAX_TRY) {
@@ -92,6 +124,32 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
         // 随机选择对称模式
         symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
         // log_process(`1 ${symmetry}`)
+
+        // 外部传入的是题面（含0）且已唯一解时，直接复用，避免再次出题
+        if (!has_checked_external_puzzle && pre_solved_board && Array.isArray(pre_solved_board) && pre_solved_board.length === size) {
+            has_checked_external_puzzle = true;
+            const has_holes = pre_solved_board.some(row => Array.isArray(row) && row.some(cell => cell === 0));
+            if (has_holes) {
+                const candidate_puzzle = pre_solved_board.map(row => row.map(cell => cell));
+                const candidate_test_board = build_test_board_from_puzzle(candidate_puzzle);
+                const candidate_result = solve(candidate_test_board, size, isValid, true);
+                if (candidate_result.solution_count === 1) {
+                    puzzle = candidate_puzzle;
+                    solution = Array.isArray(candidate_result.solution)
+                        ? candidate_result.solution.map(row => row.map(cell => cell))
+                        : candidate_puzzle.map(row => row.map(cell => cell));
+                    result = candidate_result;
+                    holesDug = 0;
+                    for (let i = 0; i < size; i++) {
+                        for (let j = 0; j < size; j++) {
+                            if (puzzle[i][j] === 0) holesDug++;
+                        }
+                    }
+                    log_process('检测到传入盘面已是唯一解题面，跳过挖洞流程。');
+                    break;
+                }
+            }
+        }
 
         // 如果外部提供了已生成的终盘，则直接使用，避免重复生成
         if (pre_solved_board && Array.isArray(pre_solved_board)) {
@@ -191,36 +249,7 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
         }
 
         // 构建用于唯一性检测的 test_board
-        let test_board;
-        if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
-            // X和模式，去掉边界
-            test_board = Array.from({ length: size + 2 }, (_, i) =>
-                Array.from({ length: size + 2 }, (_, j) => {
-                    if (i === 0 || i === size + 1 || j === 0 || j === size + 1) {
-                        if (pre_solved_board && Array.isArray(pre_solved_board) && pre_solved_board.length === size + 2) {
-                            const val = pre_solved_board[i] && pre_solved_board[i][j];
-                            return (val === undefined || val === null) ? 0 : val;
-                        }
-                        return 0; // 边界填充为 0
-                    }
-                    const cell = puzzle[i - 1][j - 1];
-                    return cell === -1
-                        ? -1
-                        : cell === 0
-                        ? [...Array(size)].map((_, n) => n + 1)
-                        : cell;
-                })
-            );
-        } else {
-            test_board = puzzle.map(row =>
-                row.map(cell => cell === -1
-                    ? -1
-                    : cell === 0
-                    ? [...Array(size)].map((_, n) => n + 1)
-                    : cell
-                )
-            );
-        }
+        const test_board = build_test_board_from_puzzle(puzzle);
         // log_process(test_board);
 
         // log_process(size);

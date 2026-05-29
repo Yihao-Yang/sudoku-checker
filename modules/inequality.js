@@ -238,6 +238,7 @@ export function generate_inequality_puzzle(size, score_lower_limit = 0, holes_co
             log_process(`第四步完成（耗时${format_step_elapsed(step4_start)}秒）`);
 
             render_inequality_marks_from_state(size, container);
+            generate_puzzle(size, score_lower_limit, holes_count, puzzle_result.puzzle);
 
             const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
             show_result(`不等号数独出题完成（耗时${elapsed}秒）`);

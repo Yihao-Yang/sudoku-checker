@@ -466,10 +466,10 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
         log_process('', true)
         log_process(`排除数独生成完成`);
         log_process(`点击检查唯一性查看技巧和分值`);
-        const { puzzle: puzzle } = generate_puzzle(size, score_lower_limit, holes_count, solvedBoard);
+        const puzzle_result = generate_puzzle(size, score_lower_limit, holes_count, solvedBoard);
         optimize_marks_state(size, symmetry);
         render_exclusion_marks_from_state(size, container);
-        // generate_puzzle(size, score_lower_limit, holes_count, puzzle);
+        generate_puzzle(size, score_lower_limit, holes_count, puzzle_result.puzzle);
         hide_generating_timer();
         const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
         show_result(`排除数独生成完成，耗时${elapsed}秒）`);

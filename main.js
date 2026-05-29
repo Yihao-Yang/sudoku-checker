@@ -44,6 +44,7 @@ import { generate_add_puzzle } from './modules/add.js';
 import { generate_kropki_puzzle } from './modules/kropki.js';
 import { generate_missing_puzzle } from './modules/missing.js';
 import { generate_consecutive_puzzle } from './modules/consecutive.js';
+import { generate_clone_puzzle } from './modules/clone.js';
 
 
 const MODE_EXPORT_META = {
@@ -682,10 +683,12 @@ function initializeEventHandlers() {
 
         if (state.current_mode === 'multi_diagonal') {
             return generate_multi_diagonal_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        } else if (state.current_mode === 'clone') {
+            return generate_clone_puzzle(state.current_grid_size, score_lower_limit, holes_count);
         } else if (state.current_mode === 'product') {
             return generate_product_puzzle(state.current_grid_size, score_lower_limit, holes_count);
         } else if (state.current_mode === 'VX') {
-            return generate_VX_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+            return generate_vx_puzzle(state.current_grid_size, score_lower_limit, holes_count);
         } else if (state.current_mode === 'fortress') {
             return generate_fortress_puzzle(state.current_grid_size, score_lower_limit, holes_count);
         } else if (state.current_mode === 'extra_region') {

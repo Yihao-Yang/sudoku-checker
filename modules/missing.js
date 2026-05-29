@@ -113,7 +113,7 @@ export function create_missing_sudoku(size) {
     add_Extra_Button('缺一门', () => {create_missing_sudoku(size)});
     add_Extra_Button('添加标记', toggle_marking_mode);
     add_Extra_Button('清除标记', clear_marks);
-    add_Extra_Button('自动出题', () => generate_missing_puzzle(size));
+    add_Extra_Button('自动出题', state.create_mode_specific_generate_handler?.((score_lower_limit, holes_count) => generate_missing_puzzle(size, score_lower_limit, holes_count)) || (() => generate_missing_puzzle(size)));
     
     
     gridDisplay.appendChild(container);

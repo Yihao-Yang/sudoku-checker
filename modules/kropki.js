@@ -163,7 +163,7 @@ export function create_kropki_sudoku(size) {
         });
         add_Extra_Button('清除标记', clear_marks);
         add_Extra_Button('一键标记', auto_mark_kropki);
-        add_Extra_Button('自动出题', () => generate_kropki_puzzle(size), '#2196F3');
+        add_Extra_Button('自动出题', state.create_mode_specific_generate_handler?.((score_lower_limit, holes_count) => generate_kropki_puzzle(size, score_lower_limit, holes_count)) || (() => generate_kropki_puzzle(size)), '#2196F3');
     }
 
     reset_kropki_highlights(container);

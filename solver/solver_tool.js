@@ -1485,6 +1485,91 @@ export function get_all_regions(size, mode = 'classic') {
             }
         }
     }
+    // 克隆替代区域：A 取代 B，在 B 的宫/行/列中生成新区域
+    else if (mode === 'clone') {
+        const clone_regions = get_clone_cells();
+        if (Array.isArray(clone_regions) && clone_regions.length > 1) {
+            for (let i = 0; i < clone_regions.length; i++) {
+                for (let j = i + 1; j < clone_regions.length; j++) {
+                    const region_i = clone_regions[i];
+                    const region_j = clone_regions[j];
+
+                    if (!are_regions_same_shape(region_i, region_j)) {
+                        continue;
+                    }
+
+                    const sorted_i = [...region_i].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+                    const sorted_j = [...region_j].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+
+                    for (let k = 0; k < sorted_i.length; k++) {
+                        const A = sorted_i[k];
+                        const B = sorted_j[k];
+
+                        // 生成 克隆替代宫 区域：A + (B所在宫的其他格子，不含B)
+                        {
+                            const br = Math.floor(B[0] / box_size[0]);
+                            const bc = Math.floor(B[1] / box_size[1]);
+                            const cellSet = new Set();
+                            for (let r = br * box_size[0]; r < (br + 1) * box_size[0]; r++) {
+                                for (let c = bc * box_size[1]; c < (bc + 1) * box_size[1]; c++) {
+                                    if (r === B[0] && c === B[1]) continue;
+                                    cellSet.add(`${r},${c}`);
+                                }
+                            }
+                            cellSet.add(`${A[0]},${A[1]}`);
+                            const region_cells = Array.from(cellSet)
+                                .map(s => s.split(',').map(Number));
+
+                            const index = region_cells
+                                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                                .join('-');
+
+                            regions.push({ type: '克隆替代宫', index, cells: region_cells });
+                        }
+
+                        // 生成 克隆替代行 区域：A + (B所在行的其他格子，不含B)
+                        {
+                            const cellSet = new Set();
+                            for (let c = 0; c < size; c++) {
+                                if (c === B[1]) continue;
+                                cellSet.add(`${B[0]},${c}`);
+                            }
+                            cellSet.add(`${A[0]},${A[1]}`);
+                            const region_cells = Array.from(cellSet)
+                                .map(s => s.split(',').map(Number));
+
+                            const index = region_cells
+                                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                                .join('-');
+
+                            regions.push({ type: '克隆替代行', index, cells: region_cells });
+                        }
+
+                        // 生成 克隆替代列 区域：A + (B所在列的其他格子，不含B)
+                        {
+                            const cellSet = new Set();
+                            for (let r = 0; r < size; r++) {
+                                if (r === B[0]) continue;
+                                cellSet.add(`${r},${B[1]}`);
+                            }
+                            cellSet.add(`${A[0]},${A[1]}`);
+                            const region_cells = Array.from(cellSet)
+                                .map(s => s.split(',').map(Number));
+
+                            const index = region_cells
+                                .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                                .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                                .join('-');
+
+                            regions.push({ type: '克隆替代列', index, cells: region_cells });
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     // 计算完成后缓存结果
     _regions_cache = regions;

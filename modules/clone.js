@@ -1,5 +1,5 @@
 import { state, set_current_mode } from '../solver/state.js';
-import { bold_border, create_base_grid, handle_key_navigation, add_Extra_Button, log_process, create_base_cell, show_result } from '../solver/core.js';
+import { bold_border, create_base_grid, handle_key_navigation, add_Extra_Button, log_process, create_base_cell, show_result, show_generating_timer, hide_generating_timer } from '../solver/core.js';
 import { create_technique_panel } from '../solver/classic.js';
 import { generate_puzzle } from '../solver/generate.js';
 import { get_all_regions, invalidate_regions_cache } from '../solver/solver_tool.js';
@@ -34,57 +34,64 @@ export function create_clone_sudoku(size) {
     state.techniqueSettings = {
         Box_Elimination: true,
         Row_Col_Elimination: true,
-        Box_Block: true,        // 
+        // 区块技巧全部打开
+        Box_Block: true,
+        Variant_Box_Block: true,
         Box_Pair_Block: true,
-        Row_Col_Block: true,    // 
-        Box_Naked_Pair: true,   // 
-        Row_Col_Naked_Pair: true, // 
-        Box_Hidden_Pair: true,  // 
-        Row_Col_Hidden_Pair: true, // 
-        Box_Naked_Triple: true, // 
-        Row_Col_Naked_Triple: true, // 
-        Box_Hidden_Triple: true, // 
-        Row_Col_Hidden_Triple: true, // 
-        All_Quad: false,         // 
-        Cell_Elimination: true,  // 
+        Extra_Region_Pair_Block: true,
+        Row_Col_Block: true,
+        Variant_Row_Col_Block: true,
+        Extra_Region_Block: true,
+        Variant_Extra_Region_Block: true,
+        // 数对技巧
+        Box_Naked_Pair: true,
+        Row_Col_Naked_Pair: true,
+        Box_Hidden_Pair: true,
+        Row_Col_Hidden_Pair: true,
+        // 数组技巧
+        Box_Naked_Triple: true,
+        Row_Col_Naked_Triple: true,
+        Box_Hidden_Triple: true,
+        Row_Col_Hidden_Triple: true,
+        All_Quad: false,
+        Cell_Elimination: true,
         Brute_Force: false,
-        Variant_Elimination: true,
-        Variant_Block: true,
-        Variant_Pair_Block: true,
-        Variant_Naked_Pair: true,
-        Variant_Hidden_Pair: true,
-        Variant_Naked_Triple: true,
-        Variant_Hidden_Triple: true,
+        // 额外区域技巧
+        Extra_Region_Elimination: true,
+        Extra_Region_Naked_Pair: true,
+        Extra_Region_Hidden_Pair: true,
+        Extra_Region_Naked_Triple: true,
+        Extra_Region_Hidden_Triple: true,
         Special_Combination_Region_Most_Not_Contain_1: true,
         Special_Combination_Region_Most_Not_Contain_2: true,
-        Special_Combination_Region_Most_Not_Contain_3: true,
-        Multi_Special_Combination_Region_Most_Not_Contain_1: true,
-        Multi_Special_Combination_Region_Most_Not_Contain_2: true,
-        Multi_Special_Combination_Region_Most_Not_Contain_3: true,
+        // Special_Combination_Region_Most_Not_Contain_3: true,
+        // Multi_Special_Combination_Region_Most_Not_Contain_1: true,
+        // Multi_Special_Combination_Region_Most_Not_Contain_2: true,
+        // Multi_Special_Combination_Region_Most_Not_Contain_3: true,
         Special_Combination_Region_Most_Contain_1: true,
         Special_Combination_Region_Most_Contain_2: true,
-        Special_Combination_Region_Most_Contain_3: true,
-        Multi_Special_Combination_Region_Most_Contain_1: true,
-        Multi_Special_Combination_Region_Most_Contain_2: true,
-        Multi_Special_Combination_Region_Most_Contain_3: true,
+        // Special_Combination_Region_Most_Contain_3: true,
+        // Multi_Special_Combination_Region_Most_Contain_1: true,
+        // Multi_Special_Combination_Region_Most_Contain_2: true,
+        // Multi_Special_Combination_Region_Most_Contain_3: true,
         Special_Combination_Region_Cell_Elimination_1: true,
         Special_Combination_Region_Cell_Elimination_2: true,
-        Special_Combination_Region_Cell_Elimination_3: true,
-        Multi_Special_Combination_Region_Cell_Elimination_1: true,
-        Multi_Special_Combination_Region_Cell_Elimination_2: true,
-        Multi_Special_Combination_Region_Cell_Elimination_3: true,
+        // Special_Combination_Region_Cell_Elimination_3: true,
+        // Multi_Special_Combination_Region_Cell_Elimination_1: true,
+        // Multi_Special_Combination_Region_Cell_Elimination_2: true,
+        // Multi_Special_Combination_Region_Cell_Elimination_3: true,
         Special_Combination_Region_Elimination_1: true,
         Special_Combination_Region_Elimination_2: true,
-        Special_Combination_Region_Elimination_3: true,
-        Multi_Special_Combination_Region_Elimination_1: true,
-        Multi_Special_Combination_Region_Elimination_2: true,
-        Multi_Special_Combination_Region_Elimination_3: true,
+        // Special_Combination_Region_Elimination_3: true,
+        // Multi_Special_Combination_Region_Elimination_1: true,
+        // Multi_Special_Combination_Region_Elimination_2: true,
+        // Multi_Special_Combination_Region_Elimination_3: true,
         Special_Combination_Region_Block_1: true,
         Special_Combination_Region_Block_2: true,
-        Special_Combination_Region_Block_3: true,
-        Multi_Special_Combination_Region_Block_1: true,
-        Multi_Special_Combination_Region_Block_2: true,
-        Multi_Special_Combination_Region_Block_3: true,
+        // Special_Combination_Region_Block_3: true,
+        // Multi_Special_Combination_Region_Block_1: true,
+        // Multi_Special_Combination_Region_Block_2: true,
+        // Multi_Special_Combination_Region_Block_3: true,
     };
     // 唯余法全部默认开启
     for (let i = 1; i <= size; i++) {
@@ -121,7 +128,7 @@ export function create_clone_sudoku(size) {
     add_Extra_Button('克隆', () => {create_clone_sudoku(size)}, '#2196F3');
     add_Extra_Button('添加标记', toggle_mark_mode, '#2196F3');
     add_Extra_Button('清除标记', () => clear_clone_marks(state.current_grid_size), '#2196F3');
-    // add_Extra_Button('自动出题', () => generate_clone_puzzle(size), '#2196F3');
+    add_Extra_Button('自动出题', state.create_mode_specific_generate_handler?.((score_lower_limit, holes_count) => generate_clone_puzzle(size, score_lower_limit, holes_count)) || (() => generate_clone_puzzle(size)), '#2196F3');
 
     for (let i = 0; i < size * size; i++) {
         const row = Math.floor(i / size);
@@ -184,34 +191,6 @@ export function generate_clone_puzzle(size, score_lower_limit = 0, holes_count =
     clear_clone_marks(size);
     invalidate_regions_cache();
 
-    // 支持的对称类型
-    const SYMMETRY_TYPES = [
-        'central','central','central','central','central',
-        'diagonal','diagonal',
-        'anti-diagonal','anti-diagonal',
-        'horizontal',
-        'vertical',
-    ];
-    const symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
-
-    // 生成对称点
-    function get_symmetric_pos(row, col, size, symmetry) {
-        switch (symmetry) {
-            case 'horizontal':
-                return [size - 1 - row, col];
-            case 'vertical':
-                return [row, size - 1 - col];
-            case 'central':
-                return [size - 1 - row, size - 1 - col];
-            case 'diagonal':
-                return [col, row];
-            case 'anti-diagonal':
-                return [size - 1 - col, size - 1 - row];
-            default:
-                return [row, col];
-        }
-    }
-
     function shuffle(arr) {
         for (let i = arr.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -219,158 +198,203 @@ export function generate_clone_puzzle(size, score_lower_limit = 0, holes_count =
         }
     }
 
-    // 生成一个对称区域（不要求连通，只要求对称且数量为size）
-    function generate_single_region() {
-        // 随机选格子并对称填充，直到达到size
-        let attempts = 0;
-        while (attempts < 1000) {
-            attempts++;
-            let regionSet = new Set();
-            // 找到所有格子
-            let all_cells = [];
-            for (let row = 0; row < size; row++) {
-                for (let col = 0; col < size; col++) {
-                    all_cells.push([row, col]);
+    const box_size = size === 6 ? [2, 3] : [Math.sqrt(size), Math.sqrt(size)];
+    const directions4 = [
+        [-1, 0], [1, 0], [0, -1], [0, 1]
+    ];
+
+    function cell_key(row, col) {
+        return `${row},${col}`;
+    }
+
+    function box_index(row, col) {
+        return `${Math.floor(row / box_size[0])},${Math.floor(col / box_size[1])}`;
+    }
+
+    // 8邻接判定：包含正交与对角相邻
+    function are_touching_8(cell_a, cell_b) {
+        return Math.abs(cell_a[0] - cell_b[0]) <= 1 && Math.abs(cell_a[1] - cell_b[1]) <= 1;
+    }
+
+    function build_extended_region(region) {
+        const extended = new Set();
+        for (const [r, c] of region) {
+            for (let dr = -1; dr <= 1; dr++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                    const nr = r + dr;
+                    const nc = c + dc;
+                    if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
+                    extended.add(cell_key(nr, nc));
                 }
             }
-            shuffle(all_cells);
-            for (let [row, col] of all_cells) {
-                let key = `${row},${col}`;
-                let [sym_row, sym_col] = get_symmetric_pos(row, col, size, symmetry);
-                let sym_key = `${sym_row},${sym_col}`;
-                regionSet.add(key);
-                regionSet.add(sym_key);
-                if (regionSet.size >= size) break;
+        }
+        return extended;
+    }
+
+    // 构造一个随机连通形状（相对坐标）
+    function generate_base_shape(target_len) {
+        const shape = [[0, 0]];
+        const shape_set = new Set(['0,0']);
+
+        while (shape.length < target_len) {
+            const frontier = [];
+            for (const [r, c] of shape) {
+                for (const [dr, dc] of directions4) {
+                    const nr = r + dr;
+                    const nc = c + dc;
+                    const key = `${nr},${nc}`;
+                    if (!shape_set.has(key)) {
+                        frontier.push([nr, nc]);
+                    }
+                }
             }
-            // 转为数组
-            let region = Array.from(regionSet).map(s => s.split(',').map(Number));
-            if (region.length === size) {
-                return [region];
+
+            if (frontier.length === 0) break;
+            const pick = frontier[Math.floor(Math.random() * frontier.length)];
+            const key = `${pick[0]},${pick[1]}`;
+            if (!shape_set.has(key)) {
+                shape.push(pick);
+                shape_set.add(key);
             }
         }
+
+        // 规范化为最小行列从0开始，并固定排序，确保对应位稳定
+        const min_r = Math.min(...shape.map(([r]) => r));
+        const min_c = Math.min(...shape.map(([, c]) => c));
+        return shape
+            .map(([r, c]) => [r - min_r, c - min_c])
+            .sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    }
+
+    function build_placement(shape, base_row, base_col) {
+        const cells = [];
+        for (const [dr, dc] of shape) {
+            const r = base_row + dr;
+            const c = base_col + dc;
+            if (r < 0 || r >= size || c < 0 || c >= size) return null;
+            cells.push([r, c]);
+        }
+        return cells;
+    }
+
+    function enumerate_placements(shape) {
+        const max_r = Math.max(...shape.map(([r]) => r));
+        const max_c = Math.max(...shape.map(([, c]) => c));
+        const placements = [];
+        for (let r0 = 0; r0 <= size - 1 - max_r; r0++) {
+            for (let c0 = 0; c0 <= size - 1 - max_c; c0++) {
+                const cells = build_placement(shape, r0, c0);
+                if (cells) placements.push(cells);
+            }
+        }
+        return placements;
+    }
+
+    function placements_compatible(candidate, selected_regions) {
+        const candidate_set = new Set(candidate.map(([r, c]) => cell_key(r, c)));
+        const candidate_extended = build_extended_region(candidate);
+
+        for (const region of selected_regions) {
+            const region_set = new Set(region.map(([r, c]) => cell_key(r, c)));
+            const region_extended = build_extended_region(region);
+
+            // 区域间距离约束（按盘面规模）
+            if (size === 6) {
+                // 六宫：不同克隆区域的延伸区域不能重合
+                for (const key of candidate_extended) {
+                    if (region_extended.has(key)) {
+                        return false;
+                    }
+                }
+            } else if (size === 9) {
+                // 九宫：不同克隆区域的延伸区域不能相邻（含重合）
+                const ext_cells_a = Array.from(candidate_extended).map(s => s.split(',').map(Number));
+                const ext_cells_b = Array.from(region_extended).map(s => s.split(',').map(Number));
+                for (const a of ext_cells_a) {
+                    for (const b of ext_cells_b) {
+                        if (are_touching_8(a, b)) {
+                            return false;
+                        }
+                    }
+                }
+            } else {
+                // 四宫及其它：沿用原有更宽松限制
+                for (const key of candidate_set) {
+                    if (region_set.has(key)) {
+                        return false;
+                    }
+                }
+                for (const cell_c of candidate) {
+                    for (const cell_r of region) {
+                        if (are_touching_8(cell_c, cell_r)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            // 对应位不能同一行、同一列、同一宫
+            for (let i = 0; i < candidate.length; i++) {
+                const [ra, ca] = region[i];
+                const [rb, cb] = candidate[i];
+                if (ra === rb || ca === cb) {
+                    return false;
+                }
+                if (box_index(ra, ca) === box_index(rb, cb)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    function try_generate_regions() {
+        const min_len = Math.max(2, Math.floor(size / 2));
+        const max_len = Math.max(min_len, size - 1);
+        const target_len = min_len + Math.floor(Math.random() * (max_len - min_len + 1));
+        const shape = generate_base_shape(target_len);
+        if (shape.length < 2) return [];
+
+        const placements = enumerate_placements(shape);
+        if (placements.length < 2) return [];
+
+        shuffle(placements);
+
+        for (const A of placements) {
+            const selected = [A];
+            let expanded = true;
+
+            while (expanded) {
+                expanded = false;
+                const candidates = [];
+                for (const p of placements) {
+                    if (selected.includes(p)) continue;
+                    if (placements_compatible(p, selected)) {
+                        candidates.push(p);
+                    }
+                }
+                if (candidates.length > 0) {
+                    shuffle(candidates);
+                    selected.push(candidates[0]);
+                    expanded = true;
+                }
+            }
+
+            if (selected.length >= 2) {
+                return selected;
+            }
+        }
+
         return [];
     }
 
-    // 方式二：生成两个对称区域
-    function generate_double_symmetric_regions(size, symmetry, get_symmetric_pos) {
-        // 随机选择连通方式
-        const directions = Math.random() < 0.5
-            ? [
-                [-1, 0], [1, 0], [0, -1], [0, 1]
-            ]
-            : [
-                [-1, 0], [1, 0], [0, -1], [0, 1],
-                [-1, -1], [-1, 1], [1, -1], [1, 1]
-            ];
-    
-        function is_adjacent(cell_a, cell_b) {
-            const [r1, c1] = cell_a;
-            const [r2, c2] = cell_b;
-            for (const [dr, dc] of directions) {
-                if (r1 + dr === r2 && c1 + dc === c2) {
-                    return true;
-                }
-            }
-            return false;
-        }
-    
-        function cell_key(row, col) {
-            return `${row},${col}`;
-        }
-    
-        let attempts = 0;
-        while (attempts < 100) {
-            attempts++;
-            // 1. 随机选一个格子
-            let all_cells = [];
-            for (let row = 0; row < size; row++) {
-                for (let col = 0; col < size; col++) {
-                    all_cells.push([row, col]);
-                }
-            }
-            // 洗牌
-            for (let i = all_cells.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [all_cells[i], all_cells[j]] = [all_cells[j], all_cells[i]];
-            }
-            let [start_row, start_col] = all_cells[0];
-            let [sym_row, sym_col] = get_symmetric_pos(start_row, start_col, size, symmetry);
-    
-            // 2. 检查不是同一格且不连通
-            if (start_row === sym_row && start_col === sym_col) continue;
-            if (is_adjacent([start_row, start_col], [sym_row, sym_col])) continue;
-    
-            // 3. 初始化区域
-            let region_1 = [[start_row, start_col]];
-            let region_2 = [[sym_row, sym_col]];
-            let region_1_set = new Set([cell_key(start_row, start_col)]);
-            let region_2_set = new Set([cell_key(sym_row, sym_col)]);
-    
-            // 4. 循环扩展
-            while (region_1.length < size) {
-                // 在region_1的随机一个格子的8连通位置找可加入的格子
-                let candidates = [];
-                for (let [r, c] of region_1) {
-                    for (const [dr, dc] of directions) {
-                        let nr = r + dr, nc = c + dc;
-                        let key = cell_key(nr, nc);
-                        let [sym_nr, sym_nc] = get_symmetric_pos(nr, nc, size, symmetry);
-                        let sym_key = cell_key(sym_nr, sym_nc);
-                        // 边界判断
-                        if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
-                        if (region_1_set.has(key) || region_2_set.has(key)) continue;
-                        if (region_1_set.has(sym_key) || region_2_set.has(sym_key)) continue;
-                        candidates.push([nr, nc]);
-                    }
-                }
-                if (candidates.length === 0) break;
-                // 随机选一个
-                const idx = Math.floor(Math.random() * candidates.length);
-                let [chosen_r, chosen_c] = candidates[idx];
-                let [sym_chosen_r, sym_chosen_c] = get_symmetric_pos(chosen_r, chosen_c, size, symmetry);
-    
-                // 5. 判断区域2刚添加的格子是否和区域1的任意一个格子八连通
-                let adjacent = false;
-                for (let [r1, c1] of region_1) {
-                    if (is_adjacent([r1, c1], [sym_chosen_r, sym_chosen_c])) {
-                        adjacent = true;
-                        break;
-                    }
-                    if (is_adjacent([chosen_r, chosen_c], [sym_chosen_r, sym_chosen_c])) {
-                        adjacent = true;
-                        break;
-                    }
-                    
-                }
-                if (adjacent) continue; // 跳过本次添加
-    
-                // 6. 添加到两个区域
-                region_1.push([chosen_r, chosen_c]);
-                region_1_set.add(cell_key(chosen_r, chosen_c));
-                region_2.push([sym_chosen_r, sym_chosen_c]);
-                region_2_set.add(cell_key(sym_chosen_r, sym_chosen_c));
-            }
-    
-            // 7. 检查数量
-            if (region_1.length === size && region_2.length === size) {
-                return [region_1, region_2];
-            }
-            // 否则重试
-        }
-        return [];
-    }
-    // ...existing code...
-
-    // 随机选择生成方式
     let regions = [];
-    if (Math.random() < 0.3) {
-        regions = generate_single_region();
-    // } else if (Math.random() < 0.5) {
-    //     regions = generate_single_symmetric_region();
-    } else {
-        regions = generate_double_symmetric_regions(size, symmetry, get_symmetric_pos);
+    for (let attempt = 0; attempt < 200; attempt++) {
+        regions = try_generate_regions();
+        if (regions.length >= 2) break;
     }
-    if (regions.length === 0) {
+
+    if (regions.length < 2) {
         log_process('自动生成克隆失败，请重试');
         return;
     }
@@ -381,11 +405,19 @@ export function generate_clone_puzzle(size, score_lower_limit = 0, holes_count =
             let key = `${row},${col}`;
             state.clone_cells.add(key);
             let cell = document.querySelector(`.sudoku-cell.extra-region-mode[data-row="${row}"][data-col="${col}"]`);
-            if (cell) cell.classList.add('extra-region-cell');
+            if (cell) {
+                cell.classList.add('extra-region-cell');
+                cell.classList.add('gray-cell');
+            }
         }
     }
 
-    generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+    show_generating_timer();
+    
+    setTimeout(() => {
+        generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        hide_generating_timer();
+    }, 0);
 }
 
 // // 获取所有合法的克隆
