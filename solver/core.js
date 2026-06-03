@@ -3,7 +3,7 @@ import { create_vx_sudoku } from '../modules/vx.js';
 import { create_candidates_sudoku } from '../modules/candidates.js';
 import { state } from './state.js';
 import { solve_By_Elimination } from './Technique.js';
-import { check_uniqueness } from './classic.js';
+import { check_minimal_uniqueness } from './classic.js';
 import { clear_multi_diagonal_marks } from '../modules/multi_diagonal.js'
 import { check_missing_uniqueness } from '../modules/missing.js';
 
@@ -1142,7 +1142,7 @@ export function save_sudoku_as_image(is_puzzle = true, with_watermark = false, w
         if (state.current_mode === 'missing') {
             check_missing_uniqueness();
         } else {
-            check_uniqueness();
+            check_minimal_uniqueness();
         }
         hide_solution();
     }
@@ -1342,7 +1342,7 @@ if (with_watermark) {
             if (state.current_mode === 'missing') {
                 check_missing_uniqueness();
             } else {
-                check_uniqueness();
+                check_minimal_uniqueness();
             }
             setTimeout(() => {
                 save_sudoku_as_image(false, with_watermark, watermark_img_src, { withAxisLabels });

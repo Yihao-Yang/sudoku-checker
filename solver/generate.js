@@ -10,9 +10,13 @@ import { is_valid_quadruple } from '../modules/quadruple.js';
 // import { isValid_multi_diagonal } from '../modules/multi_diagonal.js';
 // import { isValid_diagonal } from '../modules/diagonal.js';
 
-
 // 自动生成标准数独题目
-export function generate_puzzle(size, score_lower_limit = 0, holes_count = undefined, pre_solved_board = null) {
+export function generate_puzzle(size, score_lower_limit = 0, holes_count = undefined, pre_solved_board = null, options = {}) {
+    const generation_options = options && typeof options === 'object' ? options : {};
+    const dig_validation_mode = generation_options.digValidationMode === 'check_next' ? 'check_next' : 'uniqueness';
+    const stats_profile_mode = generation_options.statsProfile === 'minimal_uniqueness' ? 'minimal_uniqueness' : 'validation_mode';
+    const stop_on_single_progress = generation_options.stopOnSingleProgress === true;
+    const single_progress_check_mode = generation_options.singleProgressCheckMode === 'check_next' ? 'check_next' : 'uniqueness';
     // log_process(pre_solved_board);
     // log_process(
     //     pre_solved_board
@@ -113,6 +117,26 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
         );
     };
 
+    const evaluate_generated_puzzle = (candidate_puzzle) => {
+        const candidate_test_board = build_test_board_from_puzzle(candidate_puzzle);
+        if (dig_validation_mode === 'check_next') {
+            return solve(candidate_test_board, size, isValid, true);
+        }
+        return solve_with_minimal_uniqueness_profile(candidate_test_board, size);
+    };
+
+    const is_generated_puzzle_acceptable = (candidate_result) => {
+        if (!candidate_result) {
+            return false;
+        }
+
+        if (dig_validation_mode === 'check_next') {
+            return candidate_result.solution_count !== 0 && candidate_result.solution_count !== -2;
+        }
+
+        return candidate_result.solution_count === 1;
+    };
+
     while (true) {
         try_count++;
         if (try_count > MAX_TRY) {
@@ -131,9 +155,8 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
             const has_holes = pre_solved_board.some(row => Array.isArray(row) && row.some(cell => cell === 0));
             if (has_holes) {
                 const candidate_puzzle = pre_solved_board.map(row => row.map(cell => cell));
-                const candidate_test_board = build_test_board_from_puzzle(candidate_puzzle);
-                const candidate_result = solve(candidate_test_board, size, isValid, true);
-                if (candidate_result.solution_count === 1) {
+                const candidate_result = evaluate_generated_puzzle(candidate_puzzle);
+                if (is_generated_puzzle_acceptable(candidate_result)) {
                     puzzle = candidate_puzzle;
                     solution = Array.isArray(candidate_result.solution)
                         ? candidate_result.solution.map(row => row.map(cell => cell))
@@ -145,7 +168,7 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
                             if (puzzle[i][j] === 0) holesDug++;
                         }
                     }
-                    log_process('检测到传入盘面已是唯一解题面，跳过挖洞流程。');
+                    log_process('检测到传入盘面已满足当前生成条件，跳过挖洞流程。');
                     break;
                 }
             }
@@ -227,7 +250,11 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
 
         // log_process(`挖洞前用时${elapsed}秒）`);
         // 挖洞得到题目
-        puzzle = dig_holes(solution, size, score_lower_limit, symmetry, holes_count);
+        puzzle = dig_holes(solution, size, score_lower_limit, symmetry, holes_count, {
+            mode: dig_validation_mode,
+            stopOnSingleProgress: stop_on_single_progress,
+            singleProgressCheckMode: single_progress_check_mode
+        });
         // log_process(`3 ${symmetry}`)
         // 记录结束时间
         // const end_time_1 = performance.now();
@@ -248,26 +275,31 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
             }
         }
 
-        // 构建用于唯一性检测的 test_board
-        const test_board = build_test_board_from_puzzle(puzzle);
-        // log_process(test_board);
+        result = evaluate_generated_puzzle(puzzle);
 
-        // log_process(size);
-        result = solve(test_board, size, isValid, true);
-
-        // 二次校验（缺一门求解器口径）
-        if (result.solution_count !== 1) {
+        // 最终校验：普通自动出题保留唯一解限制，自动出卡点仅排除无解盘面
+        if (!is_generated_puzzle_acceptable(result)) {
             continue;
         }
 
         break;
     }
 
+    if (dig_validation_mode === 'check_next' && stats_profile_mode === 'minimal_uniqueness') {
+        const minimal_uniqueness_result = solve_with_minimal_uniqueness_profile(build_test_board_from_puzzle(puzzle), size);
+        if (minimal_uniqueness_result) {
+            result = minimal_uniqueness_result;
+        }
+    }
+
     // log_process('', true);
+    const score_label = (dig_validation_mode === 'check_next' && stats_profile_mode === 'minimal_uniqueness')
+        ? '分值（最简唯一解）'
+        : '分值';
     if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
-        log_process(`${size}宫格数独生成成功，分值：${state.solve_stats.total_score}，提示数: ${size*size-holesDug}`);
+        log_process(`${size}宫格数独生成成功，${score_label}：${state.solve_stats.total_score}，提示数: ${size*size-holesDug}`);
     } else {
-        log_process(`${size}宫格数独生成成功，分值：${state.solve_stats.total_score}，提示数: ${size*size-holesDug}`);
+        log_process(`${size}宫格数独生成成功，${score_label}：${state.solve_stats.total_score}，提示数: ${size*size-holesDug}`);
     }
 
     // 3. 填充到网格
@@ -308,7 +340,10 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
     //     }
     // }
     if (result && result.technique_counts) {
-        log_process("\n=== 技巧使用统计 ===");
+        const stats_title = (dig_validation_mode === 'check_next' && stats_profile_mode === 'minimal_uniqueness')
+            ? "\n=== 技巧使用统计（最简唯一解） ==="
+            : "\n=== 技巧使用统计 ===";
+        log_process(stats_title);
         const technique_scores = result.technique_scores || {};
         for (const [technique, count] of Object.entries(result.technique_counts)) {
             if (count > 0) {
@@ -327,6 +362,22 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
         puzzle: puzzle,
         solution: solution
     };
+}
+
+export function generate_chokepoint_puzzle(size, score_lower_limit = 0, holes_count = undefined, pre_solved_board = null) {
+    return generate_puzzle(size, score_lower_limit, holes_count, pre_solved_board, {
+        digValidationMode: 'check_next',
+        statsProfile: 'minimal_uniqueness'
+    });
+}
+
+export function generate_real_chokepoint_puzzle(size, score_lower_limit = 0, holes_count = undefined, pre_solved_board = null) {
+    return generate_puzzle(size, score_lower_limit, holes_count, pre_solved_board, {
+        digValidationMode: 'check_next',
+        statsProfile: 'minimal_uniqueness',
+        stopOnSingleProgress: true,
+        singleProgressCheckMode: 'uniqueness'
+    });
 }
 
 // 生成X和数独题目
@@ -1331,7 +1382,7 @@ export function generate_solved_board_brute_force(size) {
 }
 
 // 挖洞，返回题目盘
-function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined) {
+function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined, validation_options = {}) {
     const puzzle = solution.map(row => [...row]);
     const blocked_cell_keys = new Set();
     const blocked_positions = [];
@@ -1349,7 +1400,135 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
 
     // 在这些模式下跳过分值比较，直接以唯一解为准进行挖洞
     const SKIP_SCORE_MODES = new Set(['VX', 'kropki', 'consecutive', 'X_sums', 'sandwich', 'skyscraper', 'pyramid']);
-    const skipScore = SKIP_SCORE_MODES.has(state.current_mode);
+    const validation_mode = validation_options?.mode === 'check_next' ? 'check_next' : 'uniqueness';
+    const stop_on_single_progress = validation_options?.stopOnSingleProgress === true;
+    const single_progress_check_mode = validation_options?.singleProgressCheckMode === 'check_next' ? 'check_next' : 'uniqueness';
+    const is_bordered_mode = state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper';
+    const skipScore = SKIP_SCORE_MODES.has(state.current_mode) || validation_mode === 'check_next';
+
+    const build_test_board_from_puzzle = () => {
+        if (is_bordered_mode) {
+            return Array.from({ length: size + 2 }, (_, i) =>
+                Array.from({ length: size + 2 }, (_, j) => {
+                    if (i === 0 || i === size + 1 || j === 0 || j === size + 1) {
+                        return 0;
+                    }
+                    const cell = puzzle[i - 1][j - 1];
+                    return cell === -1
+                        ? -1
+                        : cell === 0
+                        ? [...Array(size)].map((_, n) => n + 1)
+                        : cell;
+                })
+            );
+        }
+
+        return puzzle.map((row) =>
+            row.map((cell) => cell === -1
+                ? -1
+                : cell === 0
+                ? [...Array(size)].map((_, n) => n + 1)
+                : cell)
+        );
+    };
+
+    const count_determined_numbers = (board) => {
+        if (!Array.isArray(board)) {
+            return 0;
+        }
+
+        let count = 0;
+        if (is_bordered_mode) {
+            for (let i = 1; i <= size; i++) {
+                for (let j = 1; j <= size; j++) {
+                    if (typeof board[i]?.[j] === 'number' && board[i][j] > 0) {
+                        count++;
+                    }
+                }
+            }
+            return count;
+        }
+
+        for (let i = 0; i < size; i++) {
+            for (let j = 0; j < size; j++) {
+                if (typeof board[i]?.[j] === 'number' && board[i][j] > 0) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    };
+
+    const prepare_preview_solver_state = (check_next = false) => {
+        state.check_next = check_next;
+        state.candidate_elimination_score = {};
+        state.total_score_sum = 0;
+        state.logical_solution = null;
+        state.implicit_collect_enabled = false;
+        state.implicit_trail = [];
+        state.implicit_last_application = null;
+        state.implicit_replay_active = false;
+        state.implicit_expected_trail = [];
+        state.implicit_replay_cursor = 0;
+        state.implicit_replay_ok = true;
+        state.implicit_current_replay_target = null;
+    };
+
+    const cleanup_preview_solver_state = () => {
+        state.check_next = false;
+        state.logical_solution = null;
+        state.implicit_collect_enabled = false;
+        state.implicit_trail = [];
+        state.implicit_last_application = null;
+        state.implicit_replay_active = false;
+        state.implicit_expected_trail = [];
+        state.implicit_replay_cursor = 0;
+        state.implicit_replay_ok = true;
+        state.implicit_current_replay_target = null;
+    };
+
+    const validate_candidate = () => {
+        const test_board = build_test_board_from_puzzle();
+
+        if (validation_mode === 'check_next') {
+            const determined_before = count_determined_numbers(test_board);
+            prepare_preview_solver_state(true);
+            solve(test_board, size, isValid, true);
+            const logical_board = Array.isArray(state.logical_solution) ? state.logical_solution : test_board;
+            const determined_after = count_determined_numbers(logical_board);
+            const current_score = state.solve_stats.total_score !== undefined ? state.solve_stats.total_score : -1;
+            cleanup_preview_solver_state();
+            return {
+                is_valid: determined_after > determined_before,
+                score: current_score
+            };
+        }
+
+        prepare_preview_solver_state(false);
+        solve(test_board, size, isValid, true);
+        const is_valid = state.solve_stats.solution_count === 1;
+        const current_score = state.solve_stats.total_score !== undefined ? state.solve_stats.total_score : -1;
+        cleanup_preview_solver_state();
+        return {
+            is_valid,
+            score: current_score
+        };
+    };
+
+    const should_stop_after_single_progress = () => {
+        if (!stop_on_single_progress) {
+            return false;
+        }
+
+        const test_board = build_test_board_from_puzzle();
+        const determined_before = count_determined_numbers(test_board);
+        prepare_preview_solver_state(single_progress_check_mode === 'check_next');
+        solve(test_board, size, isValid, true);
+        const logical_board = Array.isArray(state.logical_solution) ? state.logical_solution : test_board;
+        const determined_after = count_determined_numbers(logical_board);
+        cleanup_preview_solver_state();
+        return determined_after - determined_before === 1;
+    };
 
     // 获取所有区域并计算每个格子所属的区域数量
     let regions = get_all_regions(size, state.current_mode);
@@ -1429,43 +1608,11 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
             // 预挖洞
             positions_to_dig.forEach(([r, c]) => puzzle[r][c] = 0);
 
-            // 验证唯一解并计算分值
-            let test_board;
-            if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
-                test_board = Array.from({ length: size + 2 }, (_, i) =>
-                    Array.from({ length: size + 2 }, (_, j) => {
-                        if (i === 0 || i === size + 1 || j === 0 || j === size + 1) {
-                            return 0;
-                        }
-                        const cell = puzzle[i - 1][j - 1];
-                        return cell === -1
-                            ? -1
-                            : cell === 0
-                            ? [...Array(size)].map((_, n) => n + 1)
-                            : cell;
-                    })
-                );
-            } else {
-                test_board = puzzle.map(row =>
-                    row.map(cell => cell === -1
-                        ? -1
-                        : cell === 0
-                        ? [...Array(size)].map((_, n) => n + 1)
-                        : cell)
-                );
-            }
-            // log_process(
-            //     test_board
-            //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
-            //         .join('\n')
-            // );
+            const { is_valid, score: current_score } = validate_candidate();
 
-            solve(test_board, size, isValid, true);
-
-            // 只要有唯一解即可作为候选；是否比较分值由 skipScore 控制
-            if (state.solve_stats.solution_count === 1) {
+            // 只要通过当前预挖校验即可作为候选；是否比较分值由 skipScore 控制
+            if (is_valid) {
                 const current_region_count = Math.max(...positions_to_dig.map(([r, c]) => region_counts[r][c]));
-                const current_score = state.solve_stats.total_score !== undefined ? state.solve_stats.total_score : -1;
 
                 if (skipScore) {
                     // 仅按区域数量优先选择，若相同则随机收集
@@ -1532,10 +1679,163 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
             chosen.positions.forEach(([r, c]) => puzzle[r][c] = 0);
             holes_dug += group_size;
             changed = group_size > 0;
+            if (changed && should_stop_after_single_progress()) {
+                break;
+            }
         }
     } while (changed && (holes_limit === undefined || holes_dug < holes_limit));
 
     return puzzle;
+}
+
+
+function solve_with_minimal_uniqueness_profile(test_board, size) {
+    const baseline = run_solve_with_implicit_control(clone_solver_board(test_board), size, {
+        collect_implicit: true
+    });
+
+    if (!baseline?.solve_result || baseline.solve_result.solution_count === -2 || baseline.solve_result.solution_count === 0) {
+        return baseline?.solve_result;
+    }
+
+    const original_trail = Array.isArray(baseline.implicit_trail) ? baseline.implicit_trail : [];
+    if (original_trail.length === 0) {
+        return baseline.solve_result;
+    }
+
+    let minimal_trail = original_trail.slice();
+
+    for (let idx = minimal_trail.length - 1; idx >= 0; idx--) {
+        const candidate_trail = minimal_trail.filter((_, i) => i !== idx);
+        const replay_result = run_solve_with_implicit_control(clone_solver_board(test_board), size, {
+            replay_trail: candidate_trail
+        });
+
+        if (replay_result.implicit_replay_ok && replay_result.result_signature === baseline.result_signature) {
+            minimal_trail = candidate_trail;
+        }
+    }
+
+    const applied_result = run_solve_with_implicit_control(clone_solver_board(test_board), size, {
+        replay_trail: minimal_trail,
+        collect_implicit: true
+    });
+
+    if (!applied_result.implicit_replay_ok || applied_result.result_signature !== baseline.result_signature) {
+        state.solve_stats.solution_count = baseline.solve_result.solution_count;
+        state.solve_stats.technique_counts = baseline.solve_result.technique_counts || {};
+        state.solve_stats.total_score = baseline.solve_result.total_score || 0;
+        return baseline.solve_result;
+    }
+
+    return applied_result.solve_result;
+    
+    function clone_solver_board(board) {
+        if (!Array.isArray(board)) return [];
+        return board.map((row) =>
+            Array.isArray(row)
+                ? row.map((cell) => (Array.isArray(cell) ? [...cell] : cell))
+                : []
+        );
+    }
+
+    function normalize_implicit_numbers(numbers) {
+        if (!Array.isArray(numbers)) return undefined;
+        return [...new Set(
+            numbers
+                .map((n) => Number(n))
+                .filter((n) => Number.isFinite(n))
+        )].sort((a, b) => a - b);
+    }
+
+    function normalize_implicit_trail_entry(entry) {
+        const payload = entry?.payload && typeof entry.payload === 'object'
+            ? {
+                ...entry.payload,
+                numbers: normalize_implicit_numbers(entry.payload.numbers)
+            }
+            : null;
+        return {
+            technique: entry?.technique,
+            score_key: entry?.score_key,
+            nat: entry?.nat,
+            payload
+        };
+    }
+
+    function build_result_signature(size, solution_count, logical_solution) {
+        const solution_signature = Array.isArray(logical_solution)
+            ? logical_solution
+                .slice(0, size)
+                .map((row) => {
+                    if (!Array.isArray(row)) {
+                        return '0'.repeat(size);
+                    }
+                    return row
+                        .slice(0, size)
+                        .map((cell) => (typeof cell === 'number' && cell > 0 ? String(cell) : '0'))
+                        .join('');
+                })
+                .join('|')
+            : '';
+
+        return `${solution_count}|${solution_signature}`;
+    }
+
+    function run_solve_with_implicit_control(board, size, options = {}) {
+        const collect_implicit = options.collect_implicit === true;
+        const replay_trail = Array.isArray(options.replay_trail) ? options.replay_trail : null;
+
+        state.candidate_elimination_score = {};
+        state.total_score_sum = 0;
+        state.logical_solution = null;
+
+        state.implicit_collect_enabled = collect_implicit;
+        state.implicit_trail = [];
+        state.implicit_last_application = null;
+        state.implicit_replay_active = Array.isArray(replay_trail);
+        state.implicit_expected_trail = state.implicit_replay_active
+            ? replay_trail.map((entry) => normalize_implicit_trail_entry(entry))
+            : [];
+        state.implicit_replay_cursor = 0;
+        state.implicit_replay_ok = true;
+
+        const solve_result = solve(board, size, isValid, true);
+
+        if (state.implicit_replay_active) {
+            const expected_len = state.implicit_expected_trail.length;
+            if (state.implicit_replay_cursor !== expected_len) {
+                state.implicit_replay_ok = false;
+            }
+            if (solve_result?.implicit_replay_ok === false) {
+                state.implicit_replay_ok = false;
+            }
+        }
+
+        const implicit_trail = (Array.isArray(state.implicit_trail) ? state.implicit_trail : [])
+            .map((entry) => normalize_implicit_trail_entry(entry));
+
+        const result_signature = build_result_signature(
+            size,
+            state.solve_stats.solution_count,
+            state.logical_solution
+        );
+        const implicit_replay_ok = state.implicit_replay_ok !== false;
+
+        state.implicit_collect_enabled = false;
+        state.implicit_replay_active = false;
+        state.implicit_expected_trail = [];
+        state.implicit_replay_cursor = 0;
+        state.implicit_last_application = null;
+        state.implicit_current_replay_target = null;
+
+        return {
+            solve_result,
+            implicit_trail,
+            implicit_replay_ok,
+            result_signature
+        };
+    }
 }
 
 // 获取对称位置

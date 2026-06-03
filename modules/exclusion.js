@@ -325,7 +325,7 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
     }
 
     // 生成圆圈数量（沿用原标准）
-    let min_marks = 4, max_marks = 8;
+    let min_marks = 2, max_marks = 5;
     if (size === 6) { min_marks = 20; max_marks = 24; }
     if (size === 9) { min_marks = 52; max_marks = 56; }
     const num_marks = Math.floor(Math.random() * (max_marks - min_marks + 1)) + min_marks;
@@ -406,13 +406,17 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
 
     // 随机生成交点位置（不贴边线，带对称），根据终盘给出“未出现数字”提示
     const positions_set = new Set();
+    const skipped_positions = new Set();
     let marks_added = 0;
+    let try_count = 0;
+    const max_try = Math.max(200, size * size * 20);
 
     log_process(`正在生成题目，请稍候...`);
     log_process('九宫：1分钟，超时请重启页面或调整限制条件');
     show_result(`正在生成题目，请稍候...`);
     setTimeout(() => {
-        while (marks_added < num_marks) {
+        while (marks_added < num_marks && try_count < max_try) {
+            try_count++;
             const row = Math.floor(Math.random() * (size - 1));
             const col = Math.floor(Math.random() * (size - 1));
             const [sym_row, sym_col] = get_symmetric(row, col, size, symmetry);
@@ -422,11 +426,15 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
 
             if (!is_valid_position(row, col) || !is_valid_position(sym_row, sym_col)) continue;
             if (positions_set.has(key) || positions_set.has(sym_key)) continue;
+            if (skipped_positions.has(key) || skipped_positions.has(sym_key)) continue;
             if (has_exclusion_mark(row, col) || has_exclusion_mark(sym_row, sym_col)) continue;
 
             const addedKeys = [];
             const mainExcluded = calculate_excluded_digits(row, col, solvedBoard);
-            if (!mainExcluded || mainExcluded.length === 0) continue;
+            if (!mainExcluded || mainExcluded.length === 0) {
+                skipped_positions.add(key);
+                continue;
+            }
             const mainDigit = mainExcluded[Math.floor(Math.random() * mainExcluded.length)];
             upsert_exclusion_mark(row, col, String(mainDigit));
             addedKeys.push(get_exclusion_mark_key(row, col));
@@ -435,6 +443,7 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
             if (!symmetric_is_same) {
                 const symExcluded = calculate_excluded_digits(sym_row, sym_col, solvedBoard);
                 if (!symExcluded || symExcluded.length === 0) {
+                    skipped_positions.add(sym_key);
                     remove_exclusion_marks_by_keys(addedKeys);
                     continue;
                 }
@@ -465,6 +474,9 @@ export function generate_exclusion_puzzle(size, score_lower_limit = 0, holes_cou
 
         log_process('', true)
         log_process(`排除数独生成完成`);
+        if (marks_added < num_marks) {
+            log_process(`部分位置无法给出排除标记，已跳过；实际添加 ${marks_added} 个标记`);
+        }
         log_process(`点击检查唯一性查看技巧和分值`);
         const puzzle_result = generate_puzzle(size, score_lower_limit, holes_count, solvedBoard);
         optimize_marks_state(size, symmetry);

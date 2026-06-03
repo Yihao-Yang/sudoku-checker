@@ -10,6 +10,7 @@ import { apply_exclusion_marks, is_valid_exclusion } from "../modules/exclusion.
 import { apply_inequality_marks } from "../modules/inequality.js";
 import { apply_thermo_marks } from "../modules/thermo.js";
 import { apply_fortress_marks } from "../modules/fortress.js";
+import { apply_five_six_marks } from "../modules/five_six.js";
 import { get_all_mark_lines, get_cells_on_line } from "../modules/multi_diagonal.js";
 // import { is_valid_quadruple } from '../modules/quadruple.js';
 
@@ -2862,6 +2863,8 @@ export function check_lookup_table(board, size) {
         apply_thermo_marks(board, size);
     } else if (state.current_mode === 'fortress') {
         apply_fortress_marks(board, size);
+    } else if (state.current_mode === 'five_six') {
+        apply_five_six_marks(board, size);
     }
 }
 function is_special_combination_region_type(region_type) {

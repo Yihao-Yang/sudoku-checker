@@ -51,33 +51,34 @@ export function create_five_six_sudoku(size) {
         Box_Hidden_Triple: true,
         Row_Col_Hidden_Triple: true,
         All_Quad: false,
+        Lookup_Table: true,
         Cell_Elimination: true,
         Brute_Force: false,
-        Special_Combination_Region_Most_Not_Contain_1: true,
-        Special_Combination_Region_Most_Not_Contain_2: true,
-        Special_Combination_Region_Most_Not_Contain_3: true,
+        // Special_Combination_Region_Most_Not_Contain_1: true,
+        // Special_Combination_Region_Most_Not_Contain_2: true,
+        // Special_Combination_Region_Most_Not_Contain_3: true,
         // Multi_Special_Combination_Region_Most_Not_Contain_1: true,
         // Multi_Special_Combination_Region_Most_Not_Contain_2: true,
         // Multi_Special_Combination_Region_Most_Not_Contain_3: true,
         Special_Combination_Region_Most_Contain_1: true,
         Special_Combination_Region_Most_Contain_2: true,
-        Special_Combination_Region_Most_Contain_3: true,
+        // Special_Combination_Region_Most_Contain_3: true,
         // Multi_Special_Combination_Region_Most_Contain_1: true,
         // Multi_Special_Combination_Region_Most_Contain_2: true,
         // Multi_Special_Combination_Region_Most_Contain_3: true,
         Special_Combination_Region_Cell_Elimination_1: true,
         Special_Combination_Region_Cell_Elimination_2: true,
-        Special_Combination_Region_Cell_Elimination_3: true,
+        // Special_Combination_Region_Cell_Elimination_3: true,
         // Multi_Special_Combination_Region_Cell_Elimination_1: true,
         // Multi_Special_Combination_Region_Cell_Elimination_2: true,
         // Multi_Special_Combination_Region_Cell_Elimination_3: true,
-        Special_Combination_Region_Elimination_1: true,
-        Special_Combination_Region_Elimination_2: true,
-        Special_Combination_Region_Elimination_3: true,
+        // Special_Combination_Region_Elimination_1: true,
+        // Special_Combination_Region_Elimination_2: true,
+        // Special_Combination_Region_Elimination_3: true,
         // Multi_Special_Combination_Region_Elimination_1: true,
         // Multi_Special_Combination_Region_Elimination_2: true,
         // Multi_Special_Combination_Region_Elimination_3: true,
-        Special_Combination_Region_Block_1: true,
+        // Special_Combination_Region_Block_1: true,
         // Special_Combination_Region_Block_2: true,
         // Special_Combination_Region_Block_3: true,
         // Multi_Special_Combination_Region_Block_1: true,
@@ -798,4 +799,54 @@ export function is_valid_five_six(board, size, row, col, num) {
     // }
 
     // return true;
+}
+
+function get_five_six_marks(size) {
+    const marksFromState = Array.isArray(state.marks_board)
+        ? state.marks_board.filter((mark) =>
+            (mark.kind === 'v' || mark.kind === 'h' || mark.kind === 'x') &&
+            Number.isInteger(mark.r) &&
+            Number.isInteger(mark.c) &&
+            Number.isFinite(mark.sum) &&
+            mark.sum > 0
+        )
+        : [];
+
+    if (marksFromState.length > 0) {
+        return marksFromState;
+    }
+
+    const container = document.querySelector('.sudoku-container');
+    return sync_marks_board_from_dom(size, container).filter((mark) =>
+        (mark.kind === 'v' || mark.kind === 'h' || mark.kind === 'x') &&
+        Number.isInteger(mark.r) &&
+        Number.isInteger(mark.c) &&
+        Number.isFinite(mark.sum) &&
+        mark.sum > 0
+    );
+}
+
+export function apply_five_six_marks(board, size) {
+    const allowedCandidatesBySum = {
+        5: [1, 2, 3, 4],
+        6: [1, 2, 4, 5],
+    };
+
+    const marks = get_five_six_marks(size);
+    for (const mark of marks) {
+        if (mark.kind !== 'v' && mark.kind !== 'h') continue;
+
+        const allowedCandidates = allowedCandidatesBySum[mark.sum];
+        if (!allowedCandidates) continue;
+
+        const positions = mark.kind === 'v'
+            ? [[mark.r, mark.c], [mark.r, mark.c + 1]]
+            : [[mark.r, mark.c], [mark.r + 1, mark.c]];
+
+        for (const [row, col] of positions) {
+            if (row < 0 || row >= size || col < 0 || col >= size) continue;
+            if (!Array.isArray(board[row][col])) continue;
+            board[row][col] = board[row][col].filter((candidate) => allowedCandidates.includes(candidate));
+        }
+    }
 }

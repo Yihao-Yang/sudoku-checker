@@ -21,7 +21,7 @@ import {
 } from './modules/candidates.js';
 
 import {
-    generate_puzzle, fill_puzzle_to_grid, generate_exterior_puzzle
+    generate_puzzle, fill_puzzle_to_grid, generate_exterior_puzzle, generate_chokepoint_puzzle, generate_real_chokepoint_puzzle
 } from './solver/generate.js'
 import { state } from './solver/state.js';
 import { generate_multi_diagonal_puzzle } from './modules/multi_diagonal.js';
@@ -349,7 +349,30 @@ function initializeEventHandlers() {
     const check_minimal_uniquenessBtn = document.getElementById('check_minimal_uniqueness');
     const hide_solutionBtn = document.getElementById('hide_solution');
     const generatepuzzleBtn = document.getElementById('generate_puzzle');
+    let generateChokepointBtn = document.getElementById('generate_chokepoint');
+    let generateRealChokepointBtn = document.getElementById('generate_real_chokepoint');
     const clearAllBtn = document.getElementById('clearAll');
+
+    if (generateChokepointBtn) {
+        generateChokepointBtn.textContent = '自动出示意图';
+    }
+
+    if (!generateChokepointBtn && generatepuzzleBtn) {
+        generateChokepointBtn = document.createElement('button');
+        generateChokepointBtn.id = 'generate_chokepoint';
+        generateChokepointBtn.textContent = '自动出示意图';
+        generateChokepointBtn.style.marginLeft = '5px';
+        generatepuzzleBtn.insertAdjacentElement('afterend', generateChokepointBtn);
+    }
+
+    if (!generateRealChokepointBtn && generatepuzzleBtn) {
+        generateRealChokepointBtn = document.createElement('button');
+        generateRealChokepointBtn.id = 'generate_real_chokepoint';
+        generateRealChokepointBtn.textContent = '自动出卡点';
+        generateRealChokepointBtn.style.marginLeft = '5px';
+        const anchorBtn = generateChokepointBtn || generatepuzzleBtn;
+        anchorBtn.insertAdjacentElement('afterend', generateRealChokepointBtn);
+    }
 
     fourGridBtn.addEventListener('click', () => create_sudoku_grid(4));
     sixGridBtn.addEventListener('click', () => create_sudoku_grid(6));
@@ -858,6 +881,22 @@ function initializeEventHandlers() {
         );
     }
 
+    async function generate_chokepoint_in_constraints(options, max_try = 100) {
+        return generate_with_constraints(
+            (current_score_lower_limit) => generate_chokepoint_puzzle(state.current_grid_size, current_score_lower_limit, options.holesCount),
+            options,
+            max_try
+        );
+    }
+
+    async function generate_real_chokepoint_in_constraints(options, max_try = 100) {
+        return generate_with_constraints(
+            (current_score_lower_limit) => generate_real_chokepoint_puzzle(state.current_grid_size, current_score_lower_limit, options.holesCount),
+            options,
+            max_try
+        );
+    }
+
     function get_generation_failure_message(options) {
         const conditions = [];
         const {
@@ -910,7 +949,7 @@ function initializeEventHandlers() {
 
     function run_single_export_text(exportOptions = {}) {
         hide_solution();
-        check_uniqueness(false);
+        check_minimal_uniqueness();
         export_sudoku_as_text(exportOptions);
     }
 
@@ -1087,6 +1126,40 @@ function initializeEventHandlers() {
 
         setTimeout(async () => {
             const generated = await generate_in_constraints(options, false);
+            if (!generated) {
+                show_result(get_generation_failure_message(options));
+            }
+            hide_generating_timer();
+        }, 0);
+    });
+
+    generateChokepointBtn?.addEventListener('click', async () => {
+        const options = get_generation_options();
+        if (!options) {
+            return;
+        }
+
+        show_generating_timer();
+
+        setTimeout(async () => {
+            const generated = await generate_chokepoint_in_constraints(options);
+            if (!generated) {
+                show_result(get_generation_failure_message(options));
+            }
+            hide_generating_timer();
+        }, 0);
+    });
+
+    generateRealChokepointBtn?.addEventListener('click', async () => {
+        const options = get_generation_options();
+        if (!options) {
+            return;
+        }
+
+        show_generating_timer();
+
+        setTimeout(async () => {
+            const generated = await generate_real_chokepoint_in_constraints(options);
             if (!generated) {
                 show_result(get_generation_failure_message(options));
             }

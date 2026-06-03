@@ -2,7 +2,7 @@
 import { state, set_current_mode } from '../solver/state.js';
 import { show_result, create_base_grid, create_base_cell, add_Extra_Button, log_process, backup_original_board, restore_original_board, handle_key_navigation, clear_all_inputs, clear_marks, show_generating_timer, hide_generating_timer } from '../solver/core.js';
 import { generate_solved_board_brute_force, generate_puzzle } from '../solver/generate.js';
-import { get_all_regions, solve, invalidate_regions_cache, sync_marks_board_from_dom } from '../solver/solver_tool.js';
+import { get_all_regions, solve, invalidate_regions_cache } from '../solver/solver_tool.js';
 import { create_technique_panel } from '../solver/classic.js';
 
 // 四数独主入口
@@ -64,10 +64,10 @@ export function create_inclusion_sudoku(size) {
         // Extra_Region_Hidden_Pair: true,
         // Extra_Region_Naked_Triple: true,
         // Extra_Region_Hidden_Triple: true,
-        Special_Combination_Region_Most_Not_Contain_1: true,
-        Special_Combination_Region_Most_Not_Contain_2: true,
-        Special_Combination_Region_Most_Not_Contain_3: true,
-        Special_Combination_Region_Most_Not_Contain_4: true,
+        // Special_Combination_Region_Most_Not_Contain_1: true,
+        // Special_Combination_Region_Most_Not_Contain_2: true,
+        // Special_Combination_Region_Most_Not_Contain_3: true,
+        // Special_Combination_Region_Most_Not_Contain_4: true,
         // Multi_Special_Combination_Region_Most_Not_Contain_1: true,
         // Multi_Special_Combination_Region_Most_Not_Contain_2: true,
         // Multi_Special_Combination_Region_Most_Not_Contain_3: true,
@@ -80,31 +80,31 @@ export function create_inclusion_sudoku(size) {
         // Multi_Special_Combination_Region_Most_Contain_2: true,
         // Multi_Special_Combination_Region_Most_Contain_3: true,
         // Multi_Special_Combination_Region_Most_Contain_4: true,
-        Special_Combination_Region_Cell_Elimination_1: true,
-        Special_Combination_Region_Cell_Elimination_2: true,
-        Special_Combination_Region_Cell_Elimination_3: true,
-        Special_Combination_Region_Cell_Elimination_4: true,
+        // Special_Combination_Region_Cell_Elimination_1: true,
+        // Special_Combination_Region_Cell_Elimination_2: true,
+        // Special_Combination_Region_Cell_Elimination_3: true,
+        // Special_Combination_Region_Cell_Elimination_4: true,
         // Multi_Special_Combination_Region_Cell_Elimination_1: true,
         // Multi_Special_Combination_Region_Cell_Elimination_2: true,
         // Multi_Special_Combination_Region_Cell_Elimination_3: true,
         // Multi_Special_Combination_Region_Cell_Elimination_4: true,
-        Special_Combination_Region_Elimination_1: true,
-        Special_Combination_Region_Elimination_2: true,
-        Special_Combination_Region_Elimination_3: true,
-        Special_Combination_Region_Elimination_4: true,
+        // Special_Combination_Region_Elimination_1: true,
+        // Special_Combination_Region_Elimination_2: true,
+        // Special_Combination_Region_Elimination_3: true,
+        // Special_Combination_Region_Elimination_4: true,
         // Multi_Special_Combination_Region_Elimination_1: true,
         // Multi_Special_Combination_Region_Elimination_2: true,
         // Multi_Special_Combination_Region_Elimination_3: true,
         // Multi_Special_Combination_Region_Elimination_4: true,
-        Special_Combination_Region_Block_1: true,
-        Special_Combination_Region_Block_2: true,
-        Special_Combination_Region_Block_3: true,
-        Special_Combination_Region_Block_4: true,
+        // Special_Combination_Region_Block_1: true,
+        // Special_Combination_Region_Block_2: true,
+        // Special_Combination_Region_Block_3: true,
+        // Special_Combination_Region_Block_4: true,
         // Multi_Special_Combination_Region_Block_1: true,
         // Multi_Special_Combination_Region_Block_2: true,
         // Multi_Special_Combination_Region_Block_3: true,
         // Multi_Special_Combination_Region_Block_4: true,
-        Lookup_Table: true,
+        // Lookup_Table: true,
     };
     // 唯余法全部默认开启
     for (let i = 1; i <= size; i++) {
@@ -189,15 +189,7 @@ export function generate_inclusion_puzzle(size, score_lower_limit = 0, holes_cou
     const symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
     log_process(`使用对称类型: ${symmetry}`);
 
-    let min_marks = 2, max_marks = 4;
-    if (size === 6) { min_marks = 4; max_marks = 8; }
-    if (size === 9) { min_marks = 10; max_marks = 14; }
-    const num_marks = Math.floor(Math.random() * (max_marks - min_marks + 1)) + min_marks;
-    const MAX_TRY = 200;
-
     let marks_added = 0;
-    let try_count = 0;
-    let unique_found = false;
 
     log_process(`正在生成题目，请稍候...`);
     log_process('九宫：1分钟，超时请重启页面或调整限制条件');
@@ -223,71 +215,33 @@ export function generate_inclusion_puzzle(size, score_lower_limit = 0, holes_cou
         state.marks_board[index] = { ...state.marks_board[index], ...next };
     };
 
-    const remove_inclusion_marks_by_keys = (keys = []) => {
-        if (!Array.isArray(state.marks_board) || keys.length === 0) return;
-        const keySet = new Set(keys.filter(Boolean));
-        state.marks_board = state.marks_board.filter((m) => {
-            if (!m || m.kind !== 'x' || !Number.isInteger(m.r) || !Number.isInteger(m.c)) return true;
-            return !keySet.has(get_inclusion_mark_key(m.r, m.c));
-        });
-    };
-
     setTimeout(() => {
-        while (try_count < MAX_TRY && marks_added < num_marks && !unique_found) {
-            try_count++;
+        for (let row = 0; row < size - 1; row++) {
+            for (let col = 0; col < size - 1; col++) {
+                if (has_inclusion_mark(row, col)) continue;
 
-            const row = Math.floor(Math.random() * (size - 1));
-            const col = Math.floor(Math.random() * (size - 1));
+                const [sym_row, sym_col] = get_symmetric(row, col, size, symmetry);
+                if (!is_valid_position(sym_row, sym_col, size)) continue;
+                if (has_inclusion_mark(sym_row, sym_col)) continue;
 
-            const [sym_row, sym_col] = get_symmetric(row, col, size, symmetry);
+                const mark_digit_count = pick_mark_digit_count();
+                const mainDigits = calculate_inclusion_from_solved(row, col, solvedBoard, mark_digit_count);
+                if (!mainDigits) continue;
 
-            if (
-                !is_valid_position(row, col, size) ||
-                !is_valid_position(sym_row, sym_col, size) ||
-                has_inclusion_mark(row, col) ||
-                has_inclusion_mark(sym_row, sym_col)
-            ) {
-                continue;
-            }
-
-            const addedKeys = [];
-            const mark_digit_count = pick_mark_digit_count();
-            const mainDigits = calculate_inclusion_from_solved(row, col, solvedBoard, mark_digit_count);
-            if (!mainDigits) continue;
-
-            upsert_inclusion_mark(row, col, mainDigits.join(''));
-            addedKeys.push(get_inclusion_mark_key(row, col));
-
-            const symmetric_is_same = row === sym_row && col === sym_col;
-            if (!symmetric_is_same) {
-                const symDigits = calculate_inclusion_from_solved(sym_row, sym_col, solvedBoard, mark_digit_count);
-                if (!symDigits) {
-                    remove_inclusion_marks_by_keys(addedKeys);
-                    continue;
+                const symmetric_is_same = row === sym_row && col === sym_col;
+                let symDigits = null;
+                if (!symmetric_is_same) {
+                    symDigits = calculate_inclusion_from_solved(sym_row, sym_col, solvedBoard, mark_digit_count);
+                    if (!symDigits) continue;
                 }
-                upsert_inclusion_mark(sym_row, sym_col, symDigits.join(''));
-                addedKeys.push(get_inclusion_mark_key(sym_row, sym_col));
-            }
 
-            marks_added += addedKeys.length;
+                upsert_inclusion_mark(row, col, mainDigits.join(''));
+                marks_added += 1;
 
-            backup_original_board();
-            const result = solve(create_solver_board(size), size, is_valid_inclusion, true);
-            restore_original_board();
-
-            if (result.solution_count === 1) {
-                unique_found = true;
-                log_process(`✓ 找到唯一解！共添加 ${marks_added} 个标记`);
-                optimize_marks_state(size, symmetry);
-                break;
-            }
-
-            if (result.solution_count === 0 || result.solution_count === -2) {
-                log_process('✗ 无解，移除最后添加的标记');
-                remove_inclusion_marks_by_keys(addedKeys);
-                marks_added -= addedKeys.length;
-            } else {
-                log_process(`当前解数：${result.solution_count}，继续添加标记...`);
+                if (!symmetric_is_same) {
+                    upsert_inclusion_mark(sym_row, sym_col, symDigits.join(''));
+                    marks_added += 1;
+                }
             }
         }
 
@@ -296,28 +250,16 @@ export function generate_inclusion_puzzle(size, score_lower_limit = 0, holes_cou
         log_process('', true)
         log_process(`包含数独生成完成`);
         log_process(`点击检查唯一性查看技巧和分值`);
-        const board = Array.from({ length: size }, () => Array.from({ length: size }, () => 0));
-        // log_process(board);
-        generate_puzzle(size, score_lower_limit, holes_count, solvedBoard);
+        const puzzle_result = generate_puzzle(size, score_lower_limit, holes_count, solvedBoard);
+        if (puzzle_result?.puzzle) {
+            optimize_marks_state(size, symmetry, puzzle_result.puzzle);
+            render_inclusion_marks_from_state(size, container);
+            generate_puzzle(size, score_lower_limit, holes_count, puzzle_result.puzzle);
+        }
         hide_generating_timer();
         const elapsed = ((performance.now() - start_time) / 1000).toFixed(3);
         show_result(`包含数独生成完成，耗时${elapsed}秒）`);
-
-        if (!unique_found) {
-            if (try_count >= MAX_TRY) {
-                log_process('自动出题失败：达到最大尝试次数');
-            } else {
-                log_process('自动出题完成（可能非唯一解）');
-                show_result(`包含数独生成完成（可能非唯一解），耗时${elapsed}秒）`);
-            }
-        }
     }, 0);
-
-    function create_solver_board(size) {
-        return Array.from({ length: size }, () =>
-            Array.from({ length: size }, () => [...Array(size)].map((_, n) => n + 1))
-        );
-    }
 
     function is_valid_position(row, col, size) {
         return row >= 0 && row < size - 1 && col >= 0 && col < size - 1;
@@ -376,15 +318,37 @@ export function generate_inclusion_puzzle(size, score_lower_limit = 0, holes_cou
         return selected.sort((a, b) => a - b);
     }
 
-    function optimize_marks_state(size, symmetry) {
+    function create_solver_board_from_puzzle(size, puzzle_board) {
+        if (!Array.isArray(puzzle_board) || puzzle_board.length !== size) {
+            return null;
+        }
+        return puzzle_board.map((row) =>
+            row.map((cell) => {
+                if (typeof cell === 'number' && cell >= 1 && cell <= size) {
+                    return cell;
+                }
+                return [...Array(size)].map((_, n) => n + 1);
+            })
+        );
+    }
+
+    function optimize_marks_state(size, symmetry, puzzle_board) {
         log_process('开始优化标记，删除无用条件...');
         const groups = group_mark_keys_by_symmetry(size, symmetry);
         let removed = 0;
+
         for (const group of groups) {
             const removedMarks = temporarily_remove_marks_state(group.keys);
             backup_original_board();
-            const result = solve(create_solver_board(size), size, is_valid_inclusion, true);
+            const board = create_solver_board_from_puzzle(size, puzzle_board);
+            if (!board) {
+                restore_original_board();
+                restore_marks_state(removedMarks);
+                continue;
+            }
+            const result = solve(board, size, is_valid_inclusion, true);
             restore_original_board();
+
             if (result.solution_count === 1) {
                 removed += removedMarks.length;
             } else {
@@ -547,14 +511,7 @@ function get_inclusion_marks(size) {
             m && m.kind === 'x' && Number.isInteger(m.r) && Number.isInteger(m.c)
         )
         : [];
-    if (marksFromState.length > 0) {
-        return marksFromState;
-    }
-
-    const container = document.querySelector('.sudoku-container');
-    return sync_marks_board_from_dom(size, container).filter((m) =>
-        m && m.kind === 'x' && Number.isInteger(m.r) && Number.isInteger(m.c)
-    );
+    return marksFromState;
 }
 
 function parse_mark_nums(mark) {
