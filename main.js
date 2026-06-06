@@ -24,31 +24,84 @@ import {
     generate_puzzle, fill_puzzle_to_grid, generate_exterior_puzzle, generate_chokepoint_puzzle, generate_real_chokepoint_puzzle
 } from './solver/generate.js'
 import { state } from './solver/state.js';
-import { generate_multi_diagonal_puzzle } from './modules/multi_diagonal.js';
-import { generate_vx_puzzle } from './modules/vx.js';
-import { generate_extra_region_puzzle } from './modules/extra_region.js';
-import { generate_renban_puzzle } from './modules/renban.js';
-import { generate_exclusion_puzzle } from './modules/exclusion.js';
-import { generate_quadruple_puzzle } from './modules/quadruple.js';
-import { generate_inclusion_puzzle } from './modules/inclusion.js';
-import { generate_ratio_puzzle } from './modules/ratio.js';
-import { generate_inequality_puzzle } from './modules/inequality.js';
-import { generate_thermo_puzzle } from './modules/thermo.js';
-import { generate_odd_puzzle } from './modules/odd.js';
-import { generate_odd_even_puzzle } from './modules/odd_even.js';
-import { create_ratio_sudoku } from './modules/ratio.js';
-import { generate_fortress_puzzle } from './modules/fortress.js';
-import { generate_product_puzzle } from './modules/product.js';
-import { generate_five_six_puzzle } from './modules/five_six.js';
-import { generate_add_puzzle } from './modules/add.js';
-import { generate_kropki_puzzle } from './modules/kropki.js';
-import { generate_missing_puzzle } from './modules/missing.js';
-import { generate_consecutive_puzzle } from './modules/consecutive.js';
-import { generate_clone_puzzle } from './modules/clone.js';
+
+const exterior_mode_set = new Set(['X_sums', 'skyscraper', 'sandwich', 'rossini']);
+const mode_generator_cache = new Map();
+
+// 根据当前题型动态定位对应生成函数，并将解析结果缓存。
+async function resolve_mode_specific_generator(mode) {
+    if (!mode) {
+        return null;
+    }
+
+    const mode_text = String(mode).trim();
+    const normalized_mode = mode_text.replace(/[\s-]+/g, '_');
+    const lower_mode_text = mode_text.toLowerCase();
+    const lower_normalized_mode = normalized_mode.toLowerCase();
+
+    if (exterior_mode_set.has(mode)) {
+        return generate_exterior_puzzle;
+    }
+
+    if (mode_generator_cache.has(mode)) {
+        return mode_generator_cache.get(mode);
+    }
+
+    let loaded_module = null;
+    const module_path_candidates = [...new Set([
+        `./modules/${mode_text}.js`,
+        `./modules/${normalized_mode}.js`,
+        `./modules/${lower_mode_text}.js`,
+        `./modules/${lower_normalized_mode}.js`
+    ])];
+
+    for (const module_path of module_path_candidates) {
+        try {
+            loaded_module = await import(module_path);
+            break;
+        } catch (error) {
+            // Continue trying other candidate module paths.
+        }
+    }
+
+    let generator = null;
+    if (loaded_module) {
+        const generator_name_candidates = [...new Set([
+            `generate_${mode_text}_puzzle`,
+            `generate_${normalized_mode}_puzzle`,
+            `generate_${lower_mode_text}_puzzle`,
+            `generate_${lower_normalized_mode}_puzzle`
+        ])];
+
+        for (const generator_name of generator_name_candidates) {
+            if (typeof loaded_module[generator_name] === 'function') {
+                generator = loaded_module[generator_name];
+                break;
+            }
+        }
+
+        if (!generator) {
+            const fallback_entry = Object.entries(loaded_module).find(
+                ([export_name, exported_value]) =>
+                    export_name.startsWith('generate_') &&
+                    export_name.endsWith('_puzzle') &&
+                    typeof exported_value === 'function'
+            );
+
+            if (fallback_entry) {
+                generator = fallback_entry[1];
+            }
+        }
+    }
+
+    mode_generator_cache.set(mode, generator);
+    return generator;
+}
 
 
 const MODE_EXPORT_META = {
     classic: { type: '标准', rule: '每行、每列、每宫数字均不重复' },
+    full: { type: '全标', rule: '除标准数独规则外，灰格内只能填规定全标数字' },
     anti_king: { type: '无缘', rule: '除标准数独规则外，对角相邻（进一拐一）位置的数字也均不重复' },
     anti_knight: { type: '无马', rule: '除标准数独规则外，象棋马步（进二拐一）位置的数字也均不重复' },
     anti_elephant: { type: '无象', rule: '除标准数独规则外，中国象棋象步（进二拐二）位置的数字也均不重复' },
@@ -81,7 +134,8 @@ const MODE_EXPORT_META = {
     thermo: { type: '温度计', rule: '除标准数独规则外，温度计上的数字从圆泡处到尾部严格递增（不能相等）' },
     X_sums: { type: 'X和', rule: '除标准数独规则外，外提示数表示该方向前X格数字之和，X为该方向第一格数字' },
     skyscraper: { type: '摩天楼', rule: '除标准数独规则外，外提示数表示从该方向能看到的楼房数，数字越大代表楼越高，高楼会挡住矮楼' },
-    sandwich: { type: '三明治', rule: (size) => `除标准数独规则外，外提示数表示该行或列中数字1和${size}所在位置之间的所有数字之和` }
+    sandwich: { type: '三明治', rule: (size) => `除标准数独规则外，外提示数表示该行或列中数字1和${size}所在位置之间的所有数字之和` },
+    rossini: { type: '方向', rule: '除标准数独规则外，外提示箭头表示其对应的边缘三格内数字朝着箭头方向依次增大，满足条件的箭头标记均已标出' }
 };
 
 function format_export_date(date = new Date()) {
@@ -179,12 +233,12 @@ function extract_puzzle_string(size) {
         return result;
     }
 
-    const needsOffset = ['X_sums', 'sandwich', 'skyscraper'].includes(state.current_mode);
+    const needsOffset = ['X_sums', 'sandwich', 'skyscraper', 'rossini'].includes(state.current_mode);
     return extract_grid_string_from_dom(size, needsOffset);
 }
 
 function extract_solution_string(size) {
-    const needsOffset = ['X_sums', 'sandwich', 'skyscraper'].includes(state.current_mode);
+    const needsOffset = ['X_sums', 'sandwich', 'skyscraper', 'rossini'].includes(state.current_mode);
     return extract_grid_string_from_dom(size, needsOffset);
 }
 
@@ -421,9 +475,13 @@ function initializeEventHandlers() {
         this.textContent = state.is_candidates_mode ? '退出候选数模式' : '进入候选数模式';
         // 重新获取当前输入框引用
         const size = state.current_grid_size;
-        const inputs = Array.from({ length: size }, (_, row) =>
-            Array.from({ length: size }, (_, col) =>
-                document.querySelector(`.sudoku-cell input[data-row="${row}"][data-col="${col}"]`)
+        const needsOffset = ['X_sums', 'sandwich', 'skyscraper', 'rossini'].includes(state.current_mode);
+        const inputSize = needsOffset ? size + 2 : size;
+        const rowOffset = needsOffset ? 0 : 0;
+        const colOffset = needsOffset ? 0 : 0;
+        const inputs = Array.from({ length: inputSize }, (_, row) =>
+            Array.from({ length: inputSize }, (_, col) =>
+                document.querySelector(`.sudoku-cell input[data-row="${row + rowOffset}"][data-col="${col + colOffset}"]`)
             )
         );
         change_candidates_mode(inputs, size, false);
@@ -699,62 +757,24 @@ function initializeEventHandlers() {
         show_result('未找到有效的最高分步骤，无法回退');
     });
 
-    function generate_once_by_mode(score_lower_limit, holes_count, use_mode_specific_generator) {
+    async function generate_once_by_mode(score_lower_limit, holes_count, use_mode_specific_generator) {
+
         if (!use_mode_specific_generator) {
             return generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
         }
 
-        if (state.current_mode === 'multi_diagonal') {
-            return generate_multi_diagonal_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-        } else if (state.current_mode === 'clone') {
-            return generate_clone_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-        } else if (state.current_mode === 'product') {
-            return generate_product_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-        } else if (state.current_mode === 'VX') {
-            return generate_vx_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-        } else if (state.current_mode === 'fortress') {
-            return generate_fortress_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-        } else if (state.current_mode === 'extra_region') {
-            return generate_extra_region_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-        } else if (state.current_mode === 'renban') {
-            return generate_renban_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-        } else if (state.current_mode === 'exclusion') {
-            return generate_exclusion_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-        } else if (state.current_mode === 'quadruple') {
-            return generate_quadruple_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-        } else if (state.current_mode === 'inclusion') {
-            return generate_inclusion_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-        } else if (state.current_mode === 'ratio') {
-            return generate_ratio_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-        } else if (state.current_mode === 'inequality') {
-            return generate_inequality_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-        } else if (state.current_mode === 'thermo') {
-            return generate_thermo_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-        } else if (state.current_mode === 'five_six') {
-            return generate_five_six_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-        } else if (state.current_mode === 'odd') {
-            return generate_odd_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-        } else if (state.current_mode === 'odd_even') {
-            return generate_odd_even_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-        } else if (state.current_mode === 'kropki') {
-            return generate_kropki_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-        } else if (state.current_mode === 'consecutive') {
-            return generate_consecutive_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-        } else if (state.current_mode === 'add') {
-            return generate_add_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-        } else if (state.current_mode === 'missing') {
-            return generate_missing_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-        } else if (state.current_mode === 'X_sums' || state.current_mode === 'skyscraper' || state.current_mode === 'sandwich') {
-            return generate_exterior_puzzle(state.current_grid_size, score_lower_limit, holes_count);
-        } else {
-            return generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
+        const generator = await resolve_mode_specific_generator(state.current_mode);
+        if (typeof generator === 'function') {
+            return generator(state.current_grid_size, score_lower_limit, holes_count);
         }
+
+        return generate_puzzle(state.current_grid_size, score_lower_limit, holes_count);
     }
 
     function get_current_clues_count() {
         const size = state.current_grid_size;
         const container = document.querySelector('.sudoku-container');
-        const isBorderedMode = ['X_sums', 'sandwich', 'skyscraper'].includes(state.current_mode);
+        const isBorderedMode = ['X_sums', 'sandwich', 'skyscraper', 'rossini'].includes(state.current_mode);
         let cluesCount = 0;
 
         for (let row = 0; row < size; row++) {
@@ -873,7 +893,11 @@ function initializeEventHandlers() {
         );
     }
 
-    async function generate_in_constraints(options, use_mode_specific_generator, max_try = 100) {
+    // 普通约束出题入口。
+    // 顶部“自动出题”按钮走 use_mode_specific_generator = false，只生成题面。
+    // 批量导出文本、批量保存图片等走 true，会按当前题型解析对应的专用生成器，把变型提示一起生成出来。
+    // 这里默认给 500 次重试，适合普通题目批量筛分值/已知数范围。
+    async function generate_in_constraints(options, use_mode_specific_generator, max_try = 1000) {
         return generate_with_constraints(
             (current_score_lower_limit) => generate_once_by_mode(current_score_lower_limit, options.holesCount, use_mode_specific_generator),
             options,
@@ -881,6 +905,9 @@ function initializeEventHandlers() {
         );
     }
 
+    // “自动出示意图”入口。
+    // 底层走 generate_chokepoint_puzzle：挖洞校验改成“最简下一步能否推进”，
+    // 目的是保留一个可展示解题切入点的盘面，所以更偏向示意而不是严格卡点。
     async function generate_chokepoint_in_constraints(options, max_try = 100) {
         return generate_with_constraints(
             (current_score_lower_limit) => generate_chokepoint_puzzle(state.current_grid_size, current_score_lower_limit, options.holesCount),
@@ -889,6 +916,9 @@ function initializeEventHandlers() {
         );
     }
 
+    // “自动出卡点”入口。
+    // 底层走 generate_real_chokepoint_puzzle；相比示意图模式，额外启用 stopOnSingleProgress，
+    // 挖洞时一旦盘面只剩单步推进就停止，更接近真正的卡点题，因此单独保留一套入口。
     async function generate_real_chokepoint_in_constraints(options, max_try = 100) {
         return generate_with_constraints(
             (current_score_lower_limit) => generate_real_chokepoint_puzzle(state.current_grid_size, current_score_lower_limit, options.holesCount),

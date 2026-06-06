@@ -307,11 +307,11 @@ export function change_candidates_mode(inputs, size) {
 
     const is_candidates_mode = state.is_candidates_mode;
 
-    const start_row = 0;
-    const end_row = size - 1;
-    const start_col = 0;
-    const end_col = size - 1;
-    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
+    let start_row = 0;
+    let end_row = size - 1;
+    let start_col = 0;
+    let end_col = size - 1;
+    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper' || state.current_mode === 'rossini') {
         start_row = 1;
         end_row = size;
         start_col = 1;
@@ -412,7 +412,7 @@ export function show_logical_solution() {
     for (let i = 0; i < size; i++) {
         for (let j = 0; j < size; j++) {
             let input;
-            if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
+            if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper' || state.current_mode === 'rossini') {
                 input = container.querySelector(`input[data-row="${i + 1}"][data-col="${j + 1}"]`);
             } else {
                 input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
@@ -888,8 +888,9 @@ export function import_sudoku_from_string() {
     const size = state.current_grid_size;
     let index = 0;
     const cells = sudokuString.split(',');
+    const is_bordered_mode = ['X_sums', 'sandwich', 'skyscraper', 'rossini'].includes(state.current_mode);
 
-    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
+    if (is_bordered_mode) {
         for (let i = 0; i < size && index < sudokuString.length; i++) {
             for (let j = 0; j < size && index < sudokuString.length; j++) {
                 const char = sudokuString[index++];
@@ -944,8 +945,9 @@ export function export_sudoku_to_string() {
     const size = state.current_grid_size;
     // let result = "";
     let result = [];
+    const is_bordered_mode = ['X_sums', 'sandwich', 'skyscraper', 'rossini'].includes(state.current_mode);
 
-    if (state.is_skyscraper_mode) {
+    if (is_bordered_mode) {
         for (let i = 0; i < size + 2; i++) {
             for (let j = 0; j < size + 2; j++) {
                 const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);

@@ -362,53 +362,54 @@ export const state = {
     },
 };
 
-const FULL_MARK_MODES = ['five_six', 'VX', 'consecutive', 'kropki'];
+const FULL_MARK_MODES = ['five_six', 'VX', 'consecutive', 'kropki', 'full'];
 
 // 设置当前模式(会自动取消其他模式)
 export function set_current_mode(mode) {
-    if ([
-        'classic',
-        'skyscraper',
-        'VX',
-        'kropki',
-        'consecutive',
-        'candidates',
-        'missing',
-        'consecutive',
-        'diagonal',
-        'anti_diagonal',
-        'hashtag',
-        'multi_diagonal',
-        'window',
-        'pyramid',
-        'extra_region',
-        'renban',
-        'fortress',
-        'clone',
-        'exclusion',
-        'inclusion',
-        'quadruple',
-        'add',
-        'five_six',
-        'product',
-        'ratio',
-        'inequality',
-        'thermo',
-        'odd',
-        'odd_even',
-        'isomorphic',
-        'anti_king',
-        'anti_knight',
-        'anti_elephant',
-        'palindrome',
-        'X_sums',
-        'sandwich',
-        'new'
-    ].includes(mode)) {
+    // if ([
+    //     'classic',
+    //     'skyscraper',
+    //     'VX',
+    //     'kropki',
+    //     'consecutive',
+    //     'candidates',
+    //     'missing',
+    //     'consecutive',
+    //     'diagonal',
+    //     'anti_diagonal',
+    //     'hashtag',
+    //     'multi_diagonal',
+    //     'window',
+    //     'pyramid',
+    //     'extra_region',
+    //     'renban',
+    //     'fortress',
+    //     'clone',
+    //     'exclusion',
+    //     'inclusion',
+    //     'quadruple',
+    //     'add',
+    //     'five_six',
+    //     'product',
+    //     'ratio',
+    //     'inequality',
+    //     'thermo',
+    //     'odd',
+    //     'odd_even',
+    //     'isomorphic',
+    //     'anti_king',
+    //     'anti_knight',
+    //     'anti_elephant',
+    //     'palindrome',
+    //     'X_sums',
+    //     'sandwich',
+    //     'new',
+    //     'full'
+    // ].includes(mode)) {
         state.current_mode = mode;
         state.is_full_mark_mode = FULL_MARK_MODES.includes(mode);
-    } else {
-        state.current_mode = null;
-        state.is_full_mark_mode = false;
-    }
+    // } else {
+    //     state.current_mode = null;
+    //     state.is_full_mark_mode = false;
+    // }
 }

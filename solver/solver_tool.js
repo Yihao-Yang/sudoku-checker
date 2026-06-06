@@ -21,6 +21,7 @@ import { is_valid_inequality, apply_inequality_candidate_elimination } from "../
 import { is_valid_thermo, apply_thermo_candidate_elimination, get_thermo_constraint_map } from "../modules/thermo.js";
 import { apply_odd_marks, is_valid_odd, get_odd_cells } from "../modules/odd.js";
 import { apply_odd_even_marks, is_valid_odd_even, get_odd_even_cells } from "../modules/odd_even.js";
+import { is_valid_full } from "../modules/full.js";
 import { is_valid_anti_king } from "../modules/anti_king.js";
 import { is_valid_anti_knight } from "../modules/anti_knight.js";
 import { is_valid_anti_elephant } from "../modules/anti_elephant.js";
@@ -28,6 +29,7 @@ import { is_valid_palindrome, merge_connected_lines } from "../modules/palindrom
 import { is_valid_X_sums, apply_X_sums_marks, X_SUMS_CANDIDATES_MAP } from "../modules/X_sums.js";
 import { is_valid_skyscraper, apply_skyscraper_marks } from "../modules/skyscraper.js";
 import { is_valid_sandwich } from "../modules/sandwich.js";
+import { is_valid_rossini } from "../modules/rossini.js";
 
 export function eliminate_candidates_classic(board, size, i, j, num, calc_score = true) {
     const eliminations = [];
@@ -2670,6 +2672,41 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
 
             break;
         }
+        case 'rossini': {
+            const region_index_set = new Set();
+            const push_unique_triple_region = (cells) => {
+                if (!Array.isArray(cells) || cells.length !== 3) return;
+
+                const index = cells
+                    .slice()
+                    .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                    .join('-');
+
+                if (region_index_set.has(index)) return;
+                region_index_set.add(index);
+
+                regions.push({ type: '特定组合', index, cells });
+            };
+
+            // 每行前三格、后三格。
+            for (let row = 0; row < size; row++) {
+                const first_three = [[row, 0], [row, 1], [row, 2]];
+                const last_three = [[row, size - 3], [row, size - 2], [row, size - 1]];
+                push_unique_triple_region(first_three);
+                push_unique_triple_region(last_three);
+            }
+
+            // 每列前三格、后三格。
+            for (let col = 0; col < size; col++) {
+                const first_three = [[0, col], [1, col], [2, col]];
+                const last_three = [[size - 3, col], [size - 2, col], [size - 1, col]];
+                push_unique_triple_region(first_three);
+                push_unique_triple_region(last_three);
+            }
+
+            break;
+        }
         default:
             // 默认情况下，不添加任何区域
             break;
@@ -2768,7 +2805,7 @@ export function solve(currentBoard, currentSize, isValid = isValid, silent = fal
     //         .map(row => row.map(cell => Array.isArray(cell) ? `[${cell.join(',')}]` : cell).join(' '))
     //         .join('\n')
     // );
-    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
+    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper' || state.current_mode === 'rossini') {
         // 转换 board 为去掉边界的形式
         board = Array.from({ length: currentSize }, (_, i) =>
             Array.from({ length: currentSize }, (_, j) => {
@@ -2981,80 +3018,35 @@ function solve_By_Logic() {
  * 通用有效性检测函数，根据当前模式自动判断所有相关区域
  */
 export function isValid(board, size, row, col, num) {
-    if (state.current_mode === 'missing') {
-        return is_valid_missing(board, size, row, col, num);
-    } else if (state.current_mode === 'exclusion') {
-        return is_valid_exclusion(board, size, row, col, num);
-    } else if (state.current_mode === 'quadruple') {
-        return is_valid_quadruple(board, size, row, col, num);
-    } else if (state.current_mode === 'inclusion') {
-        return is_valid_inclusion(board, size, row, col, num);
-    } else if (state.current_mode === 'add') {
-        return is_valid_add(board, size, row, col, num);
-    } else if (state.current_mode === 'five_six') {
-        return is_valid_five_six(board, size, row, col, num);
-    } else if (state.current_mode === 'product') {
-        return is_valid_product(board, size, row, col, num);
-    } else if (state.current_mode === 'ratio') {
-        return is_valid_ratio(board, size, row, col, num);
-    } else if (state.current_mode === 'VX') {
-        return is_valid_VX(board, size, row, col, num);
-    } else if (state.current_mode === 'kropki') {
-        return is_valid_kropki(board, size, row, col, num);
-    } else if (state.current_mode === 'consecutive') {
-        return is_valid_consecutive(board, size, row, col, num);
-    } else if (state.current_mode === 'renban') {
-        return is_valid_renban(board, size, row, col, num);
-    } else if (state.current_mode === 'fortress') {
-        return is_valid_fortress(board, size, row, col, num);
-    } else if (state.current_mode === 'clone') {
-        return is_valid_clone(board, size, row, col, num);
-    } else if (state.current_mode === 'inequality') {
-        return is_valid_inequality(board, size, row, col, num);
-    } else if (state.current_mode === 'thermo') {
-        return is_valid_thermo(board, size, row, col, num);
-    } else if (state.current_mode === 'odd') {
-        return is_valid_odd(board, size, row, col, num);
-    } else if (state.current_mode === 'odd_even') {
-        return is_valid_odd_even(board, size, row, col, num);
-    } else if (state.current_mode === 'anti_king') {
-        return is_valid_anti_king(board, size, row, col, num);
-    } else if (state.current_mode === 'anti_knight') {
-        return is_valid_anti_knight(board, size, row, col, num);
-    } else if (state.current_mode === 'anti_elephant') {
-        return is_valid_anti_elephant(board, size, row, col, num);
-    // } else if (state.current_mode === 'anti_diagonal') {
-    //     return is_valid_anti_diagonal(board, size, row, col, num);
-    } else if (state.current_mode === 'palindrome') {
-        return is_valid_palindrome(board, size, row, col, num);
-    } else if (state.current_mode === 'X_sums') {
-        return is_valid_X_sums(board, size, row, col, num);
-    } else if (state.current_mode === 'sandwich') {
-        return is_valid_sandwich(board, size, row, col, num);
-    } else if (state.current_mode === 'skyscraper') {
-        // const clues = get_skyscraper_clues_from_dom(size);
-        // // 在递归/循环/回溯等所有需要校验的地方传递 clues
-        // return is_valid_skyscraper(board, size, row, col, num, clues);
-        return is_valid_skyscraper(board, size, row, col, num);
-    } else {
-        // 获取当前模式（classic/diagonal/missing/...）
-        const mode = state.current_mode || 'classic';
-        // 获取所有相关区域
-        // 为避免 cached_regions 与当前 size/mode 不匹配导致越界，
-        // 在此处始终按传入的 size 与当前 mode 重新计算区域
-        const regions = get_all_regions(size, mode);
-        // 找出包含(row, col)的所有区域
-        for (const region of regions) {
-            if (region.cells.some(([r, c]) => r === row && c === col)) {
-                for (const [r, c] of region.cells) {
-                    if ((r !== row || c !== col) && board[r][c] === num) {
-                        return false;
-                    }
+    const mode = state.current_mode || 'classic';
+    let mode_validator = null;
+
+    // 约定：题型 mode 对应同名校验函数 is_valid_<mode>。
+    // 例如 mode='rossini' 会尝试调用 is_valid_rossini。
+    if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(mode)) {
+        try {
+            mode_validator = eval(`is_valid_${mode}`);
+        } catch (error) {
+            mode_validator = null;
+        }
+    }
+
+    if (typeof mode_validator === 'function') {
+        return mode_validator(board, size, row, col, num);
+    }
+
+    // 回退：没有专用校验函数时，按当前模式区域做通用判重。
+    const regions = get_all_regions(size, mode);
+    for (const region of regions) {
+        if (region.cells.some(([r, c]) => r === row && c === col)) {
+            for (const [r, c] of region.cells) {
+                if ((r !== row || c !== col) && board[r][c] === num) {
+                    return false;
                 }
             }
         }
-        return true;
     }
+    return true;
 }
 
 /**

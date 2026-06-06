@@ -5,6 +5,7 @@ import { check_lookup_table } from './Technique.js';
 import { mark_outer_clues_X_sums } from '../modules/X_sums.js';
 import { mark_outer_clues_skyscraper } from '../modules/skyscraper.js';
 import { mark_outer_clues_sandwich } from '../modules/sandwich.js';
+import { mark_outer_clues_rossini } from '../modules/rossini.js';
 import { is_valid_exclusion } from '../modules/exclusion.js';
 import { is_valid_quadruple } from '../modules/quadruple.js';
 // import { isValid_multi_diagonal } from '../modules/multi_diagonal.js';
@@ -26,7 +27,7 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
     // 记录开始时间
     const start_time = performance.now();
     // 清除之前的结果
-    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
+    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper' || state.current_mode === 'rossini') {
         clear_inner_numbers();
     } else {
         clear_all_inputs();
@@ -51,7 +52,7 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
         );
         return has_black_cell ? template : null;
     })();
-    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
+    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper' || state.current_mode === 'rossini') {
         state.clues_board = Array.from({ length: size + 2 }, (_, i) =>
             Array.from({ length: size + 2 }, (_, j) => {
                 const isBorder = i === 0 || i === size + 1 || j === 0 || j === size + 1;
@@ -62,6 +63,10 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
                         return [...new Set(valStr.split('').map(Number))].filter(n => n >= 1 && n <= size);
                     }
                     if (valStr.trim() === '') return null; // 空=无提示（特别是三明治不能用0表示空）
+                    if (state.current_mode === 'rossini') {
+                        const clue = valStr.trim();
+                        return (clue === '↑' || clue === '↓' || clue === '←' || clue === '→') ? clue : null;
+                    }
                     const v = parseInt(valStr, 10);
                     return Number.isFinite(v) ? v : null;
                     // const v = parseInt(valStr, 10);
@@ -88,7 +93,7 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
     let has_checked_external_puzzle = false;
 
     const build_test_board_from_puzzle = (candidate_puzzle) => {
-        if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
+        if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper' || state.current_mode === 'rossini') {
             return Array.from({ length: size + 2 }, (_, i) =>
                 Array.from({ length: size + 2 }, (_, j) => {
                     if (i === 0 || i === size + 1 || j === 0 || j === size + 1) {
@@ -296,7 +301,7 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
     const score_label = (dig_validation_mode === 'check_next' && stats_profile_mode === 'minimal_uniqueness')
         ? '分值（最简唯一解）'
         : '分值';
-    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
+    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper' || state.current_mode === 'rossini') {
         log_process(`${size}宫格数独生成成功，${score_label}：${state.solve_stats.total_score}，提示数: ${size*size-holesDug}`);
     } else {
         log_process(`${size}宫格数独生成成功，${score_label}：${state.solve_stats.total_score}，提示数: ${size*size-holesDug}`);
@@ -304,7 +309,7 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
 
     // 3. 填充到网格
     // container = document.querySelector('.sudoku-container');
-    const isBorderedMode = ['X_sums', 'sandwich', 'skyscraper'].includes(state.current_mode);
+    const isBorderedMode = ['X_sums', 'sandwich', 'skyscraper', 'rossini'].includes(state.current_mode);
     for (let i = 0; i < size; i++) {
         for (let j = 0; j < size; j++) {
             const row = isBorderedMode ? i + 1 : i;
@@ -432,6 +437,8 @@ export function generate_exterior_puzzle(size, score_lower_limit = 0, holes_coun
         mark_outer_clues_sandwich(interior_size);
     } else if (state.current_mode === 'skyscraper') {
         mark_outer_clues_skyscraper(interior_size);
+    } else if (state.current_mode === 'rossini') {
+        mark_outer_clues_rossini(interior_size);
     }
 
     // 将 DOM 中标记的外部提示同步回 board_all 的边界位置
@@ -443,6 +450,11 @@ export function generate_exterior_puzzle(size, score_lower_limit = 0, holes_coun
                 if (raw.trim() === '') {
                     board_all[r][c] = null;
                 } else {
+                    if (state.current_mode === 'rossini') {
+                        const clue = raw.trim();
+                        board_all[r][c] = (clue === '↑' || clue === '↓' || clue === '←' || clue === '→') ? clue : null;
+                        continue;
+                    }
                     const v = parseInt(raw, 10);
                     board_all[r][c] = Number.isFinite(v) ? v : null; // 允许 0
                 }
@@ -460,6 +472,10 @@ export function generate_exterior_puzzle(size, score_lower_limit = 0, holes_coun
                 const input = grid.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
                 const raw = input?.value ?? '';
                 if (raw.trim() === '') return null;
+                if (state.current_mode === 'rossini') {
+                    const clue = raw.trim();
+                    return (clue === '↑' || clue === '↓' || clue === '←' || clue === '→') ? clue : null;
+                }
                 const v = parseInt(raw, 10);
                 return Number.isFinite(v) ? v : null; // 允许 0
                 // const v = parseInt(input?.value ?? '', 10);
@@ -596,7 +612,7 @@ export function generate_exterior_puzzle(size, score_lower_limit = 0, holes_coun
 export function generate_solution(sudoku_size, existing_numbers = null, symmetry = 'none', pre_solved_board = null) {
     // log_process("生成终盘...");
     // if (!pre_solved_board) {
-    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper' || state.current_mode === 'pyramid') {
+    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper' || state.current_mode === 'rossini') {
         let board = pre_solved_board;
         if (!pre_solved_board) {
             board = generate_solution_old(sudoku_size);
@@ -608,6 +624,17 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
             throw new Error('多次尝试无法生成终盘，终止本次生成流程');
             // log_process('无解')
             return null;
+        }
+        return board;
+    }
+
+    if ((state.current_mode === 'renban' || state.current_mode === 'pyramid') && !pre_solved_board) {
+        const board = generate_solution_new(sudoku_size);
+        if (!board) {
+            show_result('多次尝试无法生成终盘，终止本次生成流程');
+            log_process('多次尝试无法生成终盘，终止本次生成流程');
+            hide_generating_timer();
+            throw new Error('多次尝试无法生成终盘，终止本次生成流程');
         }
         return board;
     }
@@ -682,7 +709,7 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
 
     // 初始化为候选数数组
     let sudoku_board;
-    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
+    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper' || state.current_mode === 'rossini') {
         sudoku_board = Array.from({ length: sudoku_size + 2 }, (_, i) =>
             Array.from({ length: sudoku_size + 2 }, (_, j) => {
                 if (i === 0 || i === sudoku_size + 1 || j === 0 || j === sudoku_size + 1) {
@@ -794,7 +821,7 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
 
     // 初始唯一解检测
     let test_board;
-    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
+    if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper' || state.current_mode === 'rossini') {
         test_board = Array.from({ length: sudoku_size + 2 }, (_, r) =>
             Array.from({ length: sudoku_size + 2 }, (_, c) => {
                 const found = given_numbers.find(item => item.row === r && item.col === c);
@@ -950,7 +977,7 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
                 // }
 
                 // 构造只包含主动给数的盘面
-                if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper') {
+                if (state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper' || state.current_mode === 'rossini') {
                     test_board = Array.from({ length: sudoku_size + 2 }, (_, r) =>
                         Array.from({ length: sudoku_size + 2 }, (_, c) => {
                             const found = given_numbers.find(item => item.row === r && item.col === c);
@@ -1070,6 +1097,154 @@ export function generate_solution(sudoku_size, existing_numbers = null, symmetry
         log_process(`题目盘面生成失败`);
     }
     return solution || null;
+}
+
+export function generate_solution_new(size) {
+    const board = Array.from({ length: size }, () =>
+        Array.from({ length: size }, () => 0)
+    );
+
+    const candidate_stack = [];
+
+    let regions = get_all_regions(size, state.current_mode);
+    const region_counts = Array.from({ length: size }, () => Array(size).fill(0));
+    for (const region of regions) {
+        for (const [r, c] of region.cells) {
+            region_counts[r][c]++;
+        }
+    }
+
+    let attempt_count = 0;
+    const max_attempts_dom = document.getElementById('maxAttemptsInput');
+    const max_attempts = max_attempts_dom && max_attempts_dom.value ? parseInt(max_attempts_dom.value) : 10000;
+
+    if (!state.is_full_mark_mode) {
+        try {
+            const precheck_board = Array.from({ length: size }, () =>
+                Array.from({ length: size }, () => 0)
+            );
+            solve(precheck_board, size, isValid, true);
+
+            if (state.logical_solution) {
+                for (let r = 0; r < size; r++) {
+                    for (let c = 0; c < size; c++) {
+                        const cell = state.logical_solution[r][c];
+                        board[r][c] = Array.isArray(cell) ? [...cell] : cell;
+                    }
+                }
+            }
+        } catch (error) {
+            log_process(`预检查候选失败，继续使用新终盘生成逻辑：${error.message}`);
+        }
+    }
+
+    function clone_board(source_board) {
+        return Array.from({ length: size }, (_, r) =>
+            Array.from({ length: size }, (_, c) => {
+                const cell = source_board[r][c];
+                return Array.isArray(cell) ? [...cell] : cell;
+            })
+        );
+    }
+
+    function find_best_cell() {
+        let best_cell = null;
+
+        for (let row = 0; row < size; row++) {
+            for (let col = 0; col < size; col++) {
+                const cell = board[row][col];
+                if (cell === 0 || Array.isArray(cell)) {
+                    const candidates = Array.isArray(cell)
+                        ? [...cell]
+                        : [...Array(size)].map((_, i) => i + 1).filter(n => isValid(board, size, row, col, n));
+
+                    const region_count = region_counts[row][col];
+
+                    if (
+                        !best_cell ||
+                        region_count > region_counts[best_cell.row][best_cell.col] ||
+                        (
+                            region_count === region_counts[best_cell.row][best_cell.col] &&
+                            candidates.length < best_cell.candidates.length
+                        )
+                    ) {
+                        best_cell = { row, col, candidates };
+                    }
+                }
+            }
+        }
+
+        return best_cell;
+    }
+
+    function apply_solver_reduction() {
+        const solver_board = clone_board(board);
+        const result = solve(solver_board, size, isValid, true);
+
+        if (!result || result.solution_count === 0 || result.solution_count === -2) {
+            return false;
+        }
+
+        const reduced_board = Array.isArray(state.logical_solution) ? state.logical_solution : solver_board;
+        for (let r = 0; r < size; r++) {
+            for (let c = 0; c < size; c++) {
+                const cell = reduced_board[r][c];
+                board[r][c] = Array.isArray(cell) ? [...cell] : cell;
+            }
+        }
+
+        return true;
+    }
+
+    function backtrack() {
+        if (++attempt_count > max_attempts) {
+            return false;
+        }
+
+        const best_cell = find_best_cell();
+        if (!best_cell) {
+            return true;
+        }
+
+        const { row, col, candidates } = best_cell;
+
+        for (const num of shuffle(candidates)) {
+            if (!isValid(board, size, row, col, num)) {
+                continue;
+            }
+
+            const board_backup = clone_board(board);
+            candidate_stack.push(board_backup);
+
+            board[row][col] = num;
+            eliminate_candidates(board, size, row, col, num);
+
+            if (!apply_solver_reduction()) {
+                const previous_state = candidate_stack.pop();
+                for (let r = 0; r < size; r++) {
+                    for (let c = 0; c < size; c++) {
+                        board[r][c] = previous_state[r][c];
+                    }
+                }
+                continue;
+            }
+
+            if (backtrack()) {
+                return true;
+            }
+
+            const previous_state = candidate_stack.pop();
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    board[r][c] = previous_state[r][c];
+                }
+            }
+        }
+
+        return false;
+    }
+
+    return backtrack() ? board : null;
 }
 
 export function generate_solution_old(size) {
@@ -1403,7 +1578,7 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
     const validation_mode = validation_options?.mode === 'check_next' ? 'check_next' : 'uniqueness';
     const stop_on_single_progress = validation_options?.stopOnSingleProgress === true;
     const single_progress_check_mode = validation_options?.singleProgressCheckMode === 'check_next' ? 'check_next' : 'uniqueness';
-    const is_bordered_mode = state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper';
+    const is_bordered_mode = state.current_mode === 'X_sums' || state.current_mode === 'sandwich' || state.current_mode === 'skyscraper' || state.current_mode === 'rossini';
     const skipScore = SKIP_SCORE_MODES.has(state.current_mode) || validation_mode === 'check_next';
 
     const build_test_board_from_puzzle = () => {
@@ -1439,6 +1614,27 @@ function dig_holes(solution, size, _, symmetry = 'none', holes_limit = undefined
 
         let count = 0;
         if (is_bordered_mode) {
+            state.clues_board = Array.from({ length: size + 2 }, (_, i) =>
+                Array.from({ length: size + 2 }, (_, j) => {
+                    const isBorder = i === 0 || i === size + 1 || j === 0 || j === size + 1;
+                    if (isBorder) {
+                        const input = container.querySelector(`input[data-row="${i}"][data-col="${j}"]`);
+                        const valStr = (input?.value ?? '').trim();
+                        if (state.is_candidates_mode && valStr.length > 1) {
+                            return [...new Set(valStr.split('').map(Number))].filter(n => n >= 1 && n <= size);
+                        }
+                        if (valStr === '') return null;
+                        if (state.current_mode === 'rossini') {
+                            const arrowSet = new Set(['↑', '↓', '←', '→']);
+                            return arrowSet.has(valStr) ? valStr : null;
+                        }
+                        const v = parseInt(valStr, 10);
+                        return Number.isFinite(v) ? v : null;
+                    }
+                    return Array.from({ length: size }, (_, n) => n + 1);
+                })
+            );
+
             for (let i = 1; i <= size; i++) {
                 for (let j = 1; j <= size; j++) {
                     if (typeof board[i]?.[j] === 'number' && board[i][j] > 0) {

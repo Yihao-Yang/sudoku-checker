@@ -11,6 +11,7 @@ import { apply_inequality_marks } from "../modules/inequality.js";
 import { apply_thermo_marks } from "../modules/thermo.js";
 import { apply_fortress_marks } from "../modules/fortress.js";
 import { apply_five_six_marks } from "../modules/five_six.js";
+import { apply_full_marks } from "../modules/full.js";
 import { get_all_mark_lines, get_cells_on_line } from "../modules/multi_diagonal.js";
 // import { is_valid_quadruple } from '../modules/quadruple.js';
 
@@ -2855,6 +2856,8 @@ export function check_lookup_table(board, size) {
         apply_odd_marks(board, size);
     } else if (state.current_mode === 'odd_even') {
         apply_odd_even_marks(board, size);
+    } else if (state.current_mode === 'full') {
+        apply_full_marks(board, size);
     } else if (state.current_mode === 'exclusion') {
         apply_exclusion_marks(board, size);
     } else if (state.current_mode === 'inequality') {

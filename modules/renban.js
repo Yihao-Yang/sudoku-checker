@@ -91,19 +91,19 @@ export function create_renban_sudoku(size) {
         // Multi_Special_Combination_Region_Cell_Elimination_2: true,
         // Multi_Special_Combination_Region_Cell_Elimination_3: true,
         // Multi_Special_Combination_Region_Cell_Elimination_4: true,
-        Special_Combination_Region_Elimination_1: true,
-        Special_Combination_Region_Elimination_2: true,
-        Special_Combination_Region_Elimination_3: true,
-        Special_Combination_Region_Elimination_4: true,
+        // Special_Combination_Region_Elimination_1: true,
+        // Special_Combination_Region_Elimination_2: true,
+        // Special_Combination_Region_Elimination_3: true,
+        // Special_Combination_Region_Elimination_4: true,
         // Special_Combination_Region_Elimination_n: true,
         // Multi_Special_Combination_Region_Elimination_1: true,
         // Multi_Special_Combination_Region_Elimination_2: true,
         // Multi_Special_Combination_Region_Elimination_3: true,
         // Multi_Special_Combination_Region_Elimination_4: true,
-        Special_Combination_Region_Block_1: true,
-        Special_Combination_Region_Block_2: true,
-        Special_Combination_Region_Block_3: true,
-        Special_Combination_Region_Block_4: true,
+        // Special_Combination_Region_Block_1: true,
+        // Special_Combination_Region_Block_2: true,
+        // Special_Combination_Region_Block_3: true,
+        // Special_Combination_Region_Block_4: true,
         // Special_Combination_Region_Block_n: true,
         // Multi_Special_Combination_Region_Block_1: true,
         // Multi_Special_Combination_Region_Block_2: true,
@@ -268,11 +268,26 @@ export function generate_renban_puzzle(size, score_lower_limit = 0, holes_count 
         const directions = [
             [-1, 0], [1, 0], [0, -1], [0, 1]
         ];
+        const touch_directions = [
+            [-1, 0], [1, 0], [0, -1], [0, 1],
+            [-1, -1], [-1, 1], [1, -1], [1, 1]
+        ];
     
         function is_adjacent(cell_a, cell_b) {
             const [r1, c1] = cell_a;
             const [r2, c2] = cell_b;
             for (const [dr, dc] of directions) {
+                if (r1 + dr === r2 && c1 + dc === c2) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function is_touching(cell_a, cell_b) {
+            const [r1, c1] = cell_a;
+            const [r2, c2] = cell_b;
+            for (const [dr, dc] of touch_directions) {
                 if (r1 + dr === r2 && c1 + dc === c2) {
                     return true;
                 }
@@ -310,16 +325,16 @@ export function generate_renban_puzzle(size, score_lower_limit = 0, holes_count 
             // 2. 检查对称点是否已被占用
             if (occupied_cells.has(cell_key(sym_row, sym_col))) continue;
     
-            // 3. 检查不是同一格且不连通
+            // 3. 检查不是同一格且两个区域起点不接触（含对角）
             if (start_row === sym_row && start_col === sym_col) continue;
-            if (is_adjacent([start_row, start_col], [sym_row, sym_col])) continue;
+            if (is_touching([start_row, start_col], [sym_row, sym_col])) continue;
     
-            // 4. 检查与已有区域是否相邻
+            // 4. 检查与已有区域是否接触（含对角）
             let adjacent_to_occupied = false;
             for (const occupied_key of occupied_cells) {
                 const [occ_r, occ_c] = occupied_key.split(',').map(Number);
-                if (is_adjacent([start_row, start_col], [occ_r, occ_c]) ||
-                    is_adjacent([sym_row, sym_col], [occ_r, occ_c])) {
+                if (is_touching([start_row, start_col], [occ_r, occ_c]) ||
+                    is_touching([sym_row, sym_col], [occ_r, occ_c])) {
                     adjacent_to_occupied = true;
                     break;
                 }
@@ -383,21 +398,21 @@ export function generate_renban_puzzle(size, score_lower_limit = 0, holes_count 
                 for (const [cand_r, cand_c] of frontier) {
                     const [sym_r, sym_c] = get_symmetric_pos(cand_r, cand_c, size, symmetry);
             
-                    // 相邻性检查（与对方对称格及已占用格保持不相邻）
+                    // 接触检查（与对方对称格及已占用格保持不接触，含对角）
                     let adjacent = false;
             
-                    // 与自身区域相对的对称格的相邻性
+                    // 与自身区域相对的对称格不能接触
                     for (const [r1, c1] of region_1) {
-                        if (is_adjacent([r1, c1], [sym_r, sym_c])) { adjacent = true; break; }
-                        if (is_adjacent([cand_r, cand_c], [sym_r, sym_c])) { adjacent = true; break; }
+                        if (is_touching([r1, c1], [sym_r, sym_c])) { adjacent = true; break; }
+                        if (is_touching([cand_r, cand_c], [sym_r, sym_c])) { adjacent = true; break; }
                     }
                     if (adjacent) continue;
             
-                    // 与全局已占用格不相邻
+                    // 与全局已占用格不能接触
                     for (const occupied_key of occupied_cells) {
                         const [occ_r, occ_c] = occupied_key.split(',').map(Number);
-                        if (is_adjacent([cand_r, cand_c], [occ_r, occ_c]) ||
-                            is_adjacent([sym_r, sym_c], [occ_r, occ_c])) {
+                        if (is_touching([cand_r, cand_c], [occ_r, occ_c]) ||
+                            is_touching([sym_r, sym_c], [occ_r, occ_c])) {
                             adjacent = true;
                             break;
                         }
@@ -907,7 +922,12 @@ export function is_valid_renban(board, size, row, col, num) {
             }
         }
 
-        // 如果区域未填满，跳过连续性检查
+        // 未填满时也做跨度上界检查，避免已填数字不可能组成合法连续段
+        if (filled_count > 0 && max_num - min_num + 1 > region_len) {
+            return false;
+        }
+
+        // 如果区域未填满，暂不要求已经形成完整连续段
         if (filled_count < region_len) {
             return true;
         }
