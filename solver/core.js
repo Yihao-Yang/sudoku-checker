@@ -596,7 +596,7 @@ export function bold_border(cell, row, col, size) {
     } else if (row % boxRows === 0) {
         borders.top = '2.5px solid #000';
     } else {
-        borders.top = '0.75px solid #000';
+        borders.top = '0.4px solid #000';
     }
     // 左侧边框
     if (col === 0) {
@@ -604,7 +604,7 @@ export function bold_border(cell, row, col, size) {
     } else if (col % boxCols === 0) {
         borders.left = '2.5px solid #000';
     } else {
-        borders.left = '0.75px solid #000';
+        borders.left = '0.4px solid #000';
     }
     // 右侧边框
     if (col === size - 1) {
@@ -612,7 +612,7 @@ export function bold_border(cell, row, col, size) {
     } else if ((col + 1) % boxCols === 0) {
         borders.right = '2.5px solid #000';
     } else {
-        borders.right = '0.75px solid #000';
+        borders.right = '0.4px solid #000';
     }
     // 底部边框
     if (row === size - 1) {
@@ -620,7 +620,7 @@ export function bold_border(cell, row, col, size) {
     } else if ((row + 1) % boxRows === 0) {
         borders.bottom = '2.5px solid #000';
     } else {
-        borders.bottom = '0.75px solid #000';
+        borders.bottom = '0.4px solid #000';
     }
 
     cell.style.borderTop = borders.top;
@@ -1191,7 +1191,8 @@ export function save_sudoku_as_image(is_puzzle = true, with_watermark = false, w
         'skyscraper': '摩天楼',
         'X_sums': 'X和',
         'sandwich': '三明治',
-        'new': '新'
+        'new': '新',
+        'killer': '杀手'
     };
     // 获取题型中文名称
     const mode_name = mode_name_map[mode] || mode;

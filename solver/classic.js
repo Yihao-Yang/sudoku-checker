@@ -35,6 +35,7 @@ import { create_palindrome_sudoku } from '../modules/palindrome.js';
 import { create_X_sums_sudoku } from '../modules/X_sums.js';
 import { create_sandwich_sudoku } from '../modules/sandwich.js';
 import { create_new_sudoku } from '../modules/new.js';
+import { create_killer_sudoku } from '../modules/killer.js';
 import { state, set_current_mode } from './state.js';
 import { 
     show_result, 
@@ -61,7 +62,7 @@ const visible_in_4 = [
     '灰格连续', '堡垒', '排除', '四格提示', '包含', '加法', '五六',
     '乘积', '比例', '不等号', '温度计', '奇数', '奇偶', '全标',
     'X和', '摩天楼', '三明治', '方向', '黑白点', '连续',
-    '无马', '无象', '缺一门', '候选数', '新'
+    '无马', '无象', '缺一门', '候选数', '新', '杀手'
 ];
 
 const visible_in_6 = [
@@ -69,7 +70,7 @@ const visible_in_6 = [
     '灰格连续', '堡垒', '排除', '四格提示', '包含', '加法', '五六',
     '乘积', '比例', '不等号', '温度计', '奇数', '奇偶', '全标',
     'X和', '摩天楼', '三明治', '方向', '黑白点', '连续',
-    '无缘', '无马', '无象', '缺一门', '候选数', '新'
+    '无缘', '无马', '无象', '缺一门', '候选数', '新', '杀手'
 ];
 
 const visible_in_9 = [
@@ -77,7 +78,7 @@ const visible_in_9 = [
     '灰格连续', '堡垒', '排除', '四格提示', '包含', '加法', '五六',
     '乘积', '比例', '不等号', '温度计', '奇数', '奇偶', '全标',
     'X和', '摩天楼', '三明治', '方向', 'VX', '黑白点', '连续',
-    '无缘', '无马', '无象', '缺一门', '候选数', '新'
+    '无缘', '无马', '无象', '缺一门', '候选数', '新', '杀手'
 ];
 
 const visible_modes_by_size = {
@@ -140,14 +141,15 @@ function get_classic_mode_categories(size) {
         '无缘': () => create_anti_king_sudoku(size),
         '无马': () => create_anti_knight_sudoku(size),
         '无象': () => create_anti_elephant_sudoku(size),
-        '缺一门': () => create_missing_sudoku(size)
+        '缺一门': () => create_missing_sudoku(size),
+        '杀手': () => create_killer_sudoku(size)
     };
 
     const categories = {
         '无标记类': ['无缘', '无马', '无象', '同位'],
         '线类': ['对角线', '反对角', '斜线', '斜井', '回文'],
         '相邻格/四格标记类': ['四格提示', '包含', '加法', '乘积', '比例', '不等号', '连续', '黑白点', '五六', '排除', 'VX'],
-        '灰格/黑格类': ['额外区域', '窗口', '金字塔', '灰格连续', '克隆', '堡垒', '奇数', '奇偶', '全标', '缺一门', '温度计'],
+        '灰格/黑格类': ['额外区域', '窗口', '金字塔', '灰格连续', '克隆', '堡垒', '奇数', '奇偶', '全标', '缺一门', '温度计', '杀手'],
         '外提示类': ['X和', '摩天楼', '三明治', '方向'],
         '其他': ['候选数', '新']
     };
@@ -242,9 +244,11 @@ export function create_sudoku_grid(size) {
 
     // 修改技巧开关 - 关闭不适合缺一门数独的技巧
     state.techniqueSettings = {
-        Box_Elimination: true,
+        Box_Elimination: true, 
+        Box_One_Cut: false,
         Row_Col_Elimination: true,
         Box_Block: true,
+        Box_Block_One_Cut: false,
         Box_Pair_Block: true,
         Row_Col_Block: true,
         Box_Naked_2: true,
@@ -259,7 +263,7 @@ export function create_sudoku_grid(size) {
         Row_Col_Naked_4: true,
         Box_Hidden_4: true,
         Row_Col_Hidden_4: true,
-        Cell_Elimination: true,  
+        Cell_Elimination: true, 
         Brute_Force: false       
     };
     // // 排除法全部默认开启
@@ -870,6 +874,7 @@ export function create_technique_panel() {
                         { id: 'Box_Elimination_9', name: '宫排除_9', default: true },
                     ]
                 },
+                { id: 'Box_One_Cut', name: '一刀流宫排除', default: false },
                 {
                     id: 'Row_Col_Elimination',
                     name: '行列排除',
@@ -936,7 +941,7 @@ export function create_technique_panel() {
                     { id: 'Variant_Box_Block_9', name: '变型宫区块_9', default: false },
                 ]
             },
-            // { id: 'Box_Block_One_Cut', name: '一刀流宫区块', default: true },
+            { id: 'Box_Block_One_Cut', name: '一刀流宫区块', default: false },
             { id: 'Box_Pair_Block', name: '宫组合区块', default: true },
             { id: 'Extra_Region_Pair_Block', name: '额外区域组合区块', default: false },
             {

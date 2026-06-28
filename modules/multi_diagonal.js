@@ -178,9 +178,9 @@ export function generate_multi_diagonal_puzzle(size, score_lower_limit = 0, hole
     invalidate_regions_cache();
     log_process('', true);
 
-    // 斜线数量在 sqrt(size) 到 size 之间随机
+    // 斜线数量在 sqrt(size) 到 size-size/3 之间随机
     const min_lines = Math.ceil(Math.sqrt(size));
-    const max_lines = size;
+    const max_lines = size - Math.floor(size / 3);
     const num_lines = Math.floor(Math.random() * (max_lines - min_lines + 1)) + min_lines;
 
     let lines_drawn = 0;
@@ -251,7 +251,9 @@ export function generate_multi_diagonal_puzzle(size, score_lower_limit = 0, hole
         try_count++;
         const start_row = Math.floor(Math.random() * size);
         const start_col = Math.floor(Math.random() * size);
-        const delta = Math.floor(Math.random() * (size - 1)) + 1; // 1~size-1
+        const min_cells = Math.floor(size / 2); // 线段格子数下限：size/2
+        const min_delta = min_cells - 1;
+        const delta = Math.floor(Math.random() * (size - min_delta)) + min_delta; // min_delta~size-1
         const dir = Math.random() < 0.5 ? 1 : -1;
         let end_row, end_col;
 

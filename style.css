@@ -520,3 +520,32 @@ box-sizing: border-box;
     flex-wrap: wrap;
     gap: 10px;
 }
+
+/* 杀手数独和值输入框 */
+.killer-sum-input {
+    position: absolute;
+    width: 20px;
+    height: 14px;
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+    border: none;
+    border-radius: 2px;
+    background: #fff;
+    color: #333;
+    z-index: 10;
+    pointer-events: auto;
+    padding: 0;
+    line-height: 14px;
+}
+.killer-sum-input:focus {
+    outline: none;
+}
+.killer-sum-input::-webkit-inner-spin-button,
+.killer-sum-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.killer-sum-input[type="number"] {
+    -moz-appearance: textfield;
+}

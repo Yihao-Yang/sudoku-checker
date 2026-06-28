@@ -1180,12 +1180,12 @@ export function solve_By_Elimination(board, size) {
         [() => state.techniqueSettings?.Extra_Region_Elimination_8 && check_Extra_Region_Elimination(board, size, 8)],
         // 额外区域排除_9
         [() => state.techniqueSettings?.Extra_Region_Elimination_9 && check_Extra_Region_Elimination(board, size, 9)],
+        // 特定组合唯余_2
+        [() => state.techniqueSettings?.Special_Combination_Region_Cell_Elimination_2 && check_special_combination_region_cell_elimination(board, size, 2)],
         // 特定组合必含_2
         [() => state.techniqueSettings?.Special_Combination_Region_Most_Contain_2 && check_special_combination_region_must_contain(board, size, 2)],
         // 特定组合必不含_2
         [() => state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_2 && check_special_combination_region_must_not_contain(board, size, 2)],
-        // 特定组合唯余_2
-        [() => state.techniqueSettings?.Special_Combination_Region_Cell_Elimination_2 && check_special_combination_region_cell_elimination(board, size, 2)],
         // 特定组合遍历_2
         [() => state.techniqueSettings?.Special_Combination_Region_Elimination_2 && check_special_combination_region_elimination(board, size, 2)],
 
@@ -1196,16 +1196,6 @@ export function solve_By_Elimination(board, size) {
         [() => state.techniqueSettings?.Row_Col_Elimination_2 && check_row_col_elimination(board, size, 2)],
         [() => state.techniqueSettings?.Row_Col_Elimination_3 && check_row_col_elimination(board, size, 3)],
 
-
-        // 特定组合必含_3
-        [() => state.techniqueSettings?.Special_Combination_Region_Most_Contain_3 && check_special_combination_region_must_contain(board, size, 3)],
-        // 特定组合必含_4-9
-        [() => state.techniqueSettings?.Special_Combination_Region_Most_Contain_4 && check_special_combination_region_must_contain(board, size, 4)],
-        [() => (state.techniqueSettings?.Special_Combination_Region_Most_Contain_5 ?? state.techniqueSettings?.Special_Combination_Region_Most_Contain_n) && check_special_combination_region_must_contain(board, size, 5)],
-        [() => (state.techniqueSettings?.Special_Combination_Region_Most_Contain_6 ?? state.techniqueSettings?.Special_Combination_Region_Most_Contain_n) && check_special_combination_region_must_contain(board, size, 6)],
-        [() => (state.techniqueSettings?.Special_Combination_Region_Most_Contain_7 ?? state.techniqueSettings?.Special_Combination_Region_Most_Contain_n) && check_special_combination_region_must_contain(board, size, 7)],
-        [() => (state.techniqueSettings?.Special_Combination_Region_Most_Contain_8 ?? state.techniqueSettings?.Special_Combination_Region_Most_Contain_n) && check_special_combination_region_must_contain(board, size, 8)],
-        [() => (state.techniqueSettings?.Special_Combination_Region_Most_Contain_9 ?? state.techniqueSettings?.Special_Combination_Region_Most_Contain_n) && check_special_combination_region_must_contain(board, size, 9)],
 
 
 
@@ -1259,17 +1249,13 @@ export function solve_By_Elimination(board, size) {
         }),
         // 变型额外区域区块_3
         [() => (state.techniqueSettings?.Variant_Extra_Region_Block_3 ?? state.techniqueSettings?.Variant_Extra_Region_Block) && check_Extra_Region_Block_Elimination(board, size, 3, false)],
-        // 特定组合必不含_3
-        [() => state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_3 && check_special_combination_region_must_not_contain(board, size, 3)],
-        // 特定组合必不含_4-9
-        [() => state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_4 && check_special_combination_region_must_not_contain(board, size, 4)],
-        [() => (state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_5 ?? state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_n) && check_special_combination_region_must_not_contain(board, size, 5)],
-        [() => (state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_6 ?? state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_n) && check_special_combination_region_must_not_contain(board, size, 6)],
-        [() => (state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_7 ?? state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_n) && check_special_combination_region_must_not_contain(board, size, 7)],
-        [() => (state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_8 ?? state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_n) && check_special_combination_region_must_not_contain(board, size, 8)],
-        [() => (state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_9 ?? state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_n) && check_special_combination_region_must_not_contain(board, size, 9)],
         // 特定组合唯余_3
         [() => state.techniqueSettings?.Special_Combination_Region_Cell_Elimination_3 && check_special_combination_region_cell_elimination(board, size, 3)],
+        // 特定组合必含_3
+        [() => state.techniqueSettings?.Special_Combination_Region_Most_Contain_3 && check_special_combination_region_must_contain(board, size, 3)],
+
+        // 特定组合必不含_3
+        [() => state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_3 && check_special_combination_region_must_not_contain(board, size, 3)],
         // 特定组合区块_3
         [() => state.techniqueSettings?.Special_Combination_Region_Block_3 && check_special_combination_region_block_elimination(board, size, 3)],
 
@@ -1320,6 +1306,15 @@ export function solve_By_Elimination(board, size) {
         [() => (state.techniqueSettings?.Variant_Row_Col_Block_3 ?? state.techniqueSettings?.Variant_Row_Col_Block) && check_Row_Col_Block_Elimination(board, size, 3, false)],
         // 特定组合遍历_3
         [() => state.techniqueSettings?.Special_Combination_Region_Elimination_3 && check_special_combination_region_elimination(board, size, 3)],
+        
+        // 宫代数_1
+        [() => (state.techniqueSettings?.Box_Algebra_1 ?? state.techniqueSettings?.Box_Algebra) && check_box_algebra_elimination_level1(board, size)],
+        // 额外区域代数_1
+        [() => (state.techniqueSettings?.Extra_Region_Algebra_1 ?? state.techniqueSettings?.Extra_Region_Algebra) && check_extra_region_algebra_elimination_level1(board, size)],
+        // 变型宫代数_1
+        [() => (state.techniqueSettings?.Variant_Box_Algebra_1 ?? state.techniqueSettings?.Variant_Box_Algebra) && check_variant_box_algebra_elimination_level1(board, size)],
+        // 变型额外区域代数_1
+        [() => (state.techniqueSettings?.Variant_Extra_Region_Algebra_1 ?? state.techniqueSettings?.Variant_Extra_Region_Algebra) && check_variant_extra_region_algebra_elimination_level1(board, size)],
 
         // 变型宫区块_4-size
         ...Array.from({length: size - 3}, (_, i) => {
@@ -1344,6 +1339,20 @@ export function solve_By_Elimination(board, size) {
         [() => (state.techniqueSettings?.Special_Combination_Region_Cell_Elimination_7 ?? state.techniqueSettings?.Special_Combination_Region_Cell_Elimination_n) && check_special_combination_region_cell_elimination(board, size, 7)],
         [() => (state.techniqueSettings?.Special_Combination_Region_Cell_Elimination_8 ?? state.techniqueSettings?.Special_Combination_Region_Cell_Elimination_n) && check_special_combination_region_cell_elimination(board, size, 8)],
         [() => (state.techniqueSettings?.Special_Combination_Region_Cell_Elimination_9 ?? state.techniqueSettings?.Special_Combination_Region_Cell_Elimination_n) && check_special_combination_region_cell_elimination(board, size, 9)],
+        // 特定组合必含_4-9
+        [() => state.techniqueSettings?.Special_Combination_Region_Most_Contain_4 && check_special_combination_region_must_contain(board, size, 4)],
+        [() => (state.techniqueSettings?.Special_Combination_Region_Most_Contain_5 ?? state.techniqueSettings?.Special_Combination_Region_Most_Contain_n) && check_special_combination_region_must_contain(board, size, 5)],
+        [() => (state.techniqueSettings?.Special_Combination_Region_Most_Contain_6 ?? state.techniqueSettings?.Special_Combination_Region_Most_Contain_n) && check_special_combination_region_must_contain(board, size, 6)],
+        [() => (state.techniqueSettings?.Special_Combination_Region_Most_Contain_7 ?? state.techniqueSettings?.Special_Combination_Region_Most_Contain_n) && check_special_combination_region_must_contain(board, size, 7)],
+        [() => (state.techniqueSettings?.Special_Combination_Region_Most_Contain_8 ?? state.techniqueSettings?.Special_Combination_Region_Most_Contain_n) && check_special_combination_region_must_contain(board, size, 8)],
+        [() => (state.techniqueSettings?.Special_Combination_Region_Most_Contain_9 ?? state.techniqueSettings?.Special_Combination_Region_Most_Contain_n) && check_special_combination_region_must_contain(board, size, 9)],
+        // 特定组合必不含_4-9
+        [() => state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_4 && check_special_combination_region_must_not_contain(board, size, 4)],
+        [() => (state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_5 ?? state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_n) && check_special_combination_region_must_not_contain(board, size, 5)],
+        [() => (state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_6 ?? state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_n) && check_special_combination_region_must_not_contain(board, size, 6)],
+        [() => (state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_7 ?? state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_n) && check_special_combination_region_must_not_contain(board, size, 7)],
+        [() => (state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_8 ?? state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_n) && check_special_combination_region_must_not_contain(board, size, 8)],
+        [() => (state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_9 ?? state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_n) && check_special_combination_region_must_not_contain(board, size, 9)],
         // 特定组合区块_4-9
         [() => state.techniqueSettings?.Special_Combination_Region_Block_4 && check_special_combination_region_block_elimination(board, size, 4)],
         [() => (state.techniqueSettings?.Special_Combination_Region_Block_5 ?? state.techniqueSettings?.Special_Combination_Region_Block_n) && check_special_combination_region_block_elimination(board, size, 5)],
@@ -1351,8 +1360,6 @@ export function solve_By_Elimination(board, size) {
         [() => (state.techniqueSettings?.Special_Combination_Region_Block_7 ?? state.techniqueSettings?.Special_Combination_Region_Block_n) && check_special_combination_region_block_elimination(board, size, 7)],
         [() => (state.techniqueSettings?.Special_Combination_Region_Block_8 ?? state.techniqueSettings?.Special_Combination_Region_Block_n) && check_special_combination_region_block_elimination(board, size, 8)],
         [() => (state.techniqueSettings?.Special_Combination_Region_Block_9 ?? state.techniqueSettings?.Special_Combination_Region_Block_n) && check_special_combination_region_block_elimination(board, size, 9)],
-        // 宫代数_1
-        [() => (state.techniqueSettings?.Box_Algebra_1 ?? state.techniqueSettings?.Box_Algebra) && check_box_algebra_elimination_level1(board, size)],
         // 宫代数_2
         [() => state.techniqueSettings?.Box_Algebra_2 && check_box_algebra_elimination_level2(board, size)],
         // 宫代数_3-size
@@ -1362,8 +1369,6 @@ export function solve_By_Elimination(board, size) {
             f.technique_name = `Box_Algebra_${depth}`;
             return [f];
         }),
-        // 额外区域代数_1
-        [() => (state.techniqueSettings?.Extra_Region_Algebra_1 ?? state.techniqueSettings?.Extra_Region_Algebra) && check_extra_region_algebra_elimination_level1(board, size)],
         // 额外区域代数_2
         [() => state.techniqueSettings?.Extra_Region_Algebra_2 && check_extra_region_algebra_elimination_level2(board, size)],
         // 额外区域代数_3-size
@@ -1384,8 +1389,6 @@ export function solve_By_Elimination(board, size) {
             f.technique_name = `Row_Col_Algebra_${depth}`;
             return [f];
         }),
-        // 变型宫代数_1
-        [() => (state.techniqueSettings?.Variant_Box_Algebra_1 ?? state.techniqueSettings?.Variant_Box_Algebra) && check_variant_box_algebra_elimination_level1(board, size)],
         // 变型宫代数_2
         [() => state.techniqueSettings?.Variant_Box_Algebra_2 && check_variant_box_algebra_elimination_level2(board, size)],
         // 变型宫代数_3-size
@@ -1395,8 +1398,6 @@ export function solve_By_Elimination(board, size) {
             f.technique_name = `Variant_Box_Algebra_${depth}`;
             return [f];
         }),
-        // 变型额外区域代数_1
-        [() => (state.techniqueSettings?.Variant_Extra_Region_Algebra_1 ?? state.techniqueSettings?.Variant_Extra_Region_Algebra) && check_variant_extra_region_algebra_elimination_level1(board, size)],
         // 变型额外区域代数_2
         [() => state.techniqueSettings?.Variant_Extra_Region_Algebra_2 && check_variant_extra_region_algebra_elimination_level2(board, size)],
         // 变型额外区域代数_3-size

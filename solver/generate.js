@@ -18,6 +18,7 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
     const stats_profile_mode = generation_options.statsProfile === 'minimal_uniqueness' ? 'minimal_uniqueness' : 'validation_mode';
     const stop_on_single_progress = generation_options.stopOnSingleProgress === true;
     const single_progress_check_mode = generation_options.singleProgressCheckMode === 'check_next' ? 'check_next' : 'uniqueness';
+    const symmetry_override = generation_options.symmetry || null;
     // log_process(pre_solved_board);
     // log_process(
     //     pre_solved_board
@@ -151,7 +152,12 @@ export function generate_puzzle(size, score_lower_limit = 0, holes_count = undef
         }
 
         // 随机选择对称模式
-        symmetry = SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
+        symmetry = symmetry_override || SYMMETRY_TYPES[Math.floor(Math.random() * SYMMETRY_TYPES.length)];
+
+        // 如果启用了“一刀流”相关技巧，则不使用对称性（保证一刀流逻辑可用）
+        if (state.techniqueSettings.Box_One_Cut || state.techniqueSettings.Box_Block_One_Cut) {
+            symmetry = 'none';
+        }
         // log_process(`1 ${symmetry}`)
 
         // 外部传入的是题面（含0）且已唯一解时，直接复用，避免再次出题
@@ -385,7 +391,7 @@ export function generate_real_chokepoint_puzzle(size, score_lower_limit = 0, hol
     });
 }
 
-// 生成X和数独题目
+// 生成外提示数独题目
 export function generate_exterior_puzzle(size, score_lower_limit = 0, holes_count = undefined) {
     // 记录开始时间
     const start_time = performance.now();

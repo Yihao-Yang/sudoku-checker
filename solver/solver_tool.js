@@ -3,6 +3,7 @@ import { solve_By_Elimination } from "./Technique.js";
 import { state } from "./state.js";
 import { get_all_mark_lines, get_cells_on_line } from "../modules/multi_diagonal.js";
 import { get_extra_region_cells } from '../modules/extra_region.js';
+import { get_killer_cells, is_valid_killer } from '../modules/killer.js';
 import { get_renban_cells, is_valid_renban } from '../modules/renban.js';
 import { is_valid_missing } from "../modules/missing.js";
 import { is_valid_fortress } from "../modules/fortress.js";
@@ -1296,6 +1297,32 @@ export function get_all_regions(size, mode = 'classic') {
                     .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
                     .join('-');
                 regions.push({ type: '额外区域', index, cells: extra_region_cells });
+            }
+        }
+    }
+    // 杀手数独：将手动标记的灰色格子作为不可重复的额外区域
+    else if (mode === 'killer' && typeof get_killer_cells === 'function') {
+        const killer_cells = get_killer_cells();
+        if (Array.isArray(killer_cells) && killer_cells.length > 0) {
+            // 判断是单区域还是多区域
+            if (Array.isArray(killer_cells[0][0])) {
+                // 多个区域
+                killer_cells.forEach((region_cells, idx) => {
+                    if (region_cells.length > 0) {
+                        const index = region_cells
+                            .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                            .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                            .join('-');
+                        regions.push({ type: '额外区域', index, cells: region_cells });
+                    }
+                });
+            } else {
+                // 单个区域
+                const index = killer_cells
+                    .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                    .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                    .join('-');
+                regions.push({ type: '额外区域', index, cells: killer_cells });
             }
         }
     }
@@ -2707,11 +2734,31 @@ export function get_special_combination_regions(board, size, mode = 'classic') {
 
             break;
         }
+        case 'killer': {
+            // 杀手数独：每个有和值的区域作为一个特定组合区域
+            const killer_regions = state.killer_regions;
+            const killer_sums = state.killer_sums || {};
+            if (Array.isArray(killer_regions)) {
+                for (const region of killer_regions) {
+                    if (!Array.isArray(region) || region.length === 0) continue;
+                    const index = region
+                        .slice()
+                        .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+                        .map(([r, c]) => `${getRowLetter(r + 1)}${c + 1}`)
+                        .join('-');
+                    const sum = killer_sums[index];
+                    if (Number.isFinite(sum) && sum > 0) {
+                        regions.push({ type: '特定组合', index, cells: region, sum });
+                    }
+                }
+            }
+            break;
+        }
         default:
             // 默认情况下，不添加任何区域
             break;
     }
-    // 统一：保留原“特定组合”，并额外补充一份“单格特定组合”副本
+    // 统一：保留原”特定组合”，并额外补充一份”单格特定组合”副本
     const single_cell_regions = [];
     for (const region of regions) {
         if (region.type === '特定组合' && Array.isArray(region.cells) && region.cells.length === 1) {

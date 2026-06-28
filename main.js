@@ -135,7 +135,8 @@ const MODE_EXPORT_META = {
     X_sums: { type: 'X和', rule: '除标准数独规则外，外提示数表示该方向前X格数字之和，X为该方向第一格数字' },
     skyscraper: { type: '摩天楼', rule: '除标准数独规则外，外提示数表示从该方向能看到的楼房数，数字越大代表楼越高，高楼会挡住矮楼' },
     sandwich: { type: '三明治', rule: (size) => `除标准数独规则外，外提示数表示该行或列中数字1和${size}所在位置之间的所有数字之和` },
-    rossini: { type: '方向', rule: '除标准数独规则外，外提示箭头表示其对应的边缘三格内数字朝着箭头方向依次增大，满足条件的箭头标记均已标出' }
+    rossini: { type: '方向', rule: '除标准数独规则外，外提示箭头表示其对应的边缘三格内数字朝着箭头方向依次增大，满足条件的箭头标记均已标出' },
+    killer: { type: '杀手', rule: '除标准数独规则外，每个灰色额外区域内数字也均不重复' }
 };
 
 function format_export_date(date = new Date()) {
@@ -594,7 +595,7 @@ function initializeEventHandlers() {
     // 新增：批量自动出题和保存图片
     const batchBtn = document.createElement('button');
     batchBtn.id = 'batchGenerateSave';
-    batchBtn.textContent = '自动批量';
+    batchBtn.textContent = '批量出题';
     batchBtn.style.marginLeft = '0px';
 
     const batchOptions = document.createElement('div');
@@ -632,6 +633,21 @@ function initializeEventHandlers() {
     batchInput.style.marginLeft = '10px';
 
     generateRow2.appendChild(batchBtn);
+
+    // 新增：批量出示意图
+    const batchDiagramBtn = document.createElement('button');
+    batchDiagramBtn.id = 'batchGenerateDiagram';
+    batchDiagramBtn.textContent = '批量示意图';
+    batchDiagramBtn.style.marginLeft = '5px';
+    generateRow2.appendChild(batchDiagramBtn);
+
+    // 新增：批量出卡点
+    const batchChokepointBtn = document.createElement('button');
+    batchChokepointBtn.id = 'batchGenerateChokepoint';
+    batchChokepointBtn.textContent = '批量卡点';
+    batchChokepointBtn.style.marginLeft = '5px';
+    generateRow2.appendChild(batchChokepointBtn);
+
     generateRow2.appendChild(batchOptions);
     generateRow2.appendChild(batchInput);
 
@@ -1204,9 +1220,10 @@ function initializeEventHandlers() {
             const generated = await generate_in_constraints(options, true);
             if (!generated) continue;
 
-            await new Promise(resolve => setTimeout(resolve, 800));
+            // 增加延迟以确保页面渲染和图片保存完成，减少错存问题
+            await new Promise(resolve => setTimeout(resolve, 2200));
             save_sudoku_as_image(true, withWatermark, './potato_sudoku.png', { withAxisLabels });
-            await new Promise(resolve => setTimeout(resolve, 1200));
+            await new Promise(resolve => setTimeout(resolve, 2800));
         }
     }
 
@@ -1219,6 +1236,56 @@ function initializeEventHandlers() {
         const count = parseInt(batchInput.value, 10) || 1;
         const { withWatermark, withAxisLabels } = get_batch_image_preferences();
         await runBatchGenerateAndSave(count, options, withWatermark, withAxisLabels);
+    });
+
+    // 批量示意图：批量生成卡点示意图并保存图片
+    async function runBatchGenerateDiagramAndSave(count, options, withWatermark, withAxisLabels) {
+        if (isNaN(count) || count < 1) return;
+
+        for (let i = 0; i < count; i++) {
+            const generated = await generate_chokepoint_in_constraints(options);
+            if (!generated) continue;
+
+            await new Promise(resolve => setTimeout(resolve, 2200));
+            save_sudoku_as_image(true, withWatermark, './potato_sudoku.png', { withAxisLabels });
+            await new Promise(resolve => setTimeout(resolve, 2800));
+        }
+    }
+
+    batchDiagramBtn.addEventListener('click', async () => {
+        const options = get_generation_options();
+        if (!options) {
+            return;
+        }
+
+        const count = parseInt(batchInput.value, 10) || 1;
+        const { withWatermark, withAxisLabels } = get_batch_image_preferences();
+        await runBatchGenerateDiagramAndSave(count, options, withWatermark, withAxisLabels);
+    });
+
+    // 批量卡点：批量生成真正卡点题并保存图片
+    async function runBatchGenerateChokepointAndSave(count, options, withWatermark, withAxisLabels) {
+        if (isNaN(count) || count < 1) return;
+
+        for (let i = 0; i < count; i++) {
+            const generated = await generate_real_chokepoint_in_constraints(options);
+            if (!generated) continue;
+
+            await new Promise(resolve => setTimeout(resolve, 2200));
+            save_sudoku_as_image(true, withWatermark, './potato_sudoku.png', { withAxisLabels });
+            await new Promise(resolve => setTimeout(resolve, 2800));
+        }
+    }
+
+    batchChokepointBtn.addEventListener('click', async () => {
+        const options = get_generation_options();
+        if (!options) {
+            return;
+        }
+
+        const count = parseInt(batchInput.value, 10) || 1;
+        const { withWatermark, withAxisLabels } = get_batch_image_preferences();
+        await runBatchGenerateChokepointAndSave(count, options, withWatermark, withAxisLabels);
     });
 }
 
