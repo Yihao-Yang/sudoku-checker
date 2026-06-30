@@ -2103,7 +2103,8 @@ const SYMMETRY_TYPES = [
 export function fill_puzzle_to_grid(puzzle) {
     const container = document.querySelector('.sudoku-container');
     const size = puzzle.length;
-    
+    const isBorderedMode = ['X_sums', 'sandwich', 'skyscraper', 'rossini'].includes(state.current_mode);
+
     for (let i = 0; i < size; i++) {
         for (let j = 0; j < size; j++) {
             const row = isBorderedMode ? i + 1 : i;
@@ -2114,7 +2115,7 @@ export function fill_puzzle_to_grid(puzzle) {
             }
         }
     }
-    
+
     backup_original_board();
     show_result(`已生成${size}宫格数独题目`);
 }

@@ -1134,14 +1134,6 @@ export function solve_By_Elimination(board, size) {
         [() => state.techniqueSettings?.Extra_Region_Elimination_1 && check_Extra_Region_Elimination(board, size, 1)],
         // 行列排除_1
         [() => state.techniqueSettings?.Row_Col_Elimination_1 && check_row_col_elimination(board, size, 1)],
-        // 特定组合唯余_1
-        [() => state.techniqueSettings?.Special_Combination_Region_Cell_Elimination_1 && check_special_combination_region_cell_elimination(board, size, 1)],
-        // 特定组合必含_1
-        [() => state.techniqueSettings?.Special_Combination_Region_Most_Contain_1 && check_special_combination_region_must_contain(board, size, 1)],
-        // 特定组合必不含_1
-        [() => state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_1 && check_special_combination_region_must_not_contain(board, size, 1)],
-        // 特定组合遍历_1
-        [() => state.techniqueSettings?.Special_Combination_Region_Elimination_1 && check_special_combination_region_elimination(board, size, 1)],
 
 
         // 唯余法_2
@@ -1156,6 +1148,14 @@ export function solve_By_Elimination(board, size) {
         [() => state.techniqueSettings?.Box_Elimination_5 && check_Box_Elimination(board, size, 5)],
         // 宫排除_6
         [() => state.techniqueSettings?.Box_Elimination_6 && check_Box_Elimination(board, size, 6)],
+        // 特定组合唯余_1
+        [() => state.techniqueSettings?.Special_Combination_Region_Cell_Elimination_1 && check_special_combination_region_cell_elimination(board, size, 1)],
+        // 特定组合必含_1
+        [() => state.techniqueSettings?.Special_Combination_Region_Most_Contain_1 && check_special_combination_region_must_contain(board, size, 1)],
+        // 特定组合必不含_1
+        [() => state.techniqueSettings?.Special_Combination_Region_Most_Not_Contain_1 && check_special_combination_region_must_not_contain(board, size, 1)],
+        // 特定组合遍历_1
+        [() => state.techniqueSettings?.Special_Combination_Region_Elimination_1 && check_special_combination_region_elimination(board, size, 1)],
         // 宫排除_7
         [() => state.techniqueSettings?.Box_Elimination_7 && check_Box_Elimination(board, size, 7)],
         // 宫排除_8

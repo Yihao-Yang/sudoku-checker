@@ -1447,22 +1447,21 @@ export function get_all_regions(size, mode = 'classic') {
 
         for (const cells of merged_lines) {
             const len = cells.length;
-            for (let i = 0; i < Math.floor(len / 2); i++) {
-                const A = cells[i];
-                const B = cells[len - 1 - i];
 
-                // 生成 替代宫 区域：A + (B所在宫的其他格子，不含B)
+            // 辅助函数：创建 src + (tgt所在宫/行/列的其他格子) 三种回文替代区域
+            const add_palindrome_substitute_regions = (src, tgt) => {
+                // 回文替代宫：src + (tgt所在宫的其他格子，不含tgt)
                 {
-                    const br = Math.floor(B[0] / box_size[0]);
-                    const bc = Math.floor(B[1] / box_size[1]);
+                    const br = Math.floor(tgt[0] / box_size[0]);
+                    const bc = Math.floor(tgt[1] / box_size[1]);
                     const cellSet = new Set();
                     for (let r = br * box_size[0]; r < (br + 1) * box_size[0]; r++) {
                         for (let c = bc * box_size[1]; c < (bc + 1) * box_size[1]; c++) {
-                            if (r === B[0] && c === B[1]) continue;
+                            if (r === tgt[0] && c === tgt[1]) continue;
                             cellSet.add(`${r},${c}`);
                         }
                     }
-                    cellSet.add(`${A[0]},${A[1]}`);
+                    cellSet.add(`${src[0]},${src[1]}`);
                     const region_cells = Array.from(cellSet)
                         .map(s => s.split(',').map(Number));
 
@@ -1474,14 +1473,14 @@ export function get_all_regions(size, mode = 'classic') {
                     regions.push({ type: '回文替代宫', index, cells: region_cells });
                 }
 
-                // 生成 替代行 区域：A + (B所在行的其他格子，不含B)
+                // 回文替代行：src + (tgt所在行的其他格子，不含tgt)
                 {
                     const cellSet = new Set();
                     for (let c = 0; c < size; c++) {
-                        if (c === B[1]) continue;
-                        cellSet.add(`${B[0]},${c}`);
+                        if (c === tgt[1]) continue;
+                        cellSet.add(`${tgt[0]},${c}`);
                     }
-                    cellSet.add(`${A[0]},${A[1]}`);
+                    cellSet.add(`${src[0]},${src[1]}`);
                     const region_cells = Array.from(cellSet)
                         .map(s => s.split(',').map(Number));
 
@@ -1493,14 +1492,14 @@ export function get_all_regions(size, mode = 'classic') {
                     regions.push({ type: '回文替代行', index, cells: region_cells });
                 }
 
-                // 生成 替代列 区域：A + (B所在列的其他格子，不含B)
+                // 回文替代列：src + (tgt所在列的其他格子，不含tgt)
                 {
                     const cellSet = new Set();
                     for (let r = 0; r < size; r++) {
-                        if (r === B[0]) continue;
-                        cellSet.add(`${r},${B[1]}`);
+                        if (r === tgt[0]) continue;
+                        cellSet.add(`${r},${tgt[1]}`);
                     }
-                    cellSet.add(`${A[0]},${A[1]}`);
+                    cellSet.add(`${src[0]},${src[1]}`);
                     const region_cells = Array.from(cellSet)
                         .map(s => s.split(',').map(Number));
 
@@ -1511,6 +1510,13 @@ export function get_all_regions(size, mode = 'classic') {
 
                     regions.push({ type: '回文替代列', index, cells: region_cells });
                 }
+            };
+
+            for (let i = 0; i < Math.floor(len / 2); i++) {
+                const A = cells[i];
+                const B = cells[len - 1 - i];
+                add_palindrome_substitute_regions(A, B);  // A → B
+                add_palindrome_substitute_regions(B, A);  // B → A（反向）
             }
         }
     }
@@ -1530,22 +1536,20 @@ export function get_all_regions(size, mode = 'classic') {
                     const sorted_i = [...region_i].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
                     const sorted_j = [...region_j].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
 
-                    for (let k = 0; k < sorted_i.length; k++) {
-                        const A = sorted_i[k];
-                        const B = sorted_j[k];
-
-                        // 生成 克隆替代宫 区域：A + (B所在宫的其他格子，不含B)
+                    // 辅助函数：创建 src + (tgt所在宫/行/列的其他格子) 三种克隆替代区域
+                    const add_clone_substitute_regions = (src, tgt) => {
+                        // 克隆替代宫：src + (tgt所在宫的其他格子，不含tgt)
                         {
-                            const br = Math.floor(B[0] / box_size[0]);
-                            const bc = Math.floor(B[1] / box_size[1]);
+                            const br = Math.floor(tgt[0] / box_size[0]);
+                            const bc = Math.floor(tgt[1] / box_size[1]);
                             const cellSet = new Set();
                             for (let r = br * box_size[0]; r < (br + 1) * box_size[0]; r++) {
                                 for (let c = bc * box_size[1]; c < (bc + 1) * box_size[1]; c++) {
-                                    if (r === B[0] && c === B[1]) continue;
+                                    if (r === tgt[0] && c === tgt[1]) continue;
                                     cellSet.add(`${r},${c}`);
                                 }
                             }
-                            cellSet.add(`${A[0]},${A[1]}`);
+                            cellSet.add(`${src[0]},${src[1]}`);
                             const region_cells = Array.from(cellSet)
                                 .map(s => s.split(',').map(Number));
 
@@ -1557,14 +1561,14 @@ export function get_all_regions(size, mode = 'classic') {
                             regions.push({ type: '克隆替代宫', index, cells: region_cells });
                         }
 
-                        // 生成 克隆替代行 区域：A + (B所在行的其他格子，不含B)
+                        // 克隆替代行：src + (tgt所在行的其他格子，不含tgt)
                         {
                             const cellSet = new Set();
                             for (let c = 0; c < size; c++) {
-                                if (c === B[1]) continue;
-                                cellSet.add(`${B[0]},${c}`);
+                                if (c === tgt[1]) continue;
+                                cellSet.add(`${tgt[0]},${c}`);
                             }
-                            cellSet.add(`${A[0]},${A[1]}`);
+                            cellSet.add(`${src[0]},${src[1]}`);
                             const region_cells = Array.from(cellSet)
                                 .map(s => s.split(',').map(Number));
 
@@ -1576,14 +1580,14 @@ export function get_all_regions(size, mode = 'classic') {
                             regions.push({ type: '克隆替代行', index, cells: region_cells });
                         }
 
-                        // 生成 克隆替代列 区域：A + (B所在列的其他格子，不含B)
+                        // 克隆替代列：src + (tgt所在列的其他格子，不含tgt)
                         {
                             const cellSet = new Set();
                             for (let r = 0; r < size; r++) {
-                                if (r === B[0]) continue;
-                                cellSet.add(`${r},${B[1]}`);
+                                if (r === tgt[0]) continue;
+                                cellSet.add(`${r},${tgt[1]}`);
                             }
-                            cellSet.add(`${A[0]},${A[1]}`);
+                            cellSet.add(`${src[0]},${src[1]}`);
                             const region_cells = Array.from(cellSet)
                                 .map(s => s.split(',').map(Number));
 
@@ -1594,6 +1598,13 @@ export function get_all_regions(size, mode = 'classic') {
 
                             regions.push({ type: '克隆替代列', index, cells: region_cells });
                         }
+                    };
+
+                    for (let k = 0; k < sorted_i.length; k++) {
+                        const A = sorted_i[k];
+                        const B = sorted_j[k];
+                        add_clone_substitute_regions(A, B);  // A → B
+                        add_clone_substitute_regions(B, A);  // B → A（反向）
                     }
                 }
             }

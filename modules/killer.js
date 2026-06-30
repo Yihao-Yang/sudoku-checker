@@ -2,7 +2,7 @@ import { state, set_current_mode } from '../solver/state.js';
 import { bold_border, create_base_grid, handle_key_navigation, add_Extra_Button, log_process, create_base_cell, show_result, show_generating_timer, hide_generating_timer, clear_all_inputs } from '../solver/core.js';
 import { create_technique_panel } from '../solver/classic.js';
 import { generate_puzzle, generate_solved_board_brute_force } from '../solver/generate.js';
-import { invalidate_regions_cache, get_all_regions } from '../solver/solver_tool.js';
+import { invalidate_regions_cache, get_all_regions, solve, isValid } from '../solver/solver_tool.js';
 
 
 // 行号转字母（1→A, 2→B, ...）
@@ -82,6 +82,18 @@ export function create_killer_sudoku(size) {
     for (let i = 1; i <= size; i++) {
         state.techniqueSettings[`Cell_Elimination_${i}`] = true;
     }
+
+    // 特定组合必含/必不含/唯余 默认开启
+    for (let i = 1; i <= size*2/3; i++) {
+        state.techniqueSettings[`Special_Combination_Region_Most_Not_Contain_${i}`] = true;
+        state.techniqueSettings[`Special_Combination_Region_Most_Contain_${i}`] = true;
+        state.techniqueSettings[`Special_Combination_Region_Cell_Elimination_${i}`] = true;
+    }
+    // state.techniqueSettings['Special_Combination_Region_Most_Not_Contain_n'] = true;
+    // state.techniqueSettings['Special_Combination_Region_Most_Contain_n'] = true;
+    // for (let i = 1; i <= 4; i++) {
+    //     state.techniqueSettings[`Special_Combination_Region_Cell_Elimination_${i}`] = true;
+    // }
 
     // 刷新技巧面板
     create_technique_panel();
@@ -219,6 +231,7 @@ export function create_killer_sudoku(size) {
                 }
             });
             grid.appendChild(inp);
+            inp.focus();
         }
     });
 
@@ -306,6 +319,119 @@ export function generate_killer_puzzle(size, score_lower_limit = 0, holes_count 
         }
     }
 
+    function build_region_signature(region) {
+        return region
+            .slice()
+            .sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]))
+            .map(([r, c]) => `${r},${c}`)
+            .join('|');
+    }
+
+    function build_region_sums(regions, solvedBoardRef) {
+        const sums = {};
+        for (const region of regions) {
+            if (!Array.isArray(region) || region.length === 0) continue;
+            sums[get_region_index(region)] = compute_region_sum(region, solvedBoardRef);
+        }
+        return sums;
+    }
+
+    function apply_regions_to_state(regions, sums) {
+        state.killer_cells.clear();
+        state.killer_regions = [];
+        state.killer_sums = {};
+        for (const region of regions) {
+            if (!Array.isArray(region) || region.length === 0) continue;
+            state.killer_regions.push(region.map(([r, c]) => [r, c]));
+            for (const [row, col] of region) {
+                state.killer_cells.add(`${row},${col}`);
+            }
+        }
+        state.killer_sums = { ...sums };
+        update_killer_borders();
+        render_killer_sum_inputs(size);
+    }
+
+    function check_current_killer_puzzle_uniqueness() {
+        const container = document.querySelector('.sudoku-container');
+        if (!container) return null;
+
+        const board = Array.from({ length: size }, (_, row) =>
+            Array.from({ length: size }, (_, col) => {
+                const input = container.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
+                const rawValue = input?.value?.trim() ?? '';
+                const value = parseInt(rawValue, 10);
+                if (Number.isInteger(value) && value >= 1 && value <= size) {
+                    return value;
+                }
+                return Array.from({ length: size }, (_, n) => n + 1);
+            })
+        );
+
+        return solve(board, size, isValid, true);
+    }
+
+    function simplify_killer_regions(regions, solvedBoardRef) {
+        let workingRegions = regions.map(region => region.map(([r, c]) => [r, c]));
+        let workingSums = build_region_sums(workingRegions, solvedBoardRef);
+        let removedGroups = 0;
+
+        while (true) {
+            const candidateGroups = [];
+            const used = new Set();
+            for (let i = 0; i < workingRegions.length; i++) {
+                if (used.has(i)) continue;
+                const region = workingRegions[i];
+                const symRegion = region.map(([r, c]) => get_symmetric_pos(r, c));
+                const symKey = build_region_signature(symRegion);
+                const matchedIndex = workingRegions.findIndex((candidate, index) => {
+                    return index !== i && !used.has(index) && build_region_signature(candidate) === symKey;
+                });
+
+                if (matchedIndex >= 0) {
+                    candidateGroups.push([i, matchedIndex]);
+                    used.add(i);
+                    used.add(matchedIndex);
+                } else {
+                    candidateGroups.push([i]);
+                    used.add(i);
+                }
+            }
+
+            candidateGroups.sort((a, b) => {
+                const aSingle = a.some(idx => workingRegions[idx].length === 1);
+                const bSingle = b.some(idx => workingRegions[idx].length === 1);
+                if (aSingle !== bSingle) return aSingle ? -1 : 1;
+                const sizeDiff = a.length - b.length;
+                if (sizeDiff !== 0) return sizeDiff;
+                const aSize = a.reduce((sum, idx) => sum + workingRegions[idx].length, 0);
+                const bSize = b.reduce((sum, idx) => sum + workingRegions[idx].length, 0);
+                return aSize - bSize || a[0] - b[0];
+            });
+
+            let accepted = false;
+            for (const group of candidateGroups) {
+                const candidateRegions = workingRegions.filter((_, index) => !group.includes(index));
+                const candidateSums = build_region_sums(candidateRegions, solvedBoardRef);
+                apply_regions_to_state(candidateRegions, candidateSums);
+                const uniqueness = check_current_killer_puzzle_uniqueness();
+                if (uniqueness?.solution_count === 1) {
+                    workingRegions = candidateRegions;
+                    workingSums = candidateSums;
+                    removedGroups += 1;
+                    accepted = true;
+                    break;
+                }
+                apply_regions_to_state(workingRegions, workingSums);
+            }
+
+            if (!accepted) break;
+        }
+
+        apply_regions_to_state(workingRegions, workingSums);
+        return { regions: workingRegions, sums: workingSums, removedGroups };
+    }
+
     // 从终盘计算区域和值
     function compute_region_sum(region, solvedBoard) {
         let sum = 0;
@@ -323,7 +449,7 @@ export function generate_killer_puzzle(size, score_lower_limit = 0, holes_count 
         const seedIsSelfSym = (sSR === seedR && sSC === seedC);
 
         const directions = [[-1,0],[1,0],[0,-1],[0,1]];
-        const targetSize = 3 + Math.floor(Math.random() * (size - 2)); // 3 ~ size
+        const targetSize = 2 + Math.floor(Math.random() * (size - 2)); // 3 ~ size
 
         if (seedIsSelfSym) {
             // === 自对称区域：单区域生长 ===
@@ -529,106 +655,49 @@ export function generate_killer_puzzle(size, score_lower_limit = 0, holes_count 
             hide_generating_timer();
             if (!result || !result.puzzle) return;
 
-            // 7) 提取题目数字所在区域并切分
+            // 7) 题目数字格独立成区，原区域余下按4连通分片
             const puzzle = result.puzzle;
             const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
-            const regionsToSplit = new Set();
-            for (let r = 0; r < size; r++) {
-                for (let c = 0; c < size; c++) {
-                    if (puzzle[r][c] === 0) continue;
-                    for (const region of allRegions) {
-                        for (const [rr, cc] of region) {
-                            if (rr === r && cc === c) { regionsToSplit.add(region); break; }
-                        }
+
+            const givenCells = [];
+            for (let r = 0; r < size; r++)
+                for (let c = 0; c < size; c++)
+                    if (puzzle[r][c] !== 0) givenCells.push([r, c]);
+
+            for (const [gr, gc] of givenCells) {
+                let target = null;
+                for (const region of allRegions) {
+                    for (const [rr, cc] of region) {
+                        if (rr === gr && cc === gc) { target = region; break; }
                     }
+                    if (target) break;
                 }
-            }
+                if (!target || target.length < 2) continue;
 
-            for (const region of regionsToSplit) {
-                if (allRegions.indexOf(region) < 0) continue; // 可能已被对称切分处理掉
-                if (region.length < 3) continue;
-                const symIdx = get_region_index(region.map(([r, c]) => {
-                    const [sr, sc] = get_symmetric_pos(r, c); return [sr, sc];
-                }));
-                const isSelfSym = symIdx === get_region_index(region);
+                allRegions.splice(allRegions.indexOf(target), 1);
+                allRegions.push([[gr, gc]]);
 
-                if (isSelfSym) {
-                    const selfSym = [], nonSelf = [];
-                    for (const [r, c] of region) {
-                        const [sr, sc] = get_symmetric_pos(r, c);
-                        if (sr === r && sc === c) selfSym.push([r, c]);
-                        else nonSelf.push([r, c]);
-                    }
-                    for (const cell of selfSym) allRegions.push([cell]);
-                    const ri = allRegions.indexOf(region);
-                    if (ri >= 0) allRegions.splice(ri, 1);
-                    if (nonSelf.length > 0) {
-                        const nsSet = new Set(nonSelf.map(([r, c]) => `${r},${c}`));
-                        const visited = new Set();
-                        for (const [r, c] of nonSelf) {
-                            if (visited.has(`${r},${c}`)) continue;
-                            const comp = [];
-                            const q = [[r, c]];
-                            visited.add(`${r},${c}`);
-                            while (q.length) {
-                                const [cr, cc] = q.shift();
-                                comp.push([cr, cc]);
-                                for (const [dr, dc] of dirs) {
-                                    const k = `${cr + dr},${cc + dc}`;
-                                    if (nsSet.has(k) && !visited.has(k)) {
-                                        visited.add(k);
-                                        q.push([cr + dr, cc + dc]);
-                                    }
-                                }
+                const remaining = target.filter(([rr, cc]) => !(rr === gr && cc === gc));
+                if (remaining.length === 0) continue;
+
+                const remSet = new Set(remaining.map(([rr, cc]) => `${rr},${cc}`));
+                const visited = new Set();
+                for (const [rr, cc] of remaining) {
+                    if (visited.has(`${rr},${cc}`)) continue;
+                    const comp = [], q = [[rr, cc]];
+                    visited.add(`${rr},${cc}`);
+                    while (q.length) {
+                        const [cr, cc2] = q.shift();
+                        comp.push([cr, cc2]);
+                        for (const [dr, dc] of dirs) {
+                            const k = `${cr + dr},${cc2 + dc}`;
+                            if (remSet.has(k) && !visited.has(k)) {
+                                visited.add(k);
+                                q.push([cr + dr, cc2 + dc]);
                             }
-                            allRegions.push(comp);
                         }
                     }
-                } else {
-                    let counterpart = null;
-                    for (const other of allRegions) {
-                        if (other !== region && get_region_index(other) === symIdx) { counterpart = other; break; }
-                    }
-                    if (!counterpart) continue;
-
-                    const cellSet = new Set(region.map(([r, c]) => `${r},${c}`));
-                    let far = region[0], v = new Set([`${far[0]},${far[1]}`]), queue = [far];
-                    while (queue.length) {
-                        const [r, c] = queue.shift(); far = [r, c];
-                        for (const [dr, dc] of dirs) {
-                            const k = `${r + dr},${c + dc}`;
-                            if (cellSet.has(k) && !v.has(k)) { v.add(k); queue.push([r + dr, c + dc]); }
-                        }
-                    }
-                    const half = Math.floor(region.length / 2);
-                    const subA = []; v = new Set(); queue = [far]; v.add(`${far[0]},${far[1]}`);
-                    while (queue.length && subA.length < half) {
-                        const [r, c] = queue.shift(); subA.push([r, c]);
-                        for (const [dr, dc] of dirs) {
-                            const k = `${r + dr},${c + dc}`;
-                            if (cellSet.has(k) && !v.has(k)) { v.add(k); queue.push([r + dr, c + dc]); }
-                        }
-                    }
-                    const aSet = new Set(subA.map(([r, c]) => `${r},${c}`));
-                    const subB = region.filter(([r, c]) => !aSet.has(`${r},${c}`));
-                    if (subB.length === 0) continue;
-                    const bv = new Set(), bq = [subB[0]]; bv.add(`${subB[0][0]},${subB[0][1]}`);
-                    while (bq.length) {
-                        const [r, c] = bq.shift();
-                        for (const [dr, dc] of dirs) {
-                            const k = `${r + dr},${c + dc}`;
-                            if (cellSet.has(k) && !aSet.has(k) && !bv.has(k)) { bv.add(k); bq.push([r + dr, c + dc]); }
-                        }
-                    }
-                    if (bv.size !== subB.length) continue;
-                    const dup = (cells) => { const s = new Set(); for (const [r, c] of cells) { const d = solvedBoard[r][c]; if (s.has(d)) return true; s.add(d); } return false; };
-                    if (dup(subA) || dup(subB)) continue;
-                    const symA = subA.map(([r, c]) => { const [sr, sc] = get_symmetric_pos(r, c); return [sr, sc]; });
-                    const symB = subB.map(([r, c]) => { const [sr, sc] = get_symmetric_pos(r, c); return [sr, sc]; });
-                    const i1 = allRegions.indexOf(region);
-                    if (i1 >= 0) allRegions.splice(i1, 1, subA, subB);
-                    const i2 = allRegions.indexOf(counterpart);
-                    if (i2 >= 0) allRegions.splice(i2, 1, symA, symB);
+                    allRegions.push(comp);
                 }
             }
 
@@ -645,7 +714,21 @@ export function generate_killer_puzzle(size, score_lower_limit = 0, holes_count 
             state.killer_sums = newSums;
             update_killer_borders();
             render_killer_sum_inputs(size);
-            generate_puzzle(size, score_lower_limit, holes_count, solvedBoard, { symmetry: symmetry });
+
+            // 清除 DOM 中的已给数字——约束已由单格区域 sum 承载
+            const gridContainer = document.querySelector('.sudoku-container');
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    const input = gridContainer.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
+                    if (input) input.value = '';
+                }
+            }
+
+            const simplified = simplify_killer_regions(allRegions, solvedBoard);
+            if (simplified.removedGroups > 0) {
+                log_process(`杀手区域已按对称性简化，移除 ${simplified.removedGroups} 组区域`);
+            }
+            allRegions = simplified.regions;
         }, 0);
         return;
     }

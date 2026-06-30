@@ -1,5 +1,5 @@
 import { state, set_current_mode } from '../solver/state.js';
-import { bold_border, create_base_grid, handle_key_navigation, add_Extra_Button, log_process, create_base_cell, show_result, show_generating_timer, hide_generating_timer } from '../solver/core.js';
+import { bold_border, create_base_grid, handle_key_navigation, add_Extra_Button, log_process, create_base_cell, show_result, show_generating_timer, hide_generating_timer, clear_all_inputs } from '../solver/core.js';
 import { create_technique_panel } from '../solver/classic.js';
 import { generate_puzzle } from '../solver/generate.js';
 import { get_all_regions, invalidate_regions_cache } from '../solver/solver_tool.js';
@@ -68,8 +68,8 @@ export function create_clone_sudoku(size) {
         // Multi_Special_Combination_Region_Most_Not_Contain_1: true,
         // Multi_Special_Combination_Region_Most_Not_Contain_2: true,
         // Multi_Special_Combination_Region_Most_Not_Contain_3: true,
-        Special_Combination_Region_Most_Contain_1: true,
-        Special_Combination_Region_Most_Contain_2: true,
+        // Special_Combination_Region_Most_Contain_1: true,
+        // Special_Combination_Region_Most_Contain_2: true,
         // Special_Combination_Region_Most_Contain_3: true,
         // Multi_Special_Combination_Region_Most_Contain_1: true,
         // Multi_Special_Combination_Region_Most_Contain_2: true,
@@ -80,14 +80,14 @@ export function create_clone_sudoku(size) {
         // Multi_Special_Combination_Region_Cell_Elimination_1: true,
         // Multi_Special_Combination_Region_Cell_Elimination_2: true,
         // Multi_Special_Combination_Region_Cell_Elimination_3: true,
-        Special_Combination_Region_Elimination_1: true,
-        Special_Combination_Region_Elimination_2: true,
+        // Special_Combination_Region_Elimination_1: true,
+        // Special_Combination_Region_Elimination_2: true,
         // Special_Combination_Region_Elimination_3: true,
         // Multi_Special_Combination_Region_Elimination_1: true,
         // Multi_Special_Combination_Region_Elimination_2: true,
         // Multi_Special_Combination_Region_Elimination_3: true,
-        Special_Combination_Region_Block_1: true,
-        Special_Combination_Region_Block_2: true,
+        // Special_Combination_Region_Block_1: true,
+        // Special_Combination_Region_Block_2: true,
         // Special_Combination_Region_Block_3: true,
         // Multi_Special_Combination_Region_Block_1: true,
         // Multi_Special_Combination_Region_Block_2: true,
@@ -412,6 +412,7 @@ export function generate_clone_puzzle(size, score_lower_limit = 0, holes_count =
         }
     }
 
+    clear_all_inputs();
     show_generating_timer();
     
     setTimeout(() => {
